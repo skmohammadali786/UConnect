@@ -1,10 +1,10 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import React from "react";
+import React, { useRef } from "react";
 import {
+  Animated,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -33,20 +33,41 @@ interface PostCardProps {
   currentUserId: string;
   onReport?: (postId: string) => void;
   onDelete?: (postId: string) => void;
+  index?: number;
 }
 
-export function PostCard({ post, currentUserId, onReport, onDelete }: PostCardProps) {
+export function PostCard({ post, currentUserId, onReport, onDelete, index = 0 }: PostCardProps) {
   const colors = useColors();
   const { votePost, bookmarkPost } = usePosts();
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const upAnim = useRef(new Animated.Value(1)).current;
+  const bookmarkAnim = useRef(new Animated.Value(1)).current;
+
+  const pulse = (anim: Animated.Value) => {
+    Animated.sequence([
+      Animated.spring(anim, { toValue: 1.3, useNativeDriver: true, tension: 200, friction: 6 }),
+      Animated.spring(anim, { toValue: 1, useNativeDriver: true, tension: 200, friction: 6 }),
+    ]).start();
+  };
 
   const handleVote = (vote: "up" | "down") => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (vote === "up") pulse(upAnim);
     votePost(post.id, vote);
   };
 
   const handleBookmark = () => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    pulse(bookmarkAnim);
     bookmarkPost(post.id);
+  };
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, { toValue: 0.984, useNativeDriver: true, tension: 200, friction: 10 }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, tension: 200, friction: 10 }).start();
   };
 
   const handlePress = () => {
@@ -57,60 +78,72 @@ export function PostCard({ post, currentUserId, onReport, onDelete }: PostCardPr
   const isOwner = post.authorId === currentUserId;
 
   return (
-    <Pressable onPress={handlePress} style={({ pressed }) => [styles.container, { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.95 : 1, borderRadius: colors.radius }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.authorRow}>
-          <View style={[styles.avatar, { backgroundColor: post.isAnonymous ? colors.muted : colors.primary + "22" }]}>
-            <Feather name={post.isAnonymous ? "user-x" : "user"} size={14} color={post.isAnonymous ? colors.mutedForeground : colors.primary} />
+    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+      <TouchableOpacity
+        onPress={handlePress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        activeOpacity={1}
+        style={[styles.container, { backgroundColor: colors.card, borderColor: colors.border, borderRadius: colors.radius }]}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.authorRow}>
+            <View style={[styles.avatar, { backgroundColor: post.isAnonymous ? colors.muted : colors.primary + "22" }]}>
+              <Feather name={post.isAnonymous ? "user-x" : "user"} size={14} color={post.isAnonymous ? colors.mutedForeground : colors.primary} />
+            </View>
+            <View>
+              <Text style={[styles.username, { color: colors.foreground }]}>
+                {post.isAnonymous ? "Anonymous" : post.authorUsername}
+              </Text>
+              <Text style={[styles.meta, { color: colors.mutedForeground }]}>
+                {post.college} · {formatRelativeTime(post.createdAt)}
+              </Text>
+            </View>
           </View>
-          <View>
-            <Text style={[styles.username, { color: colors.foreground }]}>
-              {post.isAnonymous ? "Anonymous" : post.authorUsername}
-            </Text>
-            <Text style={[styles.meta, { color: colors.mutedForeground }]}>
-              {post.college} · {formatRelativeTime(post.createdAt)}
-            </Text>
+          <View style={[styles.tag, { backgroundColor: tagColor + "22" }]}>
+            <Text style={[styles.tagText, { color: tagColor }]}>{post.tag}</Text>
           </View>
         </View>
-        <View style={[styles.tag, { backgroundColor: tagColor + "22" }]}>
-          <Text style={[styles.tagText, { color: tagColor }]}>{post.tag}</Text>
-        </View>
-      </View>
 
-      {/* Content */}
-      <Text style={[styles.content, { color: colors.foreground }]} numberOfLines={4}>{post.content}</Text>
+        {/* Content */}
+        <Text style={[styles.content, { color: colors.foreground }]} numberOfLines={4}>{post.content}</Text>
 
-      {/* Actions */}
-      <View style={styles.actions}>
-        <View style={styles.voteRow}>
-          <TouchableOpacity onPress={() => handleVote("up")} style={[styles.voteBtn, post.userVote === "up" && { backgroundColor: colors.primary + "22" }]}>
-            <Feather name="arrow-up" size={16} color={post.userVote === "up" ? colors.primary : colors.mutedForeground} />
-            <Text style={[styles.voteCount, { color: post.userVote === "up" ? colors.primary : colors.mutedForeground }]}>{post.upvotes}</Text>
+        {/* Actions */}
+        <View style={styles.actions}>
+          <View style={styles.voteRow}>
+            <TouchableOpacity onPress={() => handleVote("up")} style={[styles.voteBtn, post.userVote === "up" && { backgroundColor: colors.primary + "22" }]}>
+              <Animated.View style={{ transform: [{ scale: upAnim }] }}>
+                <Feather name="arrow-up" size={16} color={post.userVote === "up" ? colors.primary : colors.mutedForeground} />
+              </Animated.View>
+              <Text style={[styles.voteCount, { color: post.userVote === "up" ? colors.primary : colors.mutedForeground }]}>{post.upvotes}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => handleVote("down")} style={[styles.voteBtn, post.userVote === "down" && { backgroundColor: colors.destructive + "22" }]}>
+              <Feather name="arrow-down" size={16} color={post.userVote === "down" ? colors.destructive : colors.mutedForeground} />
+              <Text style={[styles.voteCount, { color: post.userVote === "down" ? colors.destructive : colors.mutedForeground }]}>{post.downvotes}</Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity onPress={handlePress} style={styles.actionBtn}>
+            <Feather name="message-circle" size={16} color={colors.mutedForeground} />
+            <Text style={[styles.actionText, { color: colors.mutedForeground }]}>{post.commentCount}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => handleVote("down")} style={[styles.voteBtn, post.userVote === "down" && { backgroundColor: colors.destructive + "22" }]}>
-            <Feather name="arrow-down" size={16} color={post.userVote === "down" ? colors.destructive : colors.mutedForeground} />
-            <Text style={[styles.voteCount, { color: post.userVote === "down" ? colors.destructive : colors.mutedForeground }]}>{post.downvotes}</Text>
+          <TouchableOpacity onPress={handleBookmark} style={styles.actionBtn}>
+            <Animated.View style={{ transform: [{ scale: bookmarkAnim }] }}>
+              <Feather name="bookmark" size={16} color={post.isBookmarked ? colors.primary : colors.mutedForeground} />
+            </Animated.View>
           </TouchableOpacity>
+          {isOwner ? (
+            <TouchableOpacity onPress={() => onDelete?.(post.id)} style={styles.actionBtn}>
+              <Feather name="trash-2" size={16} color={colors.destructive} />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity onPress={() => onReport?.(post.id)} style={styles.actionBtn}>
+              <Feather name="flag" size={16} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          )}
         </View>
-        <TouchableOpacity onPress={handlePress} style={styles.actionBtn}>
-          <Feather name="message-circle" size={16} color={colors.mutedForeground} />
-          <Text style={[styles.actionText, { color: colors.mutedForeground }]}>{post.commentCount}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={handleBookmark} style={styles.actionBtn}>
-          <Feather name="bookmark" size={16} color={post.isBookmarked ? colors.primary : colors.mutedForeground} />
-        </TouchableOpacity>
-        {isOwner ? (
-          <TouchableOpacity onPress={() => onDelete?.(post.id)} style={styles.actionBtn}>
-            <Feather name="trash-2" size={16} color={colors.destructive} />
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity onPress={() => onReport?.(post.id)} style={styles.actionBtn}>
-            <Feather name="flag" size={16} color={colors.mutedForeground} />
-          </TouchableOpacity>
-        )}
-      </View>
-    </Pressable>
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 

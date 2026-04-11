@@ -1,9 +1,11 @@
 import { Feather } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
-import React, { useState } from "react";
-import { FlatList, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { Animated, FlatList, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { useToast } from "@/components/Toast";
 
 interface Event {
   id: string;
@@ -15,36 +17,100 @@ interface Event {
   organizer: string;
   attendees: number;
   maxAttendees: number;
-  isAttending: boolean;
   isPaid: boolean;
   price?: string;
 }
 
-const EVENTS: Event[] = [
-  { id: "e1", title: "Rendezvous 2025 - Cultural Fest", category: "Cultural", location: "IIT Delhi Campus", date: "Nov 22-24", time: "10:00 AM", organizer: "IIT Delhi", attendees: 2400, maxAttendees: 5000, isAttending: false, isPaid: false },
-  { id: "e2", title: "HackIIIT Hackathon", category: "Tech", location: "Online + IIIT Delhi", date: "Dec 1-2", time: "9:00 AM", organizer: "IIIT Delhi CSE", attendees: 180, maxAttendees: 200, isAttending: true, isPaid: false },
-  { id: "e3", title: "Finance & Markets Summit", category: "Finance", location: "LH3 Auditorium", date: "Nov 28", time: "2:00 PM", organizer: "Finance Club", attendees: 120, maxAttendees: 150, isAttending: false, isPaid: true, price: "₹200" },
-  { id: "e4", title: "Open Mic Night", category: "Cultural", location: "SAC Lawns", date: "Nov 18", time: "7:00 PM", organizer: "Arts Council", attendees: 89, maxAttendees: 200, isAttending: false, isPaid: false },
-  { id: "e5", title: "Machine Learning Workshop", category: "Tech", location: "Bharti 101", date: "Nov 20", time: "11:00 AM", organizer: "ML Club", attendees: 45, maxAttendees: 60, isAttending: true, isPaid: false },
+const INITIAL_EVENTS: Event[] = [
+  { id: "e1", title: "Rendezvous 2025 - Cultural Fest", category: "Cultural", location: "IIT Delhi Campus", date: "Nov 22-24", time: "10:00 AM", organizer: "IIT Delhi", attendees: 2400, maxAttendees: 5000, isPaid: false },
+  { id: "e2", title: "HackIIIT Hackathon", category: "Tech", location: "Online + IIIT Delhi", date: "Dec 1-2", time: "9:00 AM", organizer: "IIIT Delhi CSE", attendees: 180, maxAttendees: 200, isPaid: false },
+  { id: "e3", title: "Finance & Markets Summit", category: "Finance", location: "LH3 Auditorium", date: "Nov 28", time: "2:00 PM", organizer: "Finance Club", attendees: 120, maxAttendees: 150, isPaid: true, price: "₹200" },
+  { id: "e4", title: "Open Mic Night", category: "Cultural", location: "SAC Lawns", date: "Nov 18", time: "7:00 PM", organizer: "Arts Council", attendees: 89, maxAttendees: 200, isPaid: false },
+  { id: "e5", title: "Machine Learning Workshop", category: "Tech", location: "Bharti 101", date: "Nov 20", time: "11:00 AM", organizer: "ML Club", attendees: 45, maxAttendees: 60, isPaid: false },
 ];
 
 const CATEGORIES = ["All", "Tech", "Cultural", "Sports", "Finance", "Academic"];
+const CAT_COLORS: Record<string, string> = { Tech: "#3B82F6", Cultural: "#8B5CF6", Sports: "#F59E0B", Finance: "#00A86B", Academic: "#06B6D4" };
+const STORAGE_KEY = "@uconnect_rsvp_events";
 
-const CAT_COLORS: Record<string, string> = {
-  Tech: "#3B82F6", Cultural: "#8B5CF6", Sports: "#F59E0B", Finance: "#00A86B", Academic: "#06B6D4",
-};
+function EventCard({ item, index, rsvpIds, onRSVP, colors }: any) {
+  const anim = useRef(new Animated.Value(0)).current;
+  const isGoing = rsvpIds.has(item.id);
+  const catColor = CAT_COLORS[item.category] || "#6B7280";
+
+  useEffect(() => {
+    Animated.timing(anim, { toValue: 1, duration: 300, delay: index * 65, useNativeDriver: true }).start();
+  }, []);
+
+  return (
+    <Animated.View style={{ opacity: anim, transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
+      <TouchableOpacity onPress={() => router.push({ pathname: "/events/[id]" as any, params: { id: item.id } })} style={[styles.card, { backgroundColor: colors.card, borderColor: isGoing ? colors.primary + "50" : colors.border }]}>
+        <View style={styles.cardHeader}>
+          <View style={[styles.catBadge, { backgroundColor: catColor + "20" }]}>
+            <Text style={[styles.catText, { color: catColor }]}>{item.category}</Text>
+          </View>
+          {item.isPaid && (
+            <View style={[styles.paidBadge, { backgroundColor: "#F59E0B20" }]}>
+              <Text style={[styles.paidText, { color: "#F59E0B" }]}>{item.price}</Text>
+            </View>
+          )}
+          {isGoing && (
+            <View style={[styles.goingBadge, { backgroundColor: colors.primary + "20" }]}>
+              <Feather name="check" size={10} color={colors.primary} />
+              <Text style={[styles.goingText, { color: colors.primary }]}>Going</Text>
+            </View>
+          )}
+        </View>
+        <Text style={[styles.eventTitle, { color: colors.foreground }]}>{item.title}</Text>
+        <View style={styles.eventMeta}>
+          <View style={styles.metaItem}><Feather name="calendar" size={13} color={colors.mutedForeground} /><Text style={[styles.metaText, { color: colors.mutedForeground }]}>{item.date}</Text></View>
+          <View style={styles.metaItem}><Feather name="clock" size={13} color={colors.mutedForeground} /><Text style={[styles.metaText, { color: colors.mutedForeground }]}>{item.time}</Text></View>
+          <View style={styles.metaItem}><Feather name="map-pin" size={13} color={colors.mutedForeground} /><Text style={[styles.metaText, { color: colors.mutedForeground }]} numberOfLines={1}>{item.location}</Text></View>
+        </View>
+        <View style={styles.cardFooter}>
+          <View style={styles.attendeeRow}>
+            <Feather name="users" size={13} color={colors.mutedForeground} />
+            <Text style={[styles.attendeeText, { color: colors.mutedForeground }]}>{item.attendees + (isGoing ? 1 : 0)}/{item.maxAttendees}</Text>
+          </View>
+          <TouchableOpacity
+            onPress={(e) => { e.stopPropagation?.(); onRSVP(item.id); }}
+            style={[styles.attendBtn, { backgroundColor: isGoing ? colors.primary : "transparent", borderColor: isGoing ? colors.primary : colors.border }]}
+          >
+            <Text style={[styles.attendBtnText, { color: isGoing ? "#FFF" : colors.foreground }]}>{isGoing ? "✓ Going" : "Attend"}</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
 
 export default function EventsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { showSuccess } = useToast();
   const [activeCategory, setActiveCategory] = useState("All");
-  const [events, setEvents] = useState(EVENTS);
+  const [rsvpIds, setRsvpIds] = useState<Set<string>>(new Set());
 
-  const filtered = events.filter((e) => activeCategory === "All" || e.category === activeCategory);
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(STORAGE_KEY);
+        if (raw) setRsvpIds(new Set(JSON.parse(raw)));
+      } catch {}
+    })();
+  }, []);
 
-  const toggleAttend = (id: string) => {
-    setEvents((prev) => prev.map((e) => e.id === id ? { ...e, isAttending: !e.isAttending, attendees: e.isAttending ? e.attendees - 1 : e.attendees + 1 } : e));
+  const handleRSVP = async (id: string) => {
+    const already = rsvpIds.has(id);
+    const updated = new Set(rsvpIds);
+    if (already) { updated.delete(id); } else { updated.add(id); }
+    setRsvpIds(updated);
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify([...updated]));
+    const event = INITIAL_EVENTS.find((e) => e.id === id);
+    if (!already) showSuccess(`RSVP confirmed!`, event?.title);
   };
+
+  const filtered = INITIAL_EVENTS.filter((e) => activeCategory === "All" || e.category === activeCategory);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -52,7 +118,10 @@ export default function EventsScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.foreground }]}>Events</Text>
+        <View>
+          <Text style={[styles.title, { color: colors.foreground }]}>Events</Text>
+          {rsvpIds.size > 0 && <Text style={[styles.subtitle, { color: colors.primary }]}>{rsvpIds.size} attending</Text>}
+        </View>
         <TouchableOpacity onPress={() => router.push("/events/create")}>
           <Feather name="plus" size={22} color={colors.primary} />
         </TouchableOpacity>
@@ -69,49 +138,7 @@ export default function EventsScreen() {
             ))}
           </ScrollView>
         }
-        renderItem={({ item }) => (
-          <TouchableOpacity onPress={() => router.push({ pathname: "/events/[id]" as any, params: { id: item.id } })} style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={styles.cardHeader}>
-              <View style={[styles.catBadge, { backgroundColor: (CAT_COLORS[item.category] || "#6B7280") + "20" }]}>
-                <Text style={[styles.catText, { color: CAT_COLORS[item.category] || "#6B7280" }]}>{item.category}</Text>
-              </View>
-              {item.isPaid && (
-                <View style={[styles.paidBadge, { backgroundColor: colors.warning + "20" }]}>
-                  <Text style={[styles.paidText, { color: colors.warning }]}>{item.price}</Text>
-                </View>
-              )}
-            </View>
-            <Text style={[styles.eventTitle, { color: colors.foreground }]}>{item.title}</Text>
-            <View style={styles.eventMeta}>
-              <View style={styles.metaItem}>
-                <Feather name="calendar" size={13} color={colors.mutedForeground} />
-                <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{item.date}</Text>
-              </View>
-              <View style={styles.metaItem}>
-                <Feather name="clock" size={13} color={colors.mutedForeground} />
-                <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{item.time}</Text>
-              </View>
-              <View style={styles.metaItem}>
-                <Feather name="map-pin" size={13} color={colors.mutedForeground} />
-                <Text style={[styles.metaText, { color: colors.mutedForeground }]} numberOfLines={1}>{item.location}</Text>
-              </View>
-            </View>
-            <View style={styles.cardFooter}>
-              <View style={styles.attendeeRow}>
-                <Feather name="users" size={13} color={colors.mutedForeground} />
-                <Text style={[styles.attendeeText, { color: colors.mutedForeground }]}>{item.attendees}/{item.maxAttendees}</Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => toggleAttend(item.id)}
-                style={[styles.attendBtn, { backgroundColor: item.isAttending ? colors.primary : "transparent", borderColor: item.isAttending ? colors.primary : colors.border }]}
-              >
-                <Text style={[styles.attendBtnText, { color: item.isAttending ? "#FFF" : colors.foreground }]}>
-                  {item.isAttending ? "Going" : "Attend"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        )}
+        renderItem={({ item, index }) => <EventCard item={item} index={index} rsvpIds={rsvpIds} onRSVP={handleRSVP} colors={colors} />}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 80 }}
         showsVerticalScrollIndicator={false}
@@ -124,14 +151,17 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: 1 },
   title: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  subtitle: { fontSize: 11, fontFamily: "Inter_500Medium" },
   filterChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 16, borderWidth: 1 },
   filterText: { fontSize: 13, fontFamily: "Inter_500Medium" },
   card: { borderRadius: 14, borderWidth: 1, padding: 16, gap: 10 },
-  cardHeader: { flexDirection: "row", gap: 8 },
+  cardHeader: { flexDirection: "row", gap: 8, alignItems: "center", flexWrap: "wrap" },
   catBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   catText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
   paidBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   paidText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  goingBadge: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  goingText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
   eventTitle: { fontSize: 17, fontFamily: "Inter_700Bold", lineHeight: 23 },
   eventMeta: { gap: 6 },
   metaItem: { flexDirection: "row", alignItems: "center", gap: 7 },

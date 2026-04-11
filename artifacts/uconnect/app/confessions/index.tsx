@@ -1,92 +1,113 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useState } from "react";
-import { FlatList, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { Animated, FlatList, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { useConfessions } from "@/context/ConfessionsContext";
+import { useSettings } from "@/context/SettingsContext";
 import { formatRelativeTime } from "@/utils/time";
 
-interface Confession {
-  id: string;
-  content: string;
-  upvotes: number;
-  commentCount: number;
-  userVote: "up" | "down" | null;
-  hasSensitiveContent: boolean;
-  createdAt: string;
-}
+function ConfessionCard({ item, index, colors, onVote, revealSensitive, onReveal }: any) {
+  const anim = useRef(new Animated.Value(0)).current;
 
-const CONFESSIONS: Confession[] = [
-  { id: "c1", content: "I've been telling my parents I go to college every day but I haven't attended a single class in 2 months. The attendance just shows up somehow. I'm terrified they find out.", upvotes: 892, commentCount: 67, userVote: null, hasSensitiveContent: false, createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString() },
-  { id: "c2", content: "I helped my best friend cheat on their final exam and now they got placed at a company I got rejected from. I don't know how to feel about this.", upvotes: 445, commentCount: 89, userVote: null, hasSensitiveContent: false, createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString() },
-  { id: "c3", content: "I have a massive crush on my professor. I know it's wrong. I just needed to say this somewhere.", upvotes: 234, commentCount: 34, userVote: null, hasSensitiveContent: true, createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString() },
-  { id: "c4", content: "I failed my first two semesters and almost dropped out. Now I'm in 4th year with a 9.1 CGPA. It's possible. Believe in yourself.", upvotes: 1203, commentCount: 145, userVote: null, hasSensitiveContent: false, createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString() },
-  { id: "c5", content: "I pretend to be confident in class but I cry in the bathroom between lectures because imposter syndrome is crushing me.", upvotes: 678, commentCount: 92, userVote: null, hasSensitiveContent: false, createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
-];
+  useEffect(() => {
+    Animated.timing(anim, { toValue: 1, duration: 300, delay: index * 60, useNativeDriver: true }).start();
+  }, []);
+
+  return (
+    <Animated.View
+      style={{
+        opacity: anim,
+        transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }],
+      }}
+    >
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        {item.hasSensitiveContent && !revealSensitive && !item.userReveal ? (
+          <View style={styles.sensitiveBlock}>
+            <View style={[styles.sensitiveIcon, { backgroundColor: "#F59E0B20" }]}>
+              <Feather name="alert-triangle" size={22} color="#F59E0B" />
+            </View>
+            <Text style={[styles.sensitiveTitle, { color: colors.foreground }]}>Sensitive Content</Text>
+            <Text style={[styles.sensitiveDesc, { color: colors.mutedForeground }]}>This confession may contain sensitive material.</Text>
+            <TouchableOpacity onPress={() => onReveal(item.id)} style={[styles.revealBtn, { borderColor: colors.border }]}>
+              <Text style={[styles.revealText, { color: colors.mutedForeground }]}>Show anyway</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <Text style={[styles.content, { color: colors.foreground }]}>{item.content}</Text>
+        )}
+        <View style={styles.cardFooter}>
+          <Text style={[styles.time, { color: colors.mutedForeground }]}>{formatRelativeTime(item.createdAt)}</Text>
+          <View style={styles.actions}>
+            <TouchableOpacity onPress={() => onVote(item.id, "up")} style={[styles.voteBtn, item.userVote === "up" && { backgroundColor: colors.primary + "20" }]}>
+              <Feather name="arrow-up" size={15} color={item.userVote === "up" ? colors.primary : colors.mutedForeground} />
+              <Text style={[styles.voteCount, { color: item.userVote === "up" ? colors.primary : colors.mutedForeground }]}>{item.upvotes}</Text>
+            </TouchableOpacity>
+            <View style={styles.voteBtn}>
+              <Feather name="message-circle" size={15} color={colors.mutedForeground} />
+              <Text style={[styles.voteCount, { color: colors.mutedForeground }]}>{item.commentCount}</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    </Animated.View>
+  );
+}
 
 export default function ConfessionsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const [confessions, setConfessions] = useState<Confession[]>(CONFESSIONS);
-  const [revealedSensitive, setRevealedSensitive] = useState<Set<string>>(new Set());
+  const { confessions, voteConfession } = useConfessions();
+  const { settings } = useSettings();
+  const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
 
-  const vote = (id: string, v: "up" | "down") => {
-    setConfessions((prev) => prev.map((c) => {
-      if (c.id !== id) return c;
-      const wasVoted = c.userVote === v;
-      return { ...c, upvotes: v === "up" ? (wasVoted ? c.upvotes - 1 : c.upvotes + 1) : c.upvotes, userVote: wasVoted ? null : v };
-    }));
-  };
+  const headerAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(headerAnim, { toValue: 1, duration: 250, useNativeDriver: true }).start();
+  }, []);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Feather name="arrow-left" size={22} color={colors.foreground} />
-        </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.foreground }]}>Confessions</Text>
-        <TouchableOpacity onPress={() => router.push("/confessions/create")}>
-          <Feather name="plus" size={22} color={colors.primary} />
-        </TouchableOpacity>
-      </View>
-      <View style={[styles.banner, { backgroundColor: colors.primary + "10", borderBottomColor: colors.border }]}>
-        <Feather name="shield" size={14} color={colors.primary} />
-        <Text style={[styles.bannerText, { color: colors.mutedForeground }]}>100% anonymous. No one can trace confessions back to you.</Text>
-      </View>
+      <Animated.View style={{ opacity: headerAnim }}>
+        <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Feather name="arrow-left" size={22} color={colors.foreground} />
+          </TouchableOpacity>
+          <Text style={[styles.title, { color: colors.foreground }]}>Confessions</Text>
+          <TouchableOpacity onPress={() => router.push("/confessions/create")} style={[styles.addBtn, { backgroundColor: colors.primary }]}>
+            <Feather name="plus" size={18} color="#FFF" />
+          </TouchableOpacity>
+        </View>
+        <View style={[styles.banner, { backgroundColor: colors.primary + "0D", borderBottomColor: colors.border }]}>
+          <Feather name="shield" size={13} color={colors.primary} />
+          <Text style={[styles.bannerText, { color: colors.mutedForeground }]}>100% anonymous · No identity tracking · Safe space</Text>
+        </View>
+      </Animated.View>
+
       <FlatList
         data={confessions}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            {item.hasSensitiveContent && !revealedSensitive.has(item.id) ? (
-              <View style={styles.sensitiveWarning}>
-                <Feather name="alert-triangle" size={20} color={colors.warning} />
-                <Text style={[styles.sensitiveText, { color: colors.foreground }]}>Sensitive content</Text>
-                <TouchableOpacity onPress={() => setRevealedSensitive((prev) => new Set([...prev, item.id]))} style={[styles.revealBtn, { borderColor: colors.border }]}>
-                  <Text style={[styles.revealText, { color: colors.mutedForeground }]}>Show anyway</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <Text style={[styles.content, { color: colors.foreground }]}>{item.content}</Text>
-            )}
-            <View style={styles.cardFooter}>
-              <Text style={[styles.time, { color: colors.mutedForeground }]}>{formatRelativeTime(item.createdAt)}</Text>
-              <View style={styles.actions}>
-                <TouchableOpacity onPress={() => vote(item.id, "up")} style={styles.voteBtn}>
-                  <Feather name="arrow-up" size={15} color={item.userVote === "up" ? colors.primary : colors.mutedForeground} />
-                  <Text style={[styles.voteCount, { color: item.userVote === "up" ? colors.primary : colors.mutedForeground }]}>{item.upvotes}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.voteBtn}>
-                  <Feather name="message-circle" size={15} color={colors.mutedForeground} />
-                  <Text style={[styles.voteCount, { color: colors.mutedForeground }]}>{item.commentCount}</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
+        renderItem={({ item, index }) => (
+          <ConfessionCard
+            item={item}
+            index={index}
+            colors={colors}
+            onVote={voteConfession}
+            revealSensitive={settings.showSensitiveContent}
+            onReveal={(id: string) => setRevealedIds((prev) => new Set([...prev, id]))}
+          />
         )}
         ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-        contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <Feather name="message-circle" size={44} color={colors.mutedForeground} />
+            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>No confessions yet</Text>
+            <Text style={[styles.emptySubText, { color: colors.mutedForeground }]}>Be the first to confess anonymously</Text>
+          </View>
+        }
       />
     </View>
   );
@@ -96,17 +117,23 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: 1 },
   title: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  addBtn: { width: 34, height: 34, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   banner: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingVertical: 8, borderBottomWidth: 1 },
-  bannerText: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1 },
+  bannerText: { fontSize: 12, fontFamily: "Inter_400Regular" },
   card: { borderRadius: 14, borderWidth: 1, padding: 16, gap: 12 },
-  sensitiveWarning: { alignItems: "center", gap: 10, paddingVertical: 12 },
-  sensitiveText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  revealBtn: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 6 },
+  sensitiveBlock: { alignItems: "center", gap: 8, paddingVertical: 16 },
+  sensitiveIcon: { width: 48, height: 48, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  sensitiveTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  sensitiveDesc: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center" },
+  revealBtn: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 7 },
   revealText: { fontSize: 13, fontFamily: "Inter_500Medium" },
   content: { fontSize: 15, fontFamily: "Inter_400Regular", lineHeight: 23 },
   cardFooter: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   time: { fontSize: 11, fontFamily: "Inter_400Regular" },
-  actions: { flexDirection: "row", gap: 16 },
-  voteBtn: { flexDirection: "row", alignItems: "center", gap: 5 },
+  actions: { flexDirection: "row", gap: 14 },
+  voteBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6 },
   voteCount: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  empty: { alignItems: "center", gap: 8, paddingTop: 80 },
+  emptyText: { fontSize: 17, fontFamily: "Inter_600SemiBold" },
+  emptySubText: { fontSize: 13, fontFamily: "Inter_400Regular" },
 });

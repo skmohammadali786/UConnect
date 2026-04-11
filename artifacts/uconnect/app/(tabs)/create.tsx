@@ -2,10 +2,14 @@ import { router } from "expo-router";
 import React, { useEffect } from "react";
 import { View } from "react-native";
 
-// This tab just opens the create post modal
 export default function CreateTab() {
   useEffect(() => {
-    router.replace("/create-post");
+    // Push instead of replace so back button works
+    const timer = setTimeout(() => {
+      router.push("/create-post");
+    }, 50);
+    return () => clearTimeout(timer);
   }, []);
+
   return <View style={{ flex: 1 }} />;
 }

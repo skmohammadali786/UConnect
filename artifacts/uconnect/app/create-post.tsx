@@ -7,6 +7,8 @@ import { AppButton } from "@/components/AppButton";
 import { useColors } from "@/hooks/useColors";
 import { usePosts } from "@/context/PostsContext";
 import { useAuth } from "@/context/AuthContext";
+import { useSettings } from "@/context/SettingsContext";
+import { useToast } from "@/components/Toast";
 import type { PostTag } from "@/context/PostsContext";
 
 const TAGS: PostTag[] = ["General", "Academic", "Campus Life", "Rant", "Advice", "Meme", "Question", "Achievement", "Event", "Confession"];
@@ -16,9 +18,11 @@ export default function CreatePostScreen() {
   const insets = useSafeAreaInsets();
   const { createPost } = usePosts();
   const { user } = useAuth();
+  const { settings } = useSettings();
+  const { showSuccess } = useToast();
   const [content, setContent] = useState("");
   const [tag, setTag] = useState<PostTag>("General");
-  const [isAnonymous, setIsAnonymous] = useState(false);
+  const [isAnonymous, setIsAnonymous] = useState(settings.defaultAnonymous);
   const [loading, setLoading] = useState(false);
 
   const handlePost = async () => {
@@ -34,6 +38,7 @@ export default function CreatePostScreen() {
       mediaUrl: null,
     });
     setLoading(false);
+    showSuccess("Post published!", isAnonymous ? "Posted anonymously." : `Posted as @${user.username}`);
     router.back();
   };
 

@@ -27,13 +27,14 @@ interface AuthContextType {
   logout: () => Promise<void>;
   updateUser: (updates: Partial<User>) => Promise<void>;
   setUserData: (user: User) => Promise<void>;
+  loginAsDemo: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const STORAGE_KEY = "@uconnect_user";
 
-const DEMO_USER: User = {
+export const DEMO_USER: User = {
   id: "demo_user_001",
   email: "student@iitd.ac.in",
   username: "shadow_coder",
@@ -64,14 +65,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await AsyncStorage.getItem(STORAGE_KEY);
       if (data) {
         setUser(JSON.parse(data));
-      } else {
-        // Seed demo user for first-time visitors so the app is explorable
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(DEMO_USER));
-        setUser(DEMO_USER);
       }
-    } catch {
-      setUser(DEMO_USER);
-    }
+      // No auto-seeding — new users go through onboarding
+    } catch {}
     setIsLoading(false);
   };
 
@@ -79,8 +75,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // OTP flow handled in auth screens
   };
 
+  const loginAsDemo = async () => {
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(DEMO_USER));
+    setUser(DEMO_USER);
+  };
+
   const logout = async () => {
-    await AsyncStorage.removeItem(STORAGE_KEY);
+    await AsyncStorage.multiRemove([
+      STORAGE_KEY,
+      "@uconnect_posts",
+      "@uconnect_confessions",
+      "@uconnect_settings",
+      "@uconnect_applied_internships",
+      "@uconnect_saved_notes",
+      "@uconnect_rsvp_events",
+      "@uconnect_requested_teams",
+    ]);
     setUser(null);
   };
 
@@ -106,6 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logout,
         updateUser,
         setUserData,
+        loginAsDemo,
       }}
     >
       {children}

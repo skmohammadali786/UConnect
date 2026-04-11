@@ -41,6 +41,7 @@ export default function InterestsScreen() {
       interests: selected,
       followers: 0,
       following: 0,
+      postsCount: 0,
       isVerified: true,
       joinedAt: new Date().toISOString(),
     };
