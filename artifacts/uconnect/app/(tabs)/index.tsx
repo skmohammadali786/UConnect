@@ -58,14 +58,9 @@ export default function HomeScreen() {
             {user?.college && <Text style={[styles.headerCollege, { color: colors.mutedForeground }]}>{user.college}</Text>}
           </View>
         </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity onPress={() => router.push("/chat")} style={styles.headerBtn}>
-            <Feather name="send" size={21} color={colors.foreground} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push("/settings")} style={styles.headerBtn}>
-            <Feather name="menu" size={22} color={colors.foreground} />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity onPress={() => router.push("/notifications")} style={styles.headerBtn}>
+          <Feather name="bell" size={20} color={colors.foreground} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.shortcuts, { borderBottomColor: colors.border }]}>
@@ -129,7 +124,6 @@ const styles = StyleSheet.create({
   logoChar: { fontSize: 18, fontFamily: "Inter_700Bold" },
   headerTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
   headerCollege: { fontSize: 11, fontFamily: "Inter_400Regular" },
-  headerRight: { flexDirection: "row", gap: 2 },
   headerBtn: { padding: 8 },
   shortcuts: { paddingHorizontal: 12, paddingVertical: 14, gap: 6, borderBottomWidth: 1 },
   shortcut: { alignItems: "center", gap: 6, marginHorizontal: 6 },

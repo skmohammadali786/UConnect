@@ -1,10 +1,18 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 
+export interface Report {
+  postId: string;
+  reason: string;
+  timestamp: string;
+  status: "pending" | "reviewed" | "resolved";
+}
+
 interface SocialContextType {
   followingIds: Set<string>;
-  toggleFollow: (userId: string, displayName?: string) => Promise<void>;
+  toggleFollow: (userId: string) => Promise<void>;
   isFollowing: (userId: string) => boolean;
+  reports: Report[];
   reportedIds: Set<string>;
   reportPost: (postId: string, reason: string) => Promise<void>;
   hasReported: (postId: string) => boolean;
@@ -16,7 +24,7 @@ const REPORTS_KEY = "@uconnect_reports";
 
 export function SocialProvider({ children }: { children: React.ReactNode }) {
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
-  const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
+  const [reports, setReports] = useState<Report[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -26,7 +34,14 @@ export function SocialProvider({ children }: { children: React.ReactNode }) {
           AsyncStorage.getItem(REPORTS_KEY),
         ]);
         if (f) setFollowingIds(new Set(JSON.parse(f)));
-        if (r) setReportedIds(new Set(JSON.parse(r)));
+        if (r) {
+          const parsed = JSON.parse(r);
+          if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === "object" && "postId" in parsed[0]) {
+            setReports(parsed as Report[]);
+          } else if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === "string") {
+            setReports((parsed as string[]).map((id) => ({ postId: id, reason: "Reported", timestamp: new Date().toISOString(), status: "pending" })));
+          }
+        }
       } catch {}
     })();
   }, []);
@@ -42,19 +57,21 @@ export function SocialProvider({ children }: { children: React.ReactNode }) {
 
   const isFollowing = useCallback((userId: string) => followingIds.has(userId), [followingIds]);
 
-  const reportPost = useCallback(async (postId: string, _reason: string) => {
-    setReportedIds((prev) => {
-      const next = new Set(prev);
-      next.add(postId);
-      AsyncStorage.setItem(REPORTS_KEY, JSON.stringify([...next]));
+  const reportPost = useCallback(async (postId: string, reason: string) => {
+    const newReport: Report = { postId, reason, timestamp: new Date().toISOString(), status: "pending" };
+    setReports((prev) => {
+      if (prev.some((r) => r.postId === postId)) return prev;
+      const next = [...prev, newReport];
+      AsyncStorage.setItem(REPORTS_KEY, JSON.stringify(next));
       return next;
     });
   }, []);
 
-  const hasReported = useCallback((postId: string) => reportedIds.has(postId), [reportedIds]);
+  const reportedIds = new Set(reports.map((r) => r.postId));
+  const hasReported = useCallback((postId: string) => reportedIds.has(postId), [reports]);
 
   return (
-    <SocialContext.Provider value={{ followingIds, toggleFollow, isFollowing, reportedIds, reportPost, hasReported }}>
+    <SocialContext.Provider value={{ followingIds, toggleFollow, isFollowing, reports, reportedIds, reportPost, hasReported }}>
       {children}
     </SocialContext.Provider>
   );

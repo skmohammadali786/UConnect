@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Animated, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
@@ -19,40 +19,71 @@ const TYPE_COLORS: Record<string, string> = {
 };
 const STORAGE_KEY = "@uconnect_requested_teams";
 
+const ND = Platform.OS !== "web";
+
 function JoinModal({ visible, onClose, onSubmit, colors }: any) {
   const [message, setMessage] = useState("");
+  const backdropAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(400)).current;
+
+  React.useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        Animated.timing(backdropAnim, { toValue: 1, duration: 200, useNativeDriver: ND }),
+        Animated.spring(slideAnim, { toValue: 0, tension: 80, friction: 12, useNativeDriver: ND }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(backdropAnim, { toValue: 0, duration: 160, useNativeDriver: ND }),
+        Animated.timing(slideAnim, { toValue: 400, duration: 160, useNativeDriver: ND }),
+      ]).start();
+      setMessage("");
+    }
+  }, [visible]);
+
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity activeOpacity={1} onPress={onClose} style={[styles.overlay, { backgroundColor: colors.overlay }]}>
-        <TouchableOpacity activeOpacity={1} onPress={() => {}}>
-          <View style={[styles.modal, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Request to Join</Text>
-            <Text style={[styles.modalSub, { color: colors.mutedForeground }]}>Tell the team admin why you'd be a great fit</Text>
-            <TextInput
-              value={message}
-              onChangeText={setMessage}
-              placeholder="I'm interested because..."
-              placeholderTextColor={colors.placeholder}
-              style={[styles.modalInput, { color: colors.foreground, backgroundColor: colors.secondary, borderColor: colors.border }]}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-              autoFocus
-            />
-            <View style={styles.modalBtns}>
-              <TouchableOpacity onPress={onClose} style={[styles.modalCancelBtn, { backgroundColor: colors.secondary }]}>
-                <Text style={[styles.modalCancelText, { color: colors.mutedForeground }]}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => { onSubmit(message || "I'd love to join your team!"); setMessage(""); }}
-                style={[styles.modalSubmitBtn, { backgroundColor: colors.primary }]}
-              >
-                <Text style={styles.modalSubmitText}>Send Request</Text>
-              </TouchableOpacity>
-            </View>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.55)", opacity: backdropAnim }]}>
+        <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
+      </Animated.View>
+      <Animated.View style={[styles.modal, { backgroundColor: colors.card, borderColor: colors.border, transform: [{ translateY: slideAnim }] }]}>
+        <View style={[styles.modalHandle, { backgroundColor: colors.border }]} />
+        <View style={styles.modalHeader}>
+          <View style={[styles.modalIcon, { backgroundColor: colors.primary + "18" }]}>
+            <Feather name="user-plus" size={20} color={colors.primary} />
           </View>
-        </TouchableOpacity>
-      </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Request to Join</Text>
+            <Text style={[styles.modalSub, { color: colors.mutedForeground }]}>Tell the admin why you'd be a great fit</Text>
+          </View>
+          <TouchableOpacity onPress={onClose} style={[styles.modalCloseBtn, { backgroundColor: colors.secondary }]}>
+            <Feather name="x" size={15} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        </View>
+        <TextInput
+          value={message}
+          onChangeText={setMessage}
+          placeholder="I'm interested because..."
+          placeholderTextColor={colors.placeholder}
+          style={[styles.modalInput, { color: colors.foreground, backgroundColor: colors.secondary, borderColor: colors.border }]}
+          multiline
+          numberOfLines={4}
+          textAlignVertical="top"
+          autoFocus
+        />
+        <View style={styles.modalBtns}>
+          <TouchableOpacity onPress={onClose} style={[styles.modalCancelBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+            <Text style={[styles.modalCancelText, { color: colors.foreground }]}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => { onSubmit(message || "I'd love to join your team!"); }}
+            style={[styles.modalSubmitBtn, { backgroundColor: colors.primary }]}
+          >
+            <Feather name="send" size={15} color="#FFF" />
+            <Text style={styles.modalSubmitText}>Send Request</Text>
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
     </Modal>
   );
 }
@@ -133,7 +164,7 @@ export default function TeamDetailScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, borderBottomColor: colors.border }]}>
+      <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, borderBottomColor: colors.border, backgroundColor: colors.headerBg }]}>
         <TouchableOpacity onPress={() => router.back()}>
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
@@ -355,15 +386,18 @@ const styles = StyleSheet.create({
   requestedBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   fullBar: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 12 },
   fullBarText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  overlay: { flex: 1, justifyContent: "flex-end" },
-  modal: { borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, padding: 24, gap: 14 },
-  modalTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  modalSub: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  modal: { position: "absolute", bottom: 0, left: 0, right: 0, borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, borderBottomWidth: 0, padding: 20, paddingBottom: 36, gap: 14 },
+  modalHandle: { width: 36, height: 4, borderRadius: 2, alignSelf: "center", marginBottom: 4 },
+  modalHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
+  modalIcon: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  modalCloseBtn: { width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  modalTitle: { fontSize: 17, fontFamily: "Inter_700Bold" },
+  modalSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },
   modalInput: { borderRadius: 12, borderWidth: 1, padding: 12, fontSize: 14, fontFamily: "Inter_400Regular", minHeight: 100 },
   modalBtns: { flexDirection: "row", gap: 10 },
-  modalCancelBtn: { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: "center" },
+  modalCancelBtn: { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: "center", borderWidth: 1 },
   modalCancelText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  modalSubmitBtn: { flex: 2, paddingVertical: 13, borderRadius: 12, alignItems: "center" },
+  modalSubmitBtn: { flex: 2, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, paddingVertical: 13, borderRadius: 12 },
   modalSubmitText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#FFF" },
   notFound: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16 },
   notFoundText: { fontSize: 18, fontFamily: "Inter_400Regular" },

@@ -164,7 +164,7 @@ export default function TeamsScreen() {
         </TouchableOpacity>
       )}
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.typeFilter}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ backgroundColor: colors.background }} contentContainerStyle={styles.typeFilter}>
         {TYPES.map((t) => (
           <TouchableOpacity
             key={t}

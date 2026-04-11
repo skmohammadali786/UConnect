@@ -11,6 +11,7 @@ export interface Comment {
   parentId: string | null;
   authorId: string;
   authorUsername: string;
+  authorAvatar: string | null;
   isAnonymous: boolean;
   content: string;
   upvotes: number;
@@ -24,11 +25,13 @@ export interface Post {
   id: string;
   authorId: string;
   authorUsername: string;
+  authorAvatar: string | null;
   college: string;
   isAnonymous: boolean;
   tag: PostTag;
   content: string;
-  mediaUrl: string | null;
+  mediaUrls: string[];
+  videoUrl: string | null;
   upvotes: number;
   downvotes: number;
   userVote: "up" | "down" | null;
@@ -67,12 +70,12 @@ const STORAGE_KEY = "@uconnect_posts";
 const DRAFTS_KEY = "@uconnect_drafts";
 
 const SAMPLE_POSTS: Post[] = [
-  { id: "1", authorId: "user1", authorUsername: "anonymous", college: "IIT Delhi", isAnonymous: true, tag: "Confession", content: "I've been spending more time in the library pretending to study than actually studying. The WiFi is just too good there. Anyone else?", mediaUrl: null, upvotes: 142, downvotes: 3, userVote: null, commentCount: 18, isBookmarked: false, createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), comments: [] },
-  { id: "2", authorId: "user2", authorUsername: "priya_cs23", college: "IIT Delhi", isAnonymous: false, tag: "Academic", content: "Just got placed at Google with 45 LPA! Two years ago I was failing my DSA class. It gets better, keep grinding 🎯\n\nResources that helped me most:\n• Striver's SDE Sheet\n• NeetCode 150\n• Mock interviews with seniors", mediaUrl: null, upvotes: 892, downvotes: 12, userVote: null, commentCount: 67, isBookmarked: false, createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), comments: [] },
-  { id: "3", authorId: "user3", authorUsername: "anonymous", college: "IIT Delhi", isAnonymous: true, tag: "Rant", content: "The canteen food has gotten SO bad this semester. Paying 150 rs for something that tastes like cardboard. Where is the hostel mess committee?", mediaUrl: null, upvotes: 234, downvotes: 7, userVote: null, commentCount: 42, isBookmarked: false, createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), comments: [] },
-  { id: "4", authorId: "user4", authorUsername: "arjun_mech22", college: "IIT Delhi", isAnonymous: false, tag: "Event", content: "Rendezvous 2025 registrations are open! Biggest cultural fest of Delhi. Student headliners, DJ nights, and competitions with 10L+ prize pool. Register by Nov 15.", mediaUrl: null, upvotes: 456, downvotes: 2, userVote: null, commentCount: 89, isBookmarked: false, createdAt: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), comments: [] },
-  { id: "5", authorId: "user5", authorUsername: "anonymous", college: "IIT Delhi", isAnonymous: true, tag: "Advice", content: "To every fresher: Don't waste your first year trying to be a topper. Join clubs, make friends, explore. The real learning happens outside classrooms. Grades matter but not as much as you think right now.", mediaUrl: null, upvotes: 1204, downvotes: 18, userVote: null, commentCount: 103, isBookmarked: false, createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), comments: [] },
-  { id: "6", authorId: "user6", authorUsername: "shreya_ee24", college: "IIT Delhi", isAnonymous: false, tag: "Question", content: "Has anyone done the Embedded Systems elective in 4th year? Is it worth taking or should I go for Computer Vision instead? My placements are in Dec.", mediaUrl: null, upvotes: 34, downvotes: 0, userVote: null, commentCount: 15, isBookmarked: false, createdAt: new Date(Date.now() - 16 * 60 * 60 * 1000).toISOString(), comments: [] },
+  { id: "1", authorId: "user1", authorUsername: "anonymous", authorAvatar: null, college: "IIT Delhi", isAnonymous: true, tag: "Confession", content: "I've been spending more time in the library pretending to study than actually studying. The WiFi is just too good there. Anyone else?", mediaUrls: [], videoUrl: null, upvotes: 142, downvotes: 3, userVote: null, commentCount: 18, isBookmarked: false, createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), comments: [] },
+  { id: "2", authorId: "user2", authorUsername: "priya_cs23", authorAvatar: null, college: "IIT Delhi", isAnonymous: false, tag: "Academic", content: "Just got placed at Google with 45 LPA! Two years ago I was failing my DSA class. It gets better, keep grinding 🎯\n\nResources that helped me most:\n• Striver's SDE Sheet\n• NeetCode 150\n• Mock interviews with seniors", mediaUrls: [], videoUrl: null, upvotes: 892, downvotes: 12, userVote: null, commentCount: 67, isBookmarked: false, createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), comments: [] },
+  { id: "3", authorId: "user3", authorUsername: "anonymous", authorAvatar: null, college: "IIT Delhi", isAnonymous: true, tag: "Rant", content: "The canteen food has gotten SO bad this semester. Paying 150 rs for something that tastes like cardboard. Where is the hostel mess committee?", mediaUrls: [], videoUrl: null, upvotes: 234, downvotes: 7, userVote: null, commentCount: 42, isBookmarked: false, createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), comments: [] },
+  { id: "4", authorId: "user4", authorUsername: "arjun_mech22", authorAvatar: null, college: "IIT Delhi", isAnonymous: false, tag: "Event", content: "Rendezvous 2025 registrations are open! Biggest cultural fest of Delhi. Student headliners, DJ nights, and competitions with 10L+ prize pool. Register by Nov 15.", mediaUrls: [], videoUrl: null, upvotes: 456, downvotes: 2, userVote: null, commentCount: 89, isBookmarked: false, createdAt: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), comments: [] },
+  { id: "5", authorId: "user5", authorUsername: "anonymous", authorAvatar: null, college: "IIT Delhi", isAnonymous: true, tag: "Advice", content: "To every fresher: Don't waste your first year trying to be a topper. Join clubs, make friends, explore. The real learning happens outside classrooms. Grades matter but not as much as you think right now.", mediaUrls: [], videoUrl: null, upvotes: 1204, downvotes: 18, userVote: null, commentCount: 103, isBookmarked: false, createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), comments: [] },
+  { id: "6", authorId: "user6", authorUsername: "shreya_ee24", authorAvatar: null, college: "IIT Delhi", isAnonymous: false, tag: "Question", content: "Has anyone done the Embedded Systems elective in 4th year? Is it worth taking or should I go for Computer Vision instead? My placements are in Dec.", mediaUrls: [], videoUrl: null, upvotes: 34, downvotes: 0, userVote: null, commentCount: 15, isBookmarked: false, createdAt: new Date(Date.now() - 16 * 60 * 60 * 1000).toISOString(), comments: [] },
 ];
 
 function generateId() {
@@ -89,7 +92,16 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
         const data = await AsyncStorage.getItem(STORAGE_KEY);
         if (data) {
           const stored = JSON.parse(data) as Post[];
-          if (stored.length > 0) setPosts(stored);
+          if (stored.length > 0) {
+            const migrated = stored.map((p) => ({
+              ...p,
+              authorAvatar: p.authorAvatar ?? null,
+              mediaUrls: (p as any).mediaUrls ?? ((p as any).mediaUrl ? [(p as any).mediaUrl] : []),
+              videoUrl: p.videoUrl ?? null,
+              comments: (p.comments || []).map((c: Comment) => ({ ...c, authorAvatar: c.authorAvatar ?? null })),
+            }));
+            setPosts(migrated);
+          }
         }
       } catch {}
     })();
@@ -105,7 +117,6 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
     try { await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newPosts)); } catch {}
   }, []);
 
-  // Fixed: use functional updater to avoid stale closure
   const createPost = useCallback(async (postData: Omit<Post, "id" | "upvotes" | "downvotes" | "userVote" | "commentCount" | "isBookmarked" | "createdAt" | "comments">) => {
     const newPost: Post = {
       ...postData,

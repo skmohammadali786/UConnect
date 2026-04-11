@@ -4,7 +4,9 @@ import { router } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
   Animated,
+  Image,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -96,6 +98,9 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
   const tagColor = TAG_COLORS[post.tag] || colors.mutedForeground;
   const isOwner = post.authorId === currentUserId;
   const reported = hasReported(post.id);
+  const initials = post.authorUsername?.charAt(0)?.toUpperCase() || "U";
+  const hasMedia = post.mediaUrls && post.mediaUrls.length > 0;
+  const hasVideo = !!post.videoUrl;
 
   return (
     <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
@@ -113,9 +118,17 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
             activeOpacity={0.7}
             style={styles.authorRow}
           >
-            <View style={[styles.avatarWrap, { backgroundColor: post.isAnonymous ? colors.muted : colors.primary + "22" }]}>
-              <Feather name={post.isAnonymous ? "user-x" : "user"} size={14} color={post.isAnonymous ? colors.mutedForeground : colors.primary} />
-            </View>
+            {post.isAnonymous ? (
+              <View style={[styles.avatarWrap, { backgroundColor: colors.muted }]}>
+                <Feather name="user-x" size={14} color={colors.mutedForeground} />
+              </View>
+            ) : post.authorAvatar ? (
+              <Image source={{ uri: post.authorAvatar }} style={[styles.avatarWrap, styles.avatarImg]} />
+            ) : (
+              <View style={[styles.avatarWrap, { backgroundColor: colors.primary + "22" }]}>
+                <Text style={[styles.avatarInitial, { color: colors.primary }]}>{initials}</Text>
+              </View>
+            )}
             <View>
               <Text style={[styles.username, { color: post.isAnonymous ? colors.mutedForeground : colors.foreground }]}>
                 {post.isAnonymous ? "Anonymous" : `@${post.authorUsername}`}
@@ -131,6 +144,23 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
         </View>
 
         <Text style={[styles.content, { color: colors.foreground }]} numberOfLines={4}>{post.content}</Text>
+
+        {hasMedia && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mediaRow} contentContainerStyle={{ gap: 8 }}>
+            {post.mediaUrls.map((uri, i) => (
+              <Image key={i} source={{ uri }} style={[styles.mediaThumb, post.mediaUrls.length === 1 && styles.mediaThumbSingle]} resizeMode="cover" />
+            ))}
+          </ScrollView>
+        )}
+
+        {hasVideo && (
+          <View style={[styles.videoThumb, { backgroundColor: colors.secondary }]}>
+            <View style={[styles.playBtn, { backgroundColor: colors.primary }]}>
+              <Feather name="play" size={18} color="#FFF" />
+            </View>
+            <Text style={[styles.videoLabel, { color: colors.mutedForeground }]}>Video attached</Text>
+          </View>
+        )}
 
         <View style={styles.actions}>
           <View style={styles.voteRow}>
@@ -155,7 +185,7 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
 
           <TouchableOpacity onPress={handleBookmark} style={styles.actionBtn}>
             <Animated.View style={{ transform: [{ scale: bookmarkAnim }] }}>
-              <Feather name={post.isBookmarked ? "bookmark" : "bookmark"} size={16} color={post.isBookmarked ? colors.primary : colors.mutedForeground} />
+              <Feather name="bookmark" size={16} color={post.isBookmarked ? colors.primary : colors.mutedForeground} />
             </Animated.View>
           </TouchableOpacity>
 
@@ -209,6 +239,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  avatarImg: { backgroundColor: "transparent" },
+  avatarInitial: { fontSize: 15, fontFamily: "Inter_700Bold" },
   username: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   meta: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },
   tag: {
@@ -218,7 +250,13 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   tagText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
-  content: { fontSize: 15, fontFamily: "Inter_400Regular", lineHeight: 22, marginBottom: 14 },
+  content: { fontSize: 15, fontFamily: "Inter_400Regular", lineHeight: 22, marginBottom: 12 },
+  mediaRow: { marginBottom: 12 },
+  mediaThumb: { width: 120, height: 120, borderRadius: 10 },
+  mediaThumbSingle: { width: 240, height: 160 },
+  videoThumb: { flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 10, padding: 14, marginBottom: 12 },
+  playBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  videoLabel: { fontSize: 13, fontFamily: "Inter_500Medium" },
   actions: { flexDirection: "row", alignItems: "center", gap: 4 },
   voteRow: { flexDirection: "row", alignItems: "center", gap: 2, flex: 1 },
   voteBtn: {

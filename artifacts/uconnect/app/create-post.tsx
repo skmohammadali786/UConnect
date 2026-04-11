@@ -1,8 +1,9 @@
 import { Feather } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  Animated, KeyboardAvoidingView, Platform, ScrollView,
+  Animated, Image, KeyboardAvoidingView, Platform, ScrollView,
   StyleSheet, Switch, Text, TextInput, TouchableOpacity, View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -32,18 +33,75 @@ export default function CreatePostScreen() {
   const { createPost, drafts, saveDraft, deleteDraft } = usePosts();
   const { user } = useAuth();
   const { settings } = useSettings();
-  const { showSuccess, showInfo } = useToast();
+  const { showSuccess, showInfo, showError } = useToast();
   const [content, setContent] = useState("");
   const [tag, setTag] = useState<PostTag>("General");
   const [isAnonymous, setIsAnonymous] = useState(settings.defaultAnonymous);
   const [loading, setLoading] = useState(false);
   const [showDrafts, setShowDrafts] = useState(false);
+  const [mediaUris, setMediaUris] = useState<string[]>([]);
+  const [videoUri, setVideoUri] = useState<string | null>(null);
   const draftsAnim = useRef(new Animated.Value(0)).current;
   const publishAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     Animated.timing(draftsAnim, { toValue: showDrafts ? 1 : 0, duration: 220, useNativeDriver: ND }).start();
   }, [showDrafts]);
+
+  const handlePickPhoto = async () => {
+    if (mediaUris.length >= 3) {
+      showInfo("Max 3 photos", "Remove a photo to add another.");
+      return;
+    }
+    if (Platform.OS === "web") {
+      showInfo("Photo upload", "Photo picking works best on the mobile app.");
+      return;
+    }
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") { showError("Permission denied", "Allow photo access in Settings."); return; }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        selectionLimit: 3 - mediaUris.length,
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets.length > 0) {
+        const uris = result.assets.map((a) => a.uri).slice(0, 3 - mediaUris.length);
+        setMediaUris((prev) => [...prev, ...uris].slice(0, 3));
+        showSuccess(`${uris.length} photo${uris.length > 1 ? "s" : ""} added`);
+      }
+    } catch { showError("Failed", "Could not pick photo. Try again."); }
+  };
+
+  const handlePickVideo = async () => {
+    if (videoUri) {
+      showInfo("Video attached", "Remove the current video to pick a new one.");
+      return;
+    }
+    if (Platform.OS === "web") {
+      showInfo("Video upload", "Video picking works best on the mobile app.");
+      return;
+    }
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") { showError("Permission denied", "Allow photo access in Settings."); return; }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        videoMaxDuration: 30,
+        quality: 0.7,
+      });
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        if (asset.duration && asset.duration > 30000) {
+          showError("Video too long", "Videos must be 30 seconds or less.");
+          return;
+        }
+        setVideoUri(asset.uri);
+        showSuccess("Video added", "Up to 30 seconds.");
+      }
+    } catch { showError("Failed", "Could not pick video. Try again."); }
+  };
 
   const handlePost = async () => {
     if (!content.trim() || !user) return;
@@ -52,7 +110,17 @@ export default function CreatePostScreen() {
       Animated.spring(publishAnim, { toValue: 0.95, tension: 200, friction: 8, useNativeDriver: ND }),
       Animated.spring(publishAnim, { toValue: 1, tension: 200, friction: 8, useNativeDriver: ND }),
     ]).start();
-    await createPost({ authorId: user.id, authorUsername: user.username, college: user.college, isAnonymous, tag, content: content.trim(), mediaUrl: null });
+    await createPost({
+      authorId: user.id,
+      authorUsername: user.username,
+      authorAvatar: isAnonymous ? null : (user.avatar || null),
+      college: user.college,
+      isAnonymous,
+      tag,
+      content: content.trim(),
+      mediaUrls: mediaUris,
+      videoUrl: videoUri,
+    });
     setLoading(false);
     showSuccess("Post published! 🎉", isAnonymous ? "Posted anonymously" : `Posted as @${user.username}`);
     router.back();
@@ -98,9 +166,13 @@ export default function CreatePostScreen() {
 
         <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}>
           <View style={[styles.authorRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={[styles.anonIcon, { backgroundColor: isAnonymous ? colors.primary + "20" : colors.secondary }]}>
-              <Feather name={isAnonymous ? "user-x" : "user"} size={16} color={isAnonymous ? colors.primary : colors.mutedForeground} />
-            </View>
+            {!isAnonymous && user?.avatar ? (
+              <Image source={{ uri: user.avatar }} style={styles.authorAvatar} />
+            ) : (
+              <View style={[styles.anonIcon, { backgroundColor: isAnonymous ? colors.primary + "20" : colors.secondary }]}>
+                <Feather name={isAnonymous ? "user-x" : "user"} size={16} color={isAnonymous ? colors.primary : colors.mutedForeground} />
+              </View>
+            )}
             <View style={{ flex: 1 }}>
               <Text style={[styles.authorName, { color: colors.foreground }]}>
                 {isAnonymous ? "Posting as Anonymous" : `@${user?.username}`}
@@ -148,6 +220,48 @@ export default function CreatePostScreen() {
             autoFocus
             maxLength={500}
           />
+
+          {(mediaUris.length > 0 || videoUri) && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mediaPreviewRow} contentContainerStyle={{ gap: 10 }}>
+              {mediaUris.map((uri, i) => (
+                <View key={i} style={styles.mediaPreviewWrap}>
+                  <Image source={{ uri }} style={styles.mediaPreviewImg} resizeMode="cover" />
+                  <TouchableOpacity onPress={() => setMediaUris((prev) => prev.filter((_, idx) => idx !== i))} style={styles.removeMediaBtn}>
+                    <Feather name="x" size={11} color="#FFF" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+              {videoUri && (
+                <View style={[styles.mediaPreviewWrap, styles.videoPreviewWrap, { backgroundColor: colors.secondary }]}>
+                  <Feather name="video" size={24} color={colors.primary} />
+                  <Text style={[styles.videoPreviewText, { color: colors.mutedForeground }]}>Video</Text>
+                  <TouchableOpacity onPress={() => setVideoUri(null)} style={styles.removeMediaBtn}>
+                    <Feather name="x" size={11} color="#FFF" />
+                  </TouchableOpacity>
+                </View>
+              )}
+            </ScrollView>
+          )}
+
+          <View style={[styles.mediaActionsRow, { borderColor: colors.border }]}>
+            <TouchableOpacity
+              onPress={handlePickPhoto}
+              disabled={mediaUris.length >= 3}
+              style={[styles.mediaBtn, { opacity: mediaUris.length >= 3 ? 0.4 : 1 }]}
+            >
+              <Feather name="image" size={16} color={colors.primary} />
+              <Text style={[styles.mediaBtnText, { color: colors.primary }]}>Photo ({mediaUris.length}/3)</Text>
+            </TouchableOpacity>
+            <View style={[styles.mediaDivider, { backgroundColor: colors.border }]} />
+            <TouchableOpacity
+              onPress={handlePickVideo}
+              disabled={!!videoUri}
+              style={[styles.mediaBtn, { opacity: videoUri ? 0.4 : 1 }]}
+            >
+              <Feather name="video" size={16} color={colors.primary} />
+              <Text style={[styles.mediaBtnText, { color: colors.primary }]}>{videoUri ? "Video ✓" : "Video (≤30s)"}</Text>
+            </TouchableOpacity>
+          </View>
 
           <View style={styles.metaRow}>
             <Text style={[styles.charCount, { color: charColor }]}>{charsLeft} left</Text>
@@ -212,6 +326,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 16, fontFamily: "Inter_700Bold" },
   authorRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: 14, borderWidth: 1, marginBottom: 18 },
   anonIcon: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  authorAvatar: { width: 40, height: 40, borderRadius: 12 },
   authorName: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   authorSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
   toggleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
@@ -223,7 +338,17 @@ const styles = StyleSheet.create({
   activeTag: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 10, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 14, alignSelf: "flex-start" },
   tagDot: { width: 6, height: 6, borderRadius: 3 },
   activeTagText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  textInput: { fontSize: 16, fontFamily: "Inter_400Regular", lineHeight: 26, minHeight: 160, textAlignVertical: "top", paddingTop: 0, marginBottom: 10 },
+  textInput: { fontSize: 16, fontFamily: "Inter_400Regular", lineHeight: 26, minHeight: 140, textAlignVertical: "top", paddingTop: 0, marginBottom: 10 },
+  mediaPreviewRow: { marginBottom: 12 },
+  mediaPreviewWrap: { position: "relative", width: 90, height: 90, borderRadius: 10, overflow: "hidden" },
+  mediaPreviewImg: { width: 90, height: 90 },
+  videoPreviewWrap: { alignItems: "center", justifyContent: "center", gap: 4 },
+  videoPreviewText: { fontSize: 11, fontFamily: "Inter_500Medium" },
+  removeMediaBtn: { position: "absolute", top: 4, right: 4, width: 20, height: 20, borderRadius: 10, backgroundColor: "rgba(0,0,0,0.65)", alignItems: "center", justifyContent: "center" },
+  mediaActionsRow: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderRadius: 12, marginBottom: 14, overflow: "hidden" },
+  mediaBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, paddingVertical: 11 },
+  mediaBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  mediaDivider: { width: 1, height: "100%" },
   metaRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 },
   charCount: { fontSize: 13, fontFamily: "Inter_500Medium" },
   metaActions: { flexDirection: "row", gap: 8 },

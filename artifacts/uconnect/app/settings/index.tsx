@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, Platform, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
+import { Animated, Image, Platform, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useTheme } from "@/context/ThemeContext";
@@ -130,11 +130,15 @@ export default function SettingsScreen() {
 
       <Animated.ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 60 }} showsVerticalScrollIndicator={false} style={{ transform: [{ translateY: slideAnim }] }}>
         <TouchableOpacity onPress={() => router.push("/edit-profile")} style={[styles.profileCard, { backgroundColor: colors.card, borderColor: colors.border }]} activeOpacity={0.85}>
-          <View style={[styles.profileAvatar, { backgroundColor: colors.primary + "20", borderColor: colors.primary + "40" }]}>
-            <Text style={[styles.profileAvatarText, { color: colors.primary }]}>
-              {user?.displayName?.charAt(0)?.toUpperCase() || "U"}
-            </Text>
-          </View>
+          {user?.avatar ? (
+            <Image source={{ uri: user.avatar }} style={styles.profileAvatarImg} />
+          ) : (
+            <View style={[styles.profileAvatar, { backgroundColor: colors.primary + "20", borderColor: colors.primary + "40" }]}>
+              <Text style={[styles.profileAvatarText, { color: colors.primary }]}>
+                {user?.displayName?.charAt(0)?.toUpperCase() || "U"}
+              </Text>
+            </View>
+          )}
           <View style={{ flex: 1 }}>
             <Text style={[styles.profileName, { color: colors.foreground }]}>{user?.displayName || user?.username}</Text>
             <Text style={[styles.profileSub, { color: colors.mutedForeground }]}>@{user?.username} · {user?.college}</Text>
@@ -202,7 +206,7 @@ export default function SettingsScreen() {
         <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>SAFETY & PRIVACY</Text>
         <SectionCard colors={colors}>
           <SettingRow icon="slash" label="Blocked Users" onPress={() => showInfo("No blocked users", "You haven't blocked anyone yet.")} colors={colors} />
-          <SettingRow icon="flag" label="My Reports" onPress={() => showInfo("No reports", "You haven't submitted any reports.")} colors={colors} last />
+          <SettingRow icon="flag" label="My Reports" sub="See posts you've reported and their status" onPress={() => router.push("/settings/reports" as any)} colors={colors} last />
         </SectionCard>
 
         <View style={{ height: 20 }} />
@@ -253,6 +257,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 18, fontFamily: "Inter_700Bold" },
   profileCard: { flexDirection: "row", alignItems: "center", gap: 14, borderRadius: 16, borderWidth: 1, padding: 14 },
   profileAvatar: { width: 52, height: 52, borderRadius: 26, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
+  profileAvatarImg: { width: 52, height: 52, borderRadius: 26 },
   profileAvatarText: { fontSize: 24, fontFamily: "Inter_700Bold" },
   profileName: { fontSize: 16, fontFamily: "Inter_700Bold" },
   profileSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },

@@ -32,6 +32,7 @@ export default function PostDetailScreen() {
       parentId: replyTo?.id || null,
       authorId: user.id,
       authorUsername: user.username,
+      authorAvatar: isAnon ? null : (user.avatar || null),
       isAnonymous: isAnon,
       content: comment.trim(),
     });

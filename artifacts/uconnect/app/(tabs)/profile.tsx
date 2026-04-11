@@ -3,9 +3,10 @@ import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  Animated, FlatList, Platform, RefreshControl, ScrollView,
+  Animated, FlatList, Image, Platform, RefreshControl, ScrollView,
   StyleSheet, Text, TouchableOpacity, View,
 } from "react-native";
+import { useSocial } from "@/context/SocialContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PostCard } from "@/components/PostCard";
 import { useColors } from "@/hooks/useColors";
@@ -44,6 +45,7 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
   const { posts, deletePost } = usePosts();
+  const { followingIds } = useSocial();
   const { showSuccess } = useToast();
   const [activeTab, setActiveTab] = useState<TabId>("posts");
   const [refreshing, setRefreshing] = useState(false);
@@ -220,10 +222,16 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.avatarRow}>
-          <View style={[styles.avatar, { backgroundColor: colors.primary + "20", borderColor: colors.card, borderWidth: 4 }]}>
-            <Text style={[styles.avatarText, { color: colors.primary }]}>
-              {user.displayName?.charAt(0)?.toUpperCase() || user.username?.charAt(0)?.toUpperCase() || "U"}
-            </Text>
+          <View style={styles.avatarContainer}>
+            {user.avatar ? (
+              <Image source={{ uri: user.avatar }} style={[styles.avatarImg, { borderColor: colors.card }]} />
+            ) : (
+              <View style={[styles.avatar, { backgroundColor: colors.primary + "20", borderColor: colors.card, borderWidth: 4 }]}>
+                <Text style={[styles.avatarText, { color: colors.primary }]}>
+                  {user.displayName?.charAt(0)?.toUpperCase() || user.username?.charAt(0)?.toUpperCase() || "U"}
+                </Text>
+              </View>
+            )}
             <TouchableOpacity onPress={() => router.push("/edit-profile")} style={[styles.cameraBtn, { backgroundColor: colors.primary }]}>
               <Feather name="camera" size={11} color="#FFF" />
             </TouchableOpacity>
@@ -276,7 +284,7 @@ export default function ProfileScreen() {
           {[
             { num: myPosts.length || user.postsCount || 0, label: "Posts" },
             { num: user.followers, label: "Followers" },
-            { num: user.following, label: "Following" },
+            { num: followingIds.size || user.following || 0, label: "Following" },
             { num: totalActivity, label: "Activity" },
           ].map((s, i, arr) => (
             <React.Fragment key={s.label}>
@@ -398,7 +406,9 @@ const styles = StyleSheet.create({
   coverBanner: { height: 90, position: "relative" },
   coverGradient: { position: "absolute", inset: 0 },
   avatarRow: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", paddingHorizontal: 16, marginTop: -36, marginBottom: 12 },
-  avatar: { width: 82, height: 82, borderRadius: 41, alignItems: "center", justifyContent: "center", position: "relative" },
+  avatarContainer: { position: "relative" },
+  avatar: { width: 82, height: 82, borderRadius: 41, alignItems: "center", justifyContent: "center" },
+  avatarImg: { width: 82, height: 82, borderRadius: 41, borderWidth: 4 },
   avatarText: { fontSize: 34, fontFamily: "Inter_700Bold" },
   cameraBtn: { position: "absolute", bottom: 2, right: 2, width: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#fff" },
   profileActions: { flexDirection: "row", gap: 8, alignItems: "center", paddingBottom: 4 },
