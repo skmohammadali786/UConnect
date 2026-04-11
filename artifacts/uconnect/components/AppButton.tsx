@@ -38,12 +38,14 @@ export function AppButton({
   const colors = useColors();
   const scale = useRef(new Animated.Value(1)).current;
 
+  const ND = Platform.OS !== "web";
+
   const handlePressIn = () => {
-    Animated.spring(scale, { toValue: 0.96, useNativeDriver: true, tension: 200, friction: 10 }).start();
+    Animated.spring(scale, { toValue: 0.96, useNativeDriver: ND, tension: 200, friction: 10 }).start();
   };
 
   const handlePressOut = () => {
-    Animated.spring(scale, { toValue: 1, useNativeDriver: true, tension: 200, friction: 10 }).start();
+    Animated.spring(scale, { toValue: 1, useNativeDriver: ND, tension: 200, friction: 10 }).start();
   };
 
   const handlePress = () => {

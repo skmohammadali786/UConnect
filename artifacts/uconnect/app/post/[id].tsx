@@ -8,14 +8,16 @@ import { PostCard } from "@/components/PostCard";
 import { useColors } from "@/hooks/useColors";
 import { usePosts } from "@/context/PostsContext";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/components/Toast";
 import type { Comment } from "@/context/PostsContext";
 
 export default function PostDetailScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { posts, addComment, voteComment } = usePosts();
+  const { posts, addComment, voteComment, deletePost } = usePosts();
   const { user } = useAuth();
+  const { showSuccess } = useToast();
   const [comment, setComment] = useState("");
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
   const [isAnon, setIsAnon] = useState(false);
@@ -37,9 +39,14 @@ export default function PostDetailScreen() {
     setReplyTo(null);
   };
 
+  const handleDelete = (postId: string) => {
+    deletePost(postId);
+    showSuccess("Post deleted");
+    router.back();
+  };
+
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={insets.bottom + 56}>
-      {/* Header */}
       <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, backgroundColor: colors.headerBg, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Feather name="arrow-left" size={22} color={colors.foreground} />
@@ -49,7 +56,7 @@ export default function PostDetailScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        <PostCard post={post} currentUserId={user?.id || ""} />
+        <PostCard post={post} currentUserId={user?.id || ""} onDelete={handleDelete} />
         <View style={[styles.commentsHeader, { borderBottomColor: colors.border }]}>
           <Text style={[styles.commentsTitle, { color: colors.foreground }]}>Comments ({post.commentCount})</Text>
         </View>
@@ -72,7 +79,6 @@ export default function PostDetailScreen() {
         </View>
       </ScrollView>
 
-      {/* Comment input */}
       <View style={[styles.inputBar, { backgroundColor: colors.card, borderTopColor: colors.border, paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 4 }]}>
         {replyTo && (
           <View style={[styles.replyBanner, { backgroundColor: colors.primary + "15" }]}>

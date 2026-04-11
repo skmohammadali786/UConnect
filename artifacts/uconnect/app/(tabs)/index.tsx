@@ -7,6 +7,7 @@ import { PostCard } from "@/components/PostCard";
 import { useColors } from "@/hooks/useColors";
 import { usePosts } from "@/context/PostsContext";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/components/Toast";
 
 const FILTERS = ["Trending", "Latest", "Following"];
 
@@ -22,13 +23,15 @@ const SHORTCUTS = [
 export default function HomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { posts, refreshPosts } = usePosts();
+  const { posts, refreshPosts, deletePost } = usePosts();
   const { user } = useAuth();
+  const { showSuccess } = useToast();
   const [activeFilter, setActiveFilter] = useState("Latest");
   const [refreshing, setRefreshing] = useState(false);
 
   const sortedPosts = [...posts].sort((a, b) => {
     if (activeFilter === "Trending") return (b.upvotes + b.commentCount) - (a.upvotes + a.commentCount);
+    if (activeFilter === "Following") return (b.upvotes - a.upvotes);
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
@@ -38,9 +41,13 @@ export default function HomeScreen() {
     setTimeout(() => setRefreshing(false), 800);
   }, [refreshPosts]);
 
+  const handleDelete = useCallback((id: string) => {
+    deletePost(id);
+    showSuccess("Post deleted");
+  }, [deletePost, showSuccess]);
+
   const headerComponent = (
     <View>
-      {/* Header */}
       <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 4, backgroundColor: colors.headerBg, borderBottomColor: colors.border }]}>
         <View style={styles.headerLeft}>
           <View style={[styles.logoSmall, { backgroundColor: colors.primary + "20", borderColor: colors.primary + "40" }]}>
@@ -61,7 +68,6 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* Shortcuts */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.shortcuts, { borderBottomColor: colors.border }]}>
         {SHORTCUTS.map((s) => (
           <TouchableOpacity key={s.label} onPress={() => router.push(s.route as any)} style={styles.shortcut}>
@@ -73,10 +79,9 @@ export default function HomeScreen() {
         ))}
       </ScrollView>
 
-      {/* Filters */}
       <View style={[styles.filterRow, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         {FILTERS.map((f) => (
-          <TouchableOpacity key={f} onPress={() => setActiveFilter(f)} style={[styles.filterTab, activeFilter === f && { borderBottomColor: colors.primary, borderBottomWidth: 2 }]}>
+          <TouchableOpacity key={f} onPress={() => setActiveFilter(f)} style={[styles.filterTab, activeFilter === f && { borderBottomColor: colors.primary, borderBottomWidth: 2.5 }]}>
             <Text style={[styles.filterText, { color: activeFilter === f ? colors.primary : colors.mutedForeground }]}>{f}</Text>
           </TouchableOpacity>
         ))}
@@ -90,12 +95,27 @@ export default function HomeScreen() {
         data={sortedPosts}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <PostCard post={item} currentUserId={user?.id || ""} />
+          <PostCard
+            post={item}
+            currentUserId={user?.id || ""}
+            onDelete={handleDelete}
+          />
         )}
         ListHeaderComponent={headerComponent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Feather name="wind" size={40} color={colors.mutedForeground} />
+            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No posts yet</Text>
+            <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>Be the first to post something!</Text>
+            <TouchableOpacity onPress={() => router.push("/create-post")} style={[styles.createBtn, { backgroundColor: colors.primary }]}>
+              <Feather name="plus" size={16} color="#FFF" />
+              <Text style={styles.createBtnText}>Create Post</Text>
+            </TouchableOpacity>
+          </View>
+        }
       />
     </View>
   );
@@ -118,4 +138,9 @@ const styles = StyleSheet.create({
   filterRow: { flexDirection: "row", borderBottomWidth: 1 },
   filterTab: { flex: 1, alignItems: "center", paddingVertical: 12 },
   filterText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  emptyState: { alignItems: "center", gap: 14, paddingTop: 64, paddingHorizontal: 32 },
+  emptyTitle: { fontSize: 20, fontFamily: "Inter_700Bold" },
+  emptySub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
+  createBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12, marginTop: 8 },
+  createBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#FFF" },
 });

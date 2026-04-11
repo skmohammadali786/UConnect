@@ -14,23 +14,23 @@ export default function LoginScreen() {
   const [error, setError] = useState("");
 
   const validateEmail = (e: string) => {
-    return e.includes("@") && (e.includes(".edu") || e.includes("ac.in") || e.includes("iit") || e.includes("nit") || e.includes("bits"));
+    return e.includes("@") && e.includes(".");
   };
 
   const handleContinue = async () => {
     if (!email.trim()) {
-      setError("Please enter your college email");
+      setError("Please enter your email address");
       return;
     }
-    if (!validateEmail(email)) {
-      setError("Please use a valid college email address");
+    if (!validateEmail(email.trim())) {
+      setError("Please enter a valid email address");
       return;
     }
     setError("");
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      router.push({ pathname: "/auth/otp", params: { email } });
+      router.push({ pathname: "/auth/otp", params: { email: email.trim() } });
     }, 800);
   };
 
@@ -45,13 +45,13 @@ export default function LoginScreen() {
           <Text style={[styles.backText, { color: colors.mutedForeground }]}>← Back</Text>
         </Pressable>
         <View style={styles.content}>
-          <Text style={[styles.title, { color: colors.foreground }]}>Enter your{"\n"}college email</Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>Enter your{"\n"}email address</Text>
           <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-            We'll send a verification code to confirm you're a student
+            We'll send a verification code. You can use any email — you'll select your college in the next step.
           </Text>
           <AppInput
-            label="College Email"
-            placeholder="yourname@college.ac.in"
+            label="Email Address"
+            placeholder="yourname@gmail.com"
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -63,7 +63,7 @@ export default function LoginScreen() {
           />
           <View style={[styles.infoBox, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "30" }]}>
             <Text style={[styles.infoText, { color: colors.primary }]}>
-              Accepted: .edu, .ac.in, IIT, NIT, BITS, and other verified college domains
+              Any email works — Gmail, Outlook, college email, or any other. You'll verify your college next.
             </Text>
           </View>
           <AppButton title="Send OTP" onPress={handleContinue} loading={loading} fullWidth size="lg" />

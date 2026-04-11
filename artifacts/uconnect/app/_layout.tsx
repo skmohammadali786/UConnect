@@ -19,6 +19,9 @@ import { ChatProvider } from "@/context/ChatContext";
 import { NotificationsProvider } from "@/context/NotificationsContext";
 import { SettingsProvider } from "@/context/SettingsContext";
 import { ConfessionsProvider } from "@/context/ConfessionsContext";
+import { ThemeProvider } from "@/context/ThemeContext";
+import { SocialProvider } from "@/context/SocialContext";
+import { TeamsProvider } from "@/context/TeamsContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -44,6 +47,8 @@ function RootLayoutNav() {
       <Stack.Screen name="create-post" options={{ headerShown: false, presentation: "modal", animation: "slide_from_bottom" }} />
       <Stack.Screen name="edit-profile" options={{ headerShown: false, animation: "slide_from_right" }} />
       <Stack.Screen name="invite" options={{ headerShown: false, animation: "slide_from_right" }} />
+      <Stack.Screen name="user" options={{ headerShown: false, animation: "slide_from_right" }} />
+      <Stack.Screen name="settings" options={{ headerShown: false, animation: "slide_from_right" }} />
       <Stack.Screen name="+not-found" options={{ headerShown: false }} />
     </Stack>
   );
@@ -68,25 +73,31 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ErrorBoundary>
-        <AuthProvider>
-          <SettingsProvider>
-            <PostsProvider>
-              <ChatProvider>
-                <NotificationsProvider>
-                  <ConfessionsProvider>
-                    <ToastProvider>
-                      <GestureHandlerRootView style={{ flex: 1 }}>
-                        <AuthGate>
-                          <RootLayoutNav />
-                        </AuthGate>
-                      </GestureHandlerRootView>
-                    </ToastProvider>
-                  </ConfessionsProvider>
-                </NotificationsProvider>
-              </ChatProvider>
-            </PostsProvider>
-          </SettingsProvider>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <SettingsProvider>
+              <SocialProvider>
+                <TeamsProvider>
+                <PostsProvider>
+                  <ChatProvider>
+                    <NotificationsProvider>
+                      <ConfessionsProvider>
+                        <ToastProvider>
+                          <GestureHandlerRootView style={{ flex: 1 }}>
+                            <AuthGate>
+                              <RootLayoutNav />
+                            </AuthGate>
+                          </GestureHandlerRootView>
+                        </ToastProvider>
+                      </ConfessionsProvider>
+                    </NotificationsProvider>
+                  </ChatProvider>
+                </PostsProvider>
+                </TeamsProvider>
+              </SocialProvider>
+            </SettingsProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </ErrorBoundary>
     </SafeAreaProvider>
   );
