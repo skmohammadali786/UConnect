@@ -1,13 +1,16 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useCallback, useState } from "react";
-import { FlatList, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useCallback, useRef, useEffect, useState } from "react";
+import { Animated, FlatList, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PostCard } from "@/components/PostCard";
 import { useColors } from "@/hooks/useColors";
 import { usePosts } from "@/context/PostsContext";
 import { useAuth } from "@/context/AuthContext";
+import { useSettings } from "@/context/SettingsContext";
 import { useToast } from "@/components/Toast";
+
+const ND = Platform.OS !== "web";
 
 const FILTERS = ["Trending", "Latest", "Following"];
 
@@ -25,20 +28,41 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { posts, refreshPosts, deletePost } = usePosts();
   const { user } = useAuth();
+  const { settings } = useSettings();
   const { showSuccess } = useToast();
   const [activeFilter, setActiveFilter] = useState("Latest");
   const [refreshing, setRefreshing] = useState(false);
 
-  const sortedPosts = [...posts].sort((a, b) => {
+  const bellAnim = useRef(new Animated.Value(1)).current;
+  const headerAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(headerAnim, { toValue: 1, duration: 320, useNativeDriver: ND }).start();
+  }, []);
+
+  const pulseBell = () => {
+    Animated.sequence([
+      Animated.spring(bellAnim, { toValue: 1.25, tension: 300, friction: 5, useNativeDriver: ND }),
+      Animated.spring(bellAnim, { toValue: 1, tension: 200, friction: 8, useNativeDriver: ND }),
+    ]).start();
+    router.push("/notifications" as any);
+  };
+
+  const filteredPosts = posts.filter((p) => {
+    if (!settings.showSensitiveContent && p.tag === "Confession" && p.isAnonymous) return false;
+    return true;
+  });
+
+  const sortedPosts = [...filteredPosts].sort((a, b) => {
     if (activeFilter === "Trending") return (b.upvotes + b.commentCount) - (a.upvotes + a.commentCount);
     if (activeFilter === "Following") return (b.upvotes - a.upvotes);
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    refreshPosts();
-    setTimeout(() => setRefreshing(false), 800);
+    await refreshPosts();
+    setTimeout(() => setRefreshing(false), 600);
   }, [refreshPosts]);
 
   const handleDelete = useCallback((id: string) => {
@@ -47,7 +71,7 @@ export default function HomeScreen() {
   }, [deletePost, showSuccess]);
 
   const headerComponent = (
-    <View>
+    <Animated.View style={{ opacity: headerAnim }}>
       <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 4, backgroundColor: colors.headerBg, borderBottomColor: colors.border }]}>
         <View style={styles.headerLeft}>
           <View style={[styles.logoSmall, { backgroundColor: colors.primary + "20", borderColor: colors.primary + "40" }]}>
@@ -58,13 +82,15 @@ export default function HomeScreen() {
             {user?.college && <Text style={[styles.headerCollege, { color: colors.mutedForeground }]}>{user.college}</Text>}
           </View>
         </View>
-        <TouchableOpacity onPress={() => router.push("/notifications")} style={styles.headerBtn}>
-          <Feather name="bell" size={20} color={colors.foreground} />
+        <TouchableOpacity onPress={pulseBell} style={styles.headerBtn}>
+          <Animated.View style={{ transform: [{ scale: bellAnim }] }}>
+            <Feather name="bell" size={20} color={colors.foreground} />
+          </Animated.View>
         </TouchableOpacity>
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.shortcuts, { borderBottomColor: colors.border }]}>
-        {SHORTCUTS.map((s) => (
+        {SHORTCUTS.map((s, i) => (
           <TouchableOpacity key={s.label} onPress={() => router.push(s.route as any)} style={styles.shortcut}>
             <View style={[styles.shortcutIcon, { backgroundColor: s.color + "18" }]}>
               <Feather name={s.icon as any} size={20} color={s.color} />
@@ -81,7 +107,19 @@ export default function HomeScreen() {
           </TouchableOpacity>
         ))}
       </View>
-    </View>
+
+      {!settings.showSensitiveContent && (
+        <View style={[styles.filterNotice, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Feather name="eye-off" size={13} color={colors.mutedForeground} />
+          <Text style={[styles.filterNoticeText, { color: colors.mutedForeground }]}>
+            Sensitive confessions hidden · Enable in Settings
+          </Text>
+          <TouchableOpacity onPress={() => router.push("/settings" as any)}>
+            <Text style={[styles.filterNoticeAction, { color: colors.primary }]}>Settings</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </Animated.View>
   );
 
   return (
@@ -89,11 +127,12 @@ export default function HomeScreen() {
       <FlatList
         data={sortedPosts}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <PostCard
             post={item}
             currentUserId={user?.id || ""}
             onDelete={handleDelete}
+            index={index}
           />
         )}
         ListHeaderComponent={headerComponent}
@@ -132,6 +171,9 @@ const styles = StyleSheet.create({
   filterRow: { flexDirection: "row", borderBottomWidth: 1 },
   filterTab: { flex: 1, alignItems: "center", paddingVertical: 12 },
   filterText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  filterNotice: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1 },
+  filterNoticeText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular" },
+  filterNoticeAction: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
   emptyState: { alignItems: "center", gap: 14, paddingTop: 64, paddingHorizontal: 32 },
   emptyTitle: { fontSize: 20, fontFamily: "Inter_700Bold" },
   emptySub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },

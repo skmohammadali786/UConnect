@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated, FlatList, Image, Platform, RefreshControl, ScrollView,
   StyleSheet, Text, TouchableOpacity, View,
@@ -49,12 +49,16 @@ export default function ProfileScreen() {
   const { showSuccess } = useToast();
   const [activeTab, setActiveTab] = useState<TabId>("posts");
   const [refreshing, setRefreshing] = useState(false);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const [appliedIds, setAppliedIds] = useState<string[]>([]);
   const [rsvpIds, setRsvpIds] = useState<string[]>([]);
   const [savedNoteIds, setSavedNoteIds] = useState<string[]>([]);
   const [requestedTeamIds, setRequestedTeamIds] = useState<string[]>([]);
-  const tabAnim = React.useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: Platform.OS !== "web" }).start();
+  }, []);
 
   const loadActivity = useCallback(async () => {
     try {
@@ -199,7 +203,7 @@ export default function ProfileScreen() {
             <Feather name="activity" size={32} color={colors.mutedForeground} />
           </View>
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No activity yet</Text>
-          <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>Apply to internships, RSVP to events, save notes, or request to join teams — they'll show here.</Text>
+          <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>Apply to internships, RSVP to events, save notes, or join teams.</Text>
         </View>
       )}
     </View>
@@ -211,9 +215,7 @@ export default function ProfileScreen() {
     <View>
       <View style={[styles.topBar, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, backgroundColor: colors.headerBg, borderBottomColor: colors.border }]}>
         <Text style={[styles.topBarTitle, { color: colors.foreground }]}>Profile</Text>
-        <TouchableOpacity onPress={() => router.push("/settings")} style={[styles.topBarBtn, { backgroundColor: colors.secondary }]}>
-          <Feather name="settings" size={18} color={colors.foreground} />
-        </TouchableOpacity>
+        <View style={{ width: 36 }} />
       </View>
 
       <View style={{ backgroundColor: colors.card }}>
@@ -310,10 +312,6 @@ export default function ProfileScreen() {
         <View style={[styles.joinedRow, { borderTopColor: colors.border }]}>
           <Feather name="calendar" size={12} color={colors.mutedForeground} />
           <Text style={[styles.joinedText, { color: colors.mutedForeground }]}>Joined {joinedDate}</Text>
-          <TouchableOpacity onPress={() => router.push("/settings")} style={[styles.settingsPill, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
-            <Feather name="settings" size={12} color={colors.mutedForeground} />
-            <Text style={[styles.settingsPillText, { color: colors.mutedForeground }]}>Settings</Text>
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -341,7 +339,7 @@ export default function ProfileScreen() {
 
   if (activeTab === "activity") {
     return (
-      <View style={[{ flex: 1 }, { backgroundColor: colors.background }]}>
+      <Animated.View style={[{ flex: 1 }, { backgroundColor: colors.background, opacity: fadeAnim }]}>
         <ScrollView
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
           contentContainerStyle={{ paddingBottom: 100 }}
@@ -349,12 +347,12 @@ export default function ProfileScreen() {
         >
           {ListHeader}
         </ScrollView>
-      </View>
+      </Animated.View>
     );
   }
 
   return (
-    <View style={[{ flex: 1 }, { backgroundColor: colors.background }]}>
+    <Animated.View style={[{ flex: 1 }, { backgroundColor: colors.background, opacity: fadeAnim }]}>
       <FlatList
         data={listData}
         keyExtractor={(item) => item.id}
@@ -388,7 +386,7 @@ export default function ProfileScreen() {
           </View>
         }
       />
-    </View>
+    </Animated.View>
   );
 }
 
@@ -402,7 +400,6 @@ const styles = StyleSheet.create({
   signInBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#FFF" },
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1 },
   topBarTitle: { fontSize: 22, fontFamily: "Inter_700Bold" },
-  topBarBtn: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   coverBanner: { height: 90, position: "relative" },
   coverGradient: { position: "absolute", inset: 0 },
   avatarRow: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", paddingHorizontal: 16, marginTop: -36, marginBottom: 12 },
@@ -434,24 +431,22 @@ const styles = StyleSheet.create({
   interestText: { fontSize: 12, fontFamily: "Inter_500Medium" },
   joinedRow: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1 },
   joinedText: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1 },
-  settingsPill: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1 },
-  settingsPillText: { fontSize: 12, fontFamily: "Inter_500Medium" },
   tabRow: { flexDirection: "row", borderBottomWidth: 1 },
   tabBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 12 },
   tabLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  tabCount: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
-  tabCountText: { fontSize: 10, fontFamily: "Inter_700Bold" },
-  emptyState: { alignItems: "center", gap: 12, paddingTop: 52, paddingHorizontal: 32 },
-  emptyIcon: { width: 72, height: 72, borderRadius: 20, alignItems: "center", justifyContent: "center" },
-  emptyTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  emptySub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
-  createBtn: { marginTop: 4, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10 },
-  createBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#FFF" },
-  actSection: { fontSize: 15, fontFamily: "Inter_700Bold", marginBottom: 8 },
-  actCard: { flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 14, borderWidth: 1, padding: 12, marginBottom: 8 },
-  actIcon: { width: 38, height: 38, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  actTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  tabCount: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  tabCountText: { fontSize: 11, fontFamily: "Inter_700Bold" },
+  actSection: { fontSize: 13, fontFamily: "Inter_700Bold", marginBottom: 8 },
+  actCard: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 12, borderWidth: 1, marginBottom: 8 },
+  actIcon: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  actTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   actSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
   appliedPill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1 },
   appliedText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  emptyState: { alignItems: "center", gap: 12, paddingTop: 48, paddingHorizontal: 32 },
+  emptyIcon: { width: 80, height: 80, borderRadius: 24, alignItems: "center", justifyContent: "center" },
+  emptyTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  emptySub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
+  createBtn: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12, marginTop: 4 },
+  createBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#FFF" },
 });

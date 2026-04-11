@@ -1,5 +1,5 @@
 import { BlurView } from "expo-blur";
-import { Tabs } from "expo-router";
+import { Tabs, router } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
 import { Platform, StyleSheet, View } from "react-native";
@@ -56,11 +56,17 @@ export default function TabLayout() {
         options={{
           title: "",
           tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.createBtn, { backgroundColor: focused ? colors.primary : colors.primary, shadowColor: colors.primary }]}>
+            <View style={[styles.createBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]}>
               <Feather name="plus" size={24} color="#FFFFFF" />
             </View>
           ),
         }}
+        listeners={() => ({
+          tabPress: (e) => {
+            e.preventDefault();
+            router.push("/create-post");
+          },
+        })}
       />
       <Tabs.Screen
         name="notifications"
@@ -88,9 +94,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 4,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+    elevation: 10,
   },
 });

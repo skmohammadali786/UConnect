@@ -30,15 +30,14 @@ export default function UserProfileScreen() {
   const { posts } = usePosts();
   const { toggleFollow, isFollowing } = useSocial();
   const { showSuccess } = useToast();
-  const [activeTab, setActiveTab] = useState<"posts">("posts");
   const followAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(14)).current;
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: ND }),
-      Animated.spring(slideAnim, { toValue: 0, tension: 80, friction: 12, useNativeDriver: ND }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 280, useNativeDriver: ND }),
+      Animated.spring(slideAnim, { toValue: 0, tension: 90, friction: 14, useNativeDriver: ND }),
     ]).start();
   }, []);
 
@@ -71,7 +70,13 @@ export default function UserProfileScreen() {
     showSuccess(following ? `Unfollowed @${key}` : `Now following @${key}! 🎉`);
   };
 
+  const handleMessage = () => {
+    router.push({ pathname: "/chat/[id]" as any, params: { id: profile.id, username: profile.username } });
+  };
+
   const followerCount = profile.followers + (following ? 1 : 0);
+
+  const initials = profile.displayName?.charAt(0)?.toUpperCase() || "U";
 
   return (
     <Animated.View style={[{ flex: 1, backgroundColor: colors.background }, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
@@ -96,28 +101,35 @@ export default function UserProfileScreen() {
 
               <View style={styles.avatarRow}>
                 <View style={[styles.avatar, { backgroundColor: colors.primary + "20", borderColor: colors.card, borderWidth: 4 }]}>
-                  <Text style={[styles.avatarText, { color: colors.primary }]}>
-                    {profile.displayName?.charAt(0)?.toUpperCase() || "U"}
-                  </Text>
+                  <Text style={[styles.avatarText, { color: colors.primary }]}>{initials}</Text>
                 </View>
                 <View style={styles.actionRow}>
                   {!isMe && (
-                    <Animated.View style={{ transform: [{ scale: followAnim }] }}>
+                    <>
                       <TouchableOpacity
-                        onPress={handleFollow}
-                        style={[
-                          styles.followBtn,
-                          following
-                            ? { backgroundColor: colors.secondary, borderColor: colors.border }
-                            : { backgroundColor: colors.primary, borderColor: colors.primary },
-                        ]}
+                        onPress={handleMessage}
+                        style={[styles.messageBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}
                       >
-                        <Feather name={following ? "user-check" : "user-plus"} size={14} color={following ? colors.foreground : "#FFF"} />
-                        <Text style={[styles.followText, { color: following ? colors.foreground : "#FFF" }]}>
-                          {following ? "Following" : "Follow"}
-                        </Text>
+                        <Feather name="message-circle" size={15} color={colors.foreground} />
+                        <Text style={[styles.messageBtnText, { color: colors.foreground }]}>Message</Text>
                       </TouchableOpacity>
-                    </Animated.View>
+                      <Animated.View style={{ transform: [{ scale: followAnim }] }}>
+                        <TouchableOpacity
+                          onPress={handleFollow}
+                          style={[
+                            styles.followBtn,
+                            following
+                              ? { backgroundColor: colors.secondary, borderColor: colors.border }
+                              : { backgroundColor: colors.primary, borderColor: colors.primary },
+                          ]}
+                        >
+                          <Feather name={following ? "user-check" : "user-plus"} size={14} color={following ? colors.foreground : "#FFF"} />
+                          <Text style={[styles.followText, { color: following ? colors.foreground : "#FFF" }]}>
+                            {following ? "Following" : "Follow"}
+                          </Text>
+                        </TouchableOpacity>
+                      </Animated.View>
+                    </>
                   )}
                   {isMe && (
                     <TouchableOpacity onPress={() => router.push("/edit-profile")} style={[styles.editBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
@@ -185,7 +197,7 @@ export default function UserProfileScreen() {
             <View style={[styles.tabRow, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
               <View style={[styles.tabBtn, { borderBottomColor: colors.primary, borderBottomWidth: 2.5 }]}>
                 <Feather name="file-text" size={15} color={colors.primary} />
-                <Text style={[styles.tabLabel, { color: colors.primary }]}>Posts</Text>
+                <Text style={[styles.tabLabel, { color: colors.primary }]}>Posts ({userPosts.length})</Text>
               </View>
             </View>
           </View>
@@ -194,7 +206,7 @@ export default function UserProfileScreen() {
           <View style={styles.empty}>
             <Feather name="file-text" size={32} color={colors.mutedForeground} />
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No posts yet</Text>
-            <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>This user hasn't posted anything yet.</Text>
+            <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>This user hasn't posted anything publicly yet.</Text>
           </View>
         }
       />
@@ -210,8 +222,10 @@ const styles = StyleSheet.create({
   avatarRow: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", paddingHorizontal: 16, marginTop: -32, marginBottom: 10 },
   avatar: { width: 76, height: 76, borderRadius: 38, alignItems: "center", justifyContent: "center" },
   avatarText: { fontSize: 32, fontFamily: "Inter_700Bold" },
-  actionRow: { flexDirection: "row", gap: 8, paddingBottom: 4 },
-  followBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 16, paddingVertical: 9, borderRadius: 10, borderWidth: 1.5 },
+  actionRow: { flexDirection: "row", gap: 8, paddingBottom: 4, alignItems: "center" },
+  messageBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1 },
+  messageBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  followBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10, borderWidth: 1.5 },
   followText: { fontSize: 14, fontFamily: "Inter_700Bold" },
   editBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, borderWidth: 1 },
   editBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },

@@ -164,14 +164,17 @@ export default function TeamsScreen() {
         </TouchableOpacity>
       )}
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ backgroundColor: colors.background }} contentContainerStyle={styles.typeFilter}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.typeScroll, { backgroundColor: colors.background, borderBottomColor: colors.border }]} contentContainerStyle={styles.typeFilter}>
         {TYPES.map((t) => (
           <TouchableOpacity
             key={t}
             onPress={() => setSelectedType(t)}
-            style={[styles.typeChip, { backgroundColor: selectedType === t ? colors.primary : colors.card, borderColor: selectedType === t ? colors.primary : colors.border }]}
+            style={[styles.typeChip, {
+              backgroundColor: selectedType === t ? colors.primary : colors.card,
+              borderColor: selectedType === t ? colors.primary : colors.border,
+            }]}
           >
-            <Text style={[styles.typeChipText, { color: selectedType === t ? "#FFF" : colors.foreground }]}>{t}</Text>
+            <Text style={[styles.typeChipText, { color: selectedType === t ? "#FFF" : colors.mutedForeground }]}>{t}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -216,7 +219,8 @@ const styles = StyleSheet.create({
   pendingBanner: { flexDirection: "row", alignItems: "center", gap: 10, margin: 12, marginBottom: 0, borderRadius: 12, borderWidth: 1, padding: 12 },
   pendingText: { flex: 1, fontSize: 13, fontFamily: "Inter_600SemiBold" },
   typeFilter: { paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
-  typeChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1 },
+  typeScroll: { borderBottomWidth: 1 },
+  typeChip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1, height: 34, alignItems: "center", justifyContent: "center" },
   typeChipText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   card: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 10 },
   cardHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },

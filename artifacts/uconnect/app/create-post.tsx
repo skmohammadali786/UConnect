@@ -19,6 +19,26 @@ const ND = Platform.OS !== "web";
 const TAGS: PostTag[] = ["General", "Academic", "Campus Life", "Rant", "Advice", "Meme", "Question", "Achievement", "Event", "Confession"];
 const TAG_COLORS: Record<string, string> = { General: "#6B7280", Academic: "#3B82F6", "Campus Life": "#8B5CF6", Rant: "#EF4444", Advice: "#F59E0B", Meme: "#EC4899", Question: "#06B6D4", Achievement: "#00A86B", Event: "#F97316", Confession: "#A855F7" };
 
+const AUTO_DELETE_OPTIONS = [
+  { label: "Never", value: "never" },
+  { label: "1 hour", value: "1h" },
+  { label: "6 hours", value: "6h" },
+  { label: "24 hours", value: "24h" },
+  { label: "3 days", value: "3d" },
+  { label: "7 days", value: "7d" },
+];
+
+function getAutoDeleteMs(value: string): number | null {
+  const map: Record<string, number> = {
+    "1h": 60 * 60 * 1000,
+    "6h": 6 * 60 * 60 * 1000,
+    "24h": 24 * 60 * 60 * 1000,
+    "3d": 3 * 24 * 60 * 60 * 1000,
+    "7d": 7 * 24 * 60 * 60 * 1000,
+  };
+  return map[value] ?? null;
+}
+
 function formatDraftAge(iso: string) {
   const ms = Date.now() - new Date(iso).getTime();
   if (ms < 60_000) return "just now";
@@ -39,24 +59,33 @@ export default function CreatePostScreen() {
   const [isAnonymous, setIsAnonymous] = useState(settings.defaultAnonymous);
   const [loading, setLoading] = useState(false);
   const [showDrafts, setShowDrafts] = useState(false);
+  const [showAutoDelete, setShowAutoDelete] = useState(false);
+  const [autoDelete, setAutoDelete] = useState("never");
   const [mediaUris, setMediaUris] = useState<string[]>([]);
   const [videoUri, setVideoUri] = useState<string | null>(null);
+
   const draftsAnim = useRef(new Animated.Value(0)).current;
+  const autoDeleteAnim = useRef(new Animated.Value(0)).current;
   const publishAnim = useRef(new Animated.Value(1)).current;
+  const headerAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.timing(draftsAnim, { toValue: showDrafts ? 1 : 0, duration: 220, useNativeDriver: ND }).start();
+    Animated.parallel([
+      Animated.timing(headerAnim, { toValue: 1, duration: 280, useNativeDriver: ND }),
+    ]).start();
+  }, []);
+
+  useEffect(() => {
+    Animated.spring(draftsAnim, { toValue: showDrafts ? 1 : 0, tension: 120, friction: 14, useNativeDriver: ND }).start();
   }, [showDrafts]);
 
+  useEffect(() => {
+    Animated.spring(autoDeleteAnim, { toValue: showAutoDelete ? 1 : 0, tension: 120, friction: 14, useNativeDriver: ND }).start();
+  }, [showAutoDelete]);
+
   const handlePickPhoto = async () => {
-    if (mediaUris.length >= 3) {
-      showInfo("Max 3 photos", "Remove a photo to add another.");
-      return;
-    }
-    if (Platform.OS === "web") {
-      showInfo("Photo upload", "Photo picking works best on the mobile app.");
-      return;
-    }
+    if (mediaUris.length >= 3) { showInfo("Max 3 photos", "Remove a photo to add another."); return; }
+    if (Platform.OS === "web") { showInfo("Photo upload", "Photo picking works best on the mobile app."); return; }
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") { showError("Permission denied", "Allow photo access in Settings."); return; }
@@ -75,14 +104,8 @@ export default function CreatePostScreen() {
   };
 
   const handlePickVideo = async () => {
-    if (videoUri) {
-      showInfo("Video attached", "Remove the current video to pick a new one.");
-      return;
-    }
-    if (Platform.OS === "web") {
-      showInfo("Video upload", "Video picking works best on the mobile app.");
-      return;
-    }
+    if (videoUri) { showInfo("Video attached", "Remove the current video to pick a new one."); return; }
+    if (Platform.OS === "web") { showInfo("Video upload", "Video picking works best on the mobile app."); return; }
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") { showError("Permission denied", "Allow photo access in Settings."); return; }
@@ -93,10 +116,7 @@ export default function CreatePostScreen() {
       });
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0];
-        if (asset.duration && asset.duration > 30000) {
-          showError("Video too long", "Videos must be 30 seconds or less.");
-          return;
-        }
+        if (asset.duration && asset.duration > 30000) { showError("Video too long", "Videos must be 30 seconds or less."); return; }
         setVideoUri(asset.uri);
         showSuccess("Video added", "Up to 30 seconds.");
       }
@@ -107,9 +127,13 @@ export default function CreatePostScreen() {
     if (!content.trim() || !user) return;
     setLoading(true);
     Animated.sequence([
-      Animated.spring(publishAnim, { toValue: 0.95, tension: 200, friction: 8, useNativeDriver: ND }),
+      Animated.spring(publishAnim, { toValue: 0.92, tension: 300, friction: 6, useNativeDriver: ND }),
       Animated.spring(publishAnim, { toValue: 1, tension: 200, friction: 8, useNativeDriver: ND }),
     ]).start();
+
+    const deleteMs = getAutoDeleteMs(autoDelete);
+    const autoDeleteAt = deleteMs ? new Date(Date.now() + deleteMs).toISOString() : undefined;
+
     await createPost({
       authorId: user.id,
       authorUsername: user.username,
@@ -120,6 +144,7 @@ export default function CreatePostScreen() {
       content: content.trim(),
       mediaUrls: mediaUris,
       videoUrl: videoUri,
+      autoDeleteAt,
     });
     setLoading(false);
     showSuccess("Post published! 🎉", isAnonymous ? "Posted anonymously" : `Posted as @${user.username}`);
@@ -150,10 +175,11 @@ export default function CreatePostScreen() {
   const tagColor = TAG_COLORS[tag] || colors.mutedForeground;
   const charsLeft = 500 - content.length;
   const charColor = charsLeft < 50 ? "#EF4444" : charsLeft < 100 ? "#F59E0B" : colors.mutedForeground;
+  const selectedDeleteOption = AUTO_DELETE_OPTIONS.find((o) => o.value === autoDelete);
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <View style={{ flex: 1, paddingTop: Platform.OS === "web" ? 67 : insets.top + 8 }}>
+      <Animated.View style={{ flex: 1, paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, opacity: headerAnim }}>
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.cancelBtn}>
             <Text style={[styles.cancelText, { color: colors.mutedForeground }]}>Cancel</Text>
@@ -178,7 +204,7 @@ export default function CreatePostScreen() {
                 {isAnonymous ? "Posting as Anonymous" : `@${user?.username}`}
               </Text>
               <Text style={[styles.authorSub, { color: colors.mutedForeground }]}>
-                {isAnonymous ? "Your identity is hidden from everyone" : user?.college}
+                {isAnonymous ? "Your identity is hidden" : user?.college}
               </Text>
             </View>
             <View style={styles.toggleRow}>
@@ -188,7 +214,7 @@ export default function CreatePostScreen() {
           </View>
 
           <View style={styles.tagSection}>
-            <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>Tag</Text>
+            <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>TAG</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 4 }}>
               {TAGS.map((t) => {
                 const tc = TAG_COLORS[t];
@@ -213,7 +239,7 @@ export default function CreatePostScreen() {
           <TextInput
             value={content}
             onChangeText={setContent}
-            placeholder="What's on your mind? Share with your campus..."
+            placeholder={"What's on your mind? Use #hashtags to tag topics..."}
             placeholderTextColor={colors.placeholder}
             multiline
             style={[styles.textInput, { color: colors.foreground }]}
@@ -244,20 +270,12 @@ export default function CreatePostScreen() {
           )}
 
           <View style={[styles.mediaActionsRow, { borderColor: colors.border }]}>
-            <TouchableOpacity
-              onPress={handlePickPhoto}
-              disabled={mediaUris.length >= 3}
-              style={[styles.mediaBtn, { opacity: mediaUris.length >= 3 ? 0.4 : 1 }]}
-            >
+            <TouchableOpacity onPress={handlePickPhoto} disabled={mediaUris.length >= 3} style={[styles.mediaBtn, { opacity: mediaUris.length >= 3 ? 0.4 : 1 }]}>
               <Feather name="image" size={16} color={colors.primary} />
               <Text style={[styles.mediaBtnText, { color: colors.primary }]}>Photo ({mediaUris.length}/3)</Text>
             </TouchableOpacity>
             <View style={[styles.mediaDivider, { backgroundColor: colors.border }]} />
-            <TouchableOpacity
-              onPress={handlePickVideo}
-              disabled={!!videoUri}
-              style={[styles.mediaBtn, { opacity: videoUri ? 0.4 : 1 }]}
-            >
+            <TouchableOpacity onPress={handlePickVideo} disabled={!!videoUri} style={[styles.mediaBtn, { opacity: videoUri ? 0.4 : 1 }]}>
               <Feather name="video" size={16} color={colors.primary} />
               <Text style={[styles.mediaBtnText, { color: colors.primary }]}>{videoUri ? "Video ✓" : "Video (≤30s)"}</Text>
             </TouchableOpacity>
@@ -269,7 +287,7 @@ export default function CreatePostScreen() {
               {content.trim().length > 0 && (
                 <TouchableOpacity onPress={handleSaveDraft} style={[styles.metaBtn, { borderColor: colors.border }]}>
                   <Feather name="save" size={14} color={colors.mutedForeground} />
-                  <Text style={[styles.metaBtnText, { color: colors.mutedForeground }]}>Save draft</Text>
+                  <Text style={[styles.metaBtnText, { color: colors.mutedForeground }]}>Draft</Text>
                 </TouchableOpacity>
               )}
               {drafts.length > 0 && (
@@ -278,8 +296,49 @@ export default function CreatePostScreen() {
                   <Text style={[styles.metaBtnText, { color: showDrafts ? colors.primary : colors.mutedForeground }]}>Drafts ({drafts.length})</Text>
                 </TouchableOpacity>
               )}
+              <TouchableOpacity onPress={() => setShowAutoDelete(!showAutoDelete)} style={[styles.metaBtn, { borderColor: autoDelete !== "never" ? colors.primary + "60" : colors.border, backgroundColor: autoDelete !== "never" ? colors.primary + "10" : undefined }]}>
+                <Feather name="clock" size={14} color={autoDelete !== "never" ? colors.primary : colors.mutedForeground} />
+                <Text style={[styles.metaBtnText, { color: autoDelete !== "never" ? colors.primary : colors.mutedForeground }]}>
+                  {autoDelete !== "never" ? selectedDeleteOption?.label : "Auto-delete"}
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
+
+          {showAutoDelete && (
+            <Animated.View style={{ opacity: autoDeleteAnim, transform: [{ translateY: autoDeleteAnim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }] }}>
+              <View style={[styles.autoDeletePanel, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View style={styles.autoDeleteHeader}>
+                  <Feather name="clock" size={15} color={colors.primary} />
+                  <Text style={[styles.autoDeleteTitle, { color: colors.foreground }]}>Auto-delete after</Text>
+                </View>
+                <View style={styles.autoDeleteChips}>
+                  {AUTO_DELETE_OPTIONS.map((opt) => (
+                    <TouchableOpacity
+                      key={opt.value}
+                      onPress={() => { setAutoDelete(opt.value); setShowAutoDelete(false); }}
+                      style={[
+                        styles.autoDeleteChip,
+                        {
+                          backgroundColor: autoDelete === opt.value ? colors.primary : colors.secondary,
+                          borderColor: autoDelete === opt.value ? colors.primary : colors.border,
+                        },
+                      ]}
+                    >
+                      <Text style={[styles.autoDeleteChipText, { color: autoDelete === opt.value ? "#FFF" : colors.foreground }]}>
+                        {opt.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                {autoDelete !== "never" && (
+                  <Text style={[styles.autoDeleteNote, { color: colors.mutedForeground }]}>
+                    This post will disappear {selectedDeleteOption?.label} after posting
+                  </Text>
+                )}
+              </View>
+            </Animated.View>
+          )}
 
           {showDrafts && (
             <Animated.View style={{ opacity: draftsAnim, transform: [{ translateY: draftsAnim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }] }}>
@@ -307,14 +366,22 @@ export default function CreatePostScreen() {
           )}
 
           <View style={[styles.tips, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Feather name="hash" size={14} color={colors.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.tipsTitle, { color: colors.foreground }]}>Tip: Use hashtags</Text>
+              <Text style={[styles.tipsText, { color: colors.mutedForeground }]}>Add #hashtags in your post to help people find it. e.g. #placement #iitdelhi #coding</Text>
+            </View>
+          </View>
+
+          <View style={[styles.tips, { backgroundColor: colors.card, borderColor: colors.border, marginTop: 10 }]}>
             <Feather name="shield" size={14} color={colors.primary} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.tipsTitle, { color: colors.foreground }]}>Community Guidelines</Text>
-              <Text style={[styles.tipsText, { color: colors.mutedForeground }]}>Be respectful. No hate speech, personal attacks, or explicit content. Keep it college-relevant.</Text>
+              <Text style={[styles.tipsText, { color: colors.mutedForeground }]}>Be respectful. No hate speech or explicit content. Keep it college-relevant.</Text>
             </View>
           </View>
         </ScrollView>
-      </View>
+      </Animated.View>
     </KeyboardAvoidingView>
   );
 }
@@ -332,7 +399,7 @@ const styles = StyleSheet.create({
   toggleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   anonLabel: { fontSize: 12, fontFamily: "Inter_500Medium" },
   tagSection: { marginBottom: 10, gap: 8 },
-  sectionLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", letterSpacing: 0.5 },
+  sectionLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8 },
   tagChip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1.5 },
   tagChipText: { fontSize: 13, fontFamily: "Inter_500Medium" },
   activeTag: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 10, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 14, alignSelf: "flex-start" },
@@ -349,12 +416,19 @@ const styles = StyleSheet.create({
   mediaBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, paddingVertical: 11 },
   mediaBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   mediaDivider: { width: 1, height: "100%" },
-  metaRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 },
+  metaRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 },
   charCount: { fontSize: 13, fontFamily: "Inter_500Medium" },
   metaActions: { flexDirection: "row", gap: 8 },
   metaBtn: { flexDirection: "row", alignItems: "center", gap: 5, borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
   metaBtnText: { fontSize: 12, fontFamily: "Inter_500Medium" },
-  draftsPanel: { borderRadius: 14, borderWidth: 1, overflow: "hidden", marginBottom: 16 },
+  autoDeletePanel: { borderRadius: 14, borderWidth: 1, padding: 14, marginBottom: 14, gap: 10 },
+  autoDeleteHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  autoDeleteTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  autoDeleteChips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  autoDeleteChip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, borderWidth: 1 },
+  autoDeleteChipText: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  autoDeleteNote: { fontSize: 12, fontFamily: "Inter_400Regular", fontStyle: "italic" },
+  draftsPanel: { borderRadius: 14, borderWidth: 1, overflow: "hidden", marginBottom: 14 },
   draftsPanelTitle: { fontSize: 13, fontFamily: "Inter_700Bold", padding: 12, paddingBottom: 10 },
   draftItem: { flexDirection: "row", alignItems: "center", gap: 8, borderTopWidth: 1, padding: 12 },
   draftMeta: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
@@ -364,6 +438,6 @@ const styles = StyleSheet.create({
   draftContent: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 19 },
   draftDeleteBtn: { padding: 6 },
   tips: { flexDirection: "row", alignItems: "flex-start", borderRadius: 12, borderWidth: 1, padding: 14, gap: 12 },
-  tipsTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", marginBottom: 4 },
+  tipsTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", marginBottom: 3 },
   tipsText: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17 },
 });

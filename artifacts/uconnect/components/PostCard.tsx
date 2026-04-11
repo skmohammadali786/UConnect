@@ -16,6 +16,7 @@ import { useColors } from "@/hooks/useColors";
 import type { Post } from "@/context/PostsContext";
 import { usePosts } from "@/context/PostsContext";
 import { useSocial } from "@/context/SocialContext";
+import { useSettings } from "@/context/SettingsContext";
 import { ReportModal } from "@/components/ReportModal";
 import { formatRelativeTime } from "@/utils/time";
 
@@ -41,10 +42,29 @@ interface PostCardProps {
   index?: number;
 }
 
+function renderHashtags(content: string, primaryColor: string, foregroundColor: string) {
+  const parts = content.split(/(#[a-zA-Z][a-zA-Z0-9_]*)/g);
+  return parts.map((part, i) => {
+    if (/^#[a-zA-Z][a-zA-Z0-9_]*$/.test(part)) {
+      return (
+        <Text key={i} style={{ color: primaryColor, fontFamily: "Inter_600SemiBold" }}>
+          {part}
+        </Text>
+      );
+    }
+    return (
+      <Text key={i} style={{ color: foregroundColor, fontFamily: "Inter_400Regular" }}>
+        {part}
+      </Text>
+    );
+  });
+}
+
 export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardProps) {
   const colors = useColors();
   const { votePost, bookmarkPost } = usePosts();
   const { hasReported } = useSocial();
+  const { settings } = useSettings();
   const [reportVisible, setReportVisible] = useState(false);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const upAnim = useRef(new Animated.Value(1)).current;
@@ -102,6 +122,17 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
   const hasMedia = post.mediaUrls && post.mediaUrls.length > 0;
   const hasVideo = !!post.videoUrl;
 
+  const compact = settings.compactMode;
+  const pad = compact ? 12 : 16;
+
+  const autoDeleteLabel = post.autoDeleteAt ? (() => {
+    const diff = new Date(post.autoDeleteAt).getTime() - Date.now();
+    if (diff < 0) return null;
+    const h = Math.ceil(diff / 3600000);
+    if (h < 24) return `${h}h`;
+    return `${Math.ceil(h / 24)}d`;
+  })() : null;
+
   return (
     <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
       <TouchableOpacity
@@ -109,9 +140,17 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         activeOpacity={1}
-        style={[styles.container, { backgroundColor: colors.card, borderColor: colors.border, borderRadius: colors.radius }]}
+        style={[
+          styles.container,
+          {
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+            borderRadius: colors.radius,
+            padding: pad,
+          },
+        ]}
       >
-        <View style={styles.header}>
+        <View style={styles.cardHeader}>
           <TouchableOpacity
             onPress={handleAuthorPress}
             disabled={post.isAnonymous}
@@ -135,6 +174,7 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
               </Text>
               <Text style={[styles.meta, { color: colors.mutedForeground }]}>
                 {post.college} · {formatRelativeTime(post.createdAt)}
+                {autoDeleteLabel ? ` · ⏱ ${autoDeleteLabel}` : ""}
               </Text>
             </View>
           </TouchableOpacity>
@@ -143,7 +183,9 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
           </View>
         </View>
 
-        <Text style={[styles.content, { color: colors.foreground }]} numberOfLines={4}>{post.content}</Text>
+        <Text style={[styles.content, { color: colors.foreground }]} numberOfLines={compact ? 3 : 5}>
+          {renderHashtags(post.content, colors.primary, colors.foreground)}
+        </Text>
 
         {hasMedia && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mediaRow} contentContainerStyle={{ gap: 8 }}>
@@ -170,11 +212,11 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
               </Animated.View>
               <Text style={[styles.voteCount, { color: post.userVote === "up" ? colors.primary : colors.mutedForeground }]}>{post.upvotes}</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleVote("down")} style={[styles.voteBtn, post.userVote === "down" && { backgroundColor: colors.destructive + "20" }]}>
+            <TouchableOpacity onPress={() => handleVote("down")} style={[styles.voteBtn, post.userVote === "down" && { backgroundColor: "#EF444420" }]}>
               <Animated.View style={{ transform: [{ scale: downAnim }] }}>
-                <Feather name="arrow-down" size={16} color={post.userVote === "down" ? colors.destructive : colors.mutedForeground} />
+                <Feather name="arrow-down" size={16} color={post.userVote === "down" ? "#EF4444" : colors.mutedForeground} />
               </Animated.View>
-              <Text style={[styles.voteCount, { color: post.userVote === "down" ? colors.destructive : colors.mutedForeground }]}>{post.downvotes}</Text>
+              <Text style={[styles.voteCount, { color: post.userVote === "down" ? "#EF4444" : colors.mutedForeground }]}>{post.downvotes}</Text>
             </TouchableOpacity>
           </View>
 
@@ -190,9 +232,9 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
           </TouchableOpacity>
 
           {isOwner ? (
-            <TouchableOpacity onPress={handleDelete} disabled={!onDelete} style={[styles.actionBtn, { opacity: onDelete ? 1 : 0.4 }]}>
+            <TouchableOpacity onPress={handleDelete} style={styles.actionBtn}>
               <Animated.View style={{ transform: [{ scale: deleteAnim }] }}>
-                <Feather name="trash-2" size={16} color={colors.destructive} />
+                <Feather name="trash-2" size={16} color="#EF4444" />
               </Animated.View>
             </TouchableOpacity>
           ) : (
@@ -201,7 +243,7 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
               style={[styles.actionBtn, { opacity: reported ? 0.4 : 1 }]}
               disabled={reported}
             >
-              <Feather name="flag" size={16} color={reported ? colors.mutedForeground : colors.mutedForeground} />
+              <Feather name="flag" size={16} color={colors.mutedForeground} />
             </TouchableOpacity>
           )}
         </View>
@@ -221,15 +263,14 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
     borderWidth: 1,
     marginBottom: 1,
   },
-  header: {
+  cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 12,
+    marginBottom: 10,
   },
   authorRow: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
   avatarWrap: {
@@ -250,7 +291,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   tagText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
-  content: { fontSize: 15, fontFamily: "Inter_400Regular", lineHeight: 22, marginBottom: 12 },
+  content: { fontSize: 15, lineHeight: 22, marginBottom: 12 },
   mediaRow: { marginBottom: 12 },
   mediaThumb: { width: 120, height: 120, borderRadius: 10 },
   mediaThumbSingle: { width: 240, height: 160 },
