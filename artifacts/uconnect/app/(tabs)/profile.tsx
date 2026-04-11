@@ -302,15 +302,9 @@ export default function ProfileScreen() {
         <View style={[styles.joinedRow, { borderTopColor: colors.border }]}>
           <Feather name="calendar" size={12} color={colors.mutedForeground} />
           <Text style={[styles.joinedText, { color: colors.mutedForeground }]}>Joined {joinedDate}</Text>
-          <TouchableOpacity
-            onPress={async () => {
-              await logout();
-              router.replace("/auth/welcome");
-            }}
-            style={styles.signOutInline}
-          >
-            <Feather name="log-out" size={13} color="#EF4444" />
-            <Text style={styles.signOutInlineText}>Sign Out</Text>
+          <TouchableOpacity onPress={() => router.push("/settings")} style={[styles.settingsPill, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+            <Feather name="settings" size={12} color={colors.mutedForeground} />
+            <Text style={[styles.settingsPillText, { color: colors.mutedForeground }]}>Settings</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -430,8 +424,8 @@ const styles = StyleSheet.create({
   interestText: { fontSize: 12, fontFamily: "Inter_500Medium" },
   joinedRow: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1 },
   joinedText: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1 },
-  signOutInline: { flexDirection: "row", alignItems: "center", gap: 5 },
-  signOutInlineText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#EF4444" },
+  settingsPill: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1 },
+  settingsPillText: { fontSize: 12, fontFamily: "Inter_500Medium" },
   tabRow: { flexDirection: "row", borderBottomWidth: 1 },
   tabBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 12 },
   tabLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold" },

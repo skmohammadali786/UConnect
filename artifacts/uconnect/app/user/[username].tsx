@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Animated, FlatList, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PostCard } from "@/components/PostCard";
@@ -9,6 +9,8 @@ import { useAuth } from "@/context/AuthContext";
 import { usePosts } from "@/context/PostsContext";
 import { useSocial } from "@/context/SocialContext";
 import { useToast } from "@/components/Toast";
+
+const ND = Platform.OS !== "web";
 
 function generateUserId(username: string) {
   return "user_" + username.replace(/[^a-z0-9]/gi, "").toLowerCase();
@@ -29,7 +31,16 @@ export default function UserProfileScreen() {
   const { toggleFollow, isFollowing } = useSocial();
   const { showSuccess } = useToast();
   const [activeTab, setActiveTab] = useState<"posts">("posts");
-  const followAnim = React.useRef(new Animated.Value(1)).current;
+  const followAnim = useRef(new Animated.Value(1)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(14)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: ND }),
+      Animated.spring(slideAnim, { toValue: 0, tension: 80, friction: 12, useNativeDriver: ND }),
+    ]).start();
+  }, []);
 
   const key = username?.toLowerCase() || "";
   const profile = SAMPLE_PROFILES[key] || {
@@ -53,17 +64,17 @@ export default function UserProfileScreen() {
 
   const handleFollow = () => {
     Animated.sequence([
-      Animated.spring(followAnim, { toValue: 0.9, tension: 200, friction: 8, useNativeDriver: false }),
-      Animated.spring(followAnim, { toValue: 1, tension: 200, friction: 8, useNativeDriver: false }),
+      Animated.spring(followAnim, { toValue: 0.88, tension: 250, friction: 6, useNativeDriver: ND }),
+      Animated.spring(followAnim, { toValue: 1, tension: 200, friction: 8, useNativeDriver: ND }),
     ]).start();
     toggleFollow(profile.id);
-    showSuccess(following ? `Unfollowed @${key}` : `Following @${key}!`);
+    showSuccess(following ? `Unfollowed @${key}` : `Now following @${key}! 🎉`);
   };
 
   const followerCount = profile.followers + (following ? 1 : 0);
 
   return (
-    <View style={[{ flex: 1 }, { backgroundColor: colors.background }]}>
+    <Animated.View style={[{ flex: 1, backgroundColor: colors.background }, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
       <FlatList
         data={userPosts}
         keyExtractor={(item) => item.id}
@@ -187,7 +198,7 @@ export default function UserProfileScreen() {
           </View>
         }
       />
-    </View>
+    </Animated.View>
   );
 }
 

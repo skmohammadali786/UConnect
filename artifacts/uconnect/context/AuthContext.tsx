@@ -25,6 +25,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (email: string) => Promise<void>;
   logout: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
   updateUser: (updates: Partial<User>) => Promise<void>;
   setUserData: (user: User) => Promise<void>;
   loginAsDemo: () => Promise<void>;
@@ -90,6 +91,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       "@uconnect_saved_notes",
       "@uconnect_rsvp_events",
       "@uconnect_requested_teams",
+      "@uconnect_drafts",
+      "@uconnect_following",
+      "@uconnect_reports",
+      "@uconnect_theme",
+      "@uconnect_teams",
+    ]);
+    setUser(null);
+  };
+
+  const deleteAccount = async () => {
+    await AsyncStorage.multiRemove([
+      STORAGE_KEY,
+      "@uconnect_posts",
+      "@uconnect_confessions",
+      "@uconnect_settings",
+      "@uconnect_applied_internships",
+      "@uconnect_saved_notes",
+      "@uconnect_rsvp_events",
+      "@uconnect_requested_teams",
+      "@uconnect_drafts",
+      "@uconnect_following",
+      "@uconnect_reports",
+      "@uconnect_theme",
+      "@uconnect_teams",
     ]);
     setUser(null);
   };
@@ -114,6 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: !!user,
         login,
         logout,
+        deleteAccount,
         updateUser,
         setUserData,
         loginAsDemo,
