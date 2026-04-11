@@ -29,7 +29,7 @@ export default function UploadNotesScreen() {
     setLoading(true);
     await new Promise((r) => setTimeout(r, 1200));
     setLoading(false);
-    showSuccess("Notes uploaded! 🎉", "Your notes are now available for your college community.");
+    showSuccess("Notes uploaded!", "Your notes are now available for your college community.");
     router.back();
   };
 

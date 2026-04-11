@@ -138,7 +138,7 @@ export default function TeamDetailScreen() {
       college: user.college,
       message,
     });
-    showSuccess("Request sent! 🎉", "The admin will review your request soon.");
+    showSuccess("Request sent!", "The admin will review your request soon.");
   };
 
   const handleCancel = async () => {
@@ -150,7 +150,7 @@ export default function TeamDetailScreen() {
 
   const handleApprove = async (userId: string, displayName: string) => {
     await approveRequest(team.id, userId);
-    showSuccess(`✅ Approved ${displayName}`, "They can now join your team!");
+    showSuccess(`Approved ${displayName}`, "They can now join your team!");
   };
 
   const handleDeny = async (userId: string, displayName: string) => {

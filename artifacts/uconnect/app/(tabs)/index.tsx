@@ -1,7 +1,10 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useCallback, useRef, useEffect, useState } from "react";
-import { Animated, FlatList, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Animated, Easing, FlatList, Platform, RefreshControl,
+  ScrollView, StyleSheet, Text, TouchableOpacity, View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PostCard } from "@/components/PostCard";
 import { useColors } from "@/hooks/useColors";
@@ -9,8 +12,6 @@ import { usePosts } from "@/context/PostsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useToast } from "@/components/Toast";
-
-const ND = Platform.OS !== "web";
 
 const FILTERS = ["Latest", "Trending", "Following"];
 
@@ -25,21 +26,43 @@ const SHORTCUTS = [
 
 function AnimatedPostCard({ post, index, currentUserId, onDelete }: any) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(20)).current;
+  const slideAnim = useRef(new Animated.Value(40)).current;
+  const scaleAnim = useRef(new Animated.Value(0.96)).current;
 
   useEffect(() => {
-    const delay = Math.min(index * 60, 400);
+    const delay = Math.min(index * 80, 480);
     const timer = setTimeout(() => {
       Animated.parallel([
-        Animated.timing(fadeAnim, { toValue: 1, duration: 320, useNativeDriver: ND }),
-        Animated.spring(slideAnim, { toValue: 0, tension: 90, friction: 14, useNativeDriver: ND }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 400,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 380,
+          easing: Easing.out(Easing.back(1.2)),
+          useNativeDriver: false,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 380,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }),
       ]).start();
     }, delay);
     return () => clearTimeout(timer);
   }, []);
 
   return (
-    <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+    <Animated.View
+      style={{
+        opacity: fadeAnim,
+        transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
+      }}
+    >
       <PostCard post={post} currentUserId={currentUserId} onDelete={onDelete} index={index} />
     </Animated.View>
   );
@@ -55,14 +78,37 @@ export default function HomeScreen() {
   const [activeFilter, setActiveFilter] = useState("Latest");
   const [refreshing, setRefreshing] = useState(false);
 
-  const headerAnim = useRef(new Animated.Value(0)).current;
-  const shortcutAnim = useRef(new Animated.Value(0)).current;
+  const headerSlide = useRef(new Animated.Value(-60)).current;
+  const headerFade = useRef(new Animated.Value(0)).current;
+  const shortcutFade = useRef(new Animated.Value(0)).current;
+  const shortcutSlide = useRef(new Animated.Value(24)).current;
 
   useEffect(() => {
-    Animated.stagger(80, [
-      Animated.spring(headerAnim, { toValue: 1, tension: 100, friction: 14, useNativeDriver: ND }),
-      Animated.spring(shortcutAnim, { toValue: 1, tension: 100, friction: 14, useNativeDriver: ND }),
-    ]).start();
+    Animated.parallel([
+      Animated.timing(headerFade, {
+        toValue: 1, duration: 350,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }),
+      Animated.timing(headerSlide, {
+        toValue: 0, duration: 380,
+        easing: Easing.out(Easing.back(1.3)),
+        useNativeDriver: false,
+      }),
+    ]).start(() => {
+      Animated.parallel([
+        Animated.timing(shortcutFade, {
+          toValue: 1, duration: 340,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }),
+        Animated.timing(shortcutSlide, {
+          toValue: 0, duration: 360,
+          easing: Easing.out(Easing.back(1.2)),
+          useNativeDriver: false,
+        }),
+      ]).start();
+    });
   }, []);
 
   const filteredPosts = posts.filter((p) => {
@@ -96,8 +142,8 @@ export default function HomeScreen() {
             paddingTop: Platform.OS === "web" ? 67 : insets.top + 4,
             backgroundColor: colors.headerBg,
             borderBottomColor: colors.border,
-            opacity: headerAnim,
-            transform: [{ translateY: headerAnim.interpolate({ inputRange: [0, 1], outputRange: [-12, 0] }) }],
+            opacity: headerFade,
+            transform: [{ translateY: headerSlide }],
           },
         ]}
       >
@@ -112,16 +158,18 @@ export default function HomeScreen() {
             )}
           </View>
         </View>
-        <TouchableOpacity onPress={() => router.push("/search")} style={[styles.headerBtn, { backgroundColor: colors.input, borderColor: colors.border }]}>
-          <Feather name="search" size={17} color={colors.mutedForeground} />
-          <Text style={[styles.headerSearchText, { color: colors.mutedForeground }]}>Search...</Text>
+        <TouchableOpacity
+          onPress={() => router.push("/settings")}
+          style={[styles.headerIconBtn, { backgroundColor: colors.input, borderColor: colors.border }]}
+        >
+          <Feather name="settings" size={18} color={colors.mutedForeground} />
         </TouchableOpacity>
       </Animated.View>
 
       <Animated.View
         style={{
-          opacity: shortcutAnim,
-          transform: [{ translateY: shortcutAnim.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }],
+          opacity: shortcutFade,
+          transform: [{ translateY: shortcutSlide }],
         }}
       >
         <ScrollView
@@ -130,7 +178,7 @@ export default function HomeScreen() {
           contentContainerStyle={[styles.shortcuts, { borderBottomColor: colors.border }]}
         >
           {SHORTCUTS.map((s) => (
-            <TouchableOpacity key={s.label} onPress={() => router.push(s.route as any)} style={styles.shortcut} activeOpacity={0.75}>
+            <TouchableOpacity key={s.label} onPress={() => router.push(s.route as any)} style={styles.shortcut} activeOpacity={0.7}>
               <View style={[styles.shortcutIcon, { backgroundColor: s.color + "18" }]}>
                 <Feather name={s.icon as any} size={20} color={s.color} />
               </View>
@@ -144,9 +192,14 @@ export default function HomeScreen() {
             <TouchableOpacity
               key={f}
               onPress={() => setActiveFilter(f)}
-              style={[styles.filterTab, activeFilter === f && { borderBottomColor: colors.primary, borderBottomWidth: 2.5 }]}
+              style={[
+                styles.filterTab,
+                activeFilter === f && { borderBottomColor: colors.primary, borderBottomWidth: 2.5 },
+              ]}
             >
-              <Text style={[styles.filterText, { color: activeFilter === f ? colors.primary : colors.mutedForeground }]}>{f}</Text>
+              <Text style={[styles.filterText, { color: activeFilter === f ? colors.primary : colors.mutedForeground }]}>
+                {f}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -168,15 +221,22 @@ export default function HomeScreen() {
           />
         )}
         ListHeaderComponent={headerComponent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+        }
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Feather name="wind" size={40} color={colors.mutedForeground} />
+            <View style={[styles.emptyIconWrap, { backgroundColor: colors.card }]}>
+              <Feather name="wind" size={36} color={colors.mutedForeground} />
+            </View>
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No posts yet</Text>
             <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>Be the first to post something!</Text>
-            <TouchableOpacity onPress={() => router.push("/create-post")} style={[styles.createBtn, { backgroundColor: colors.primary }]}>
+            <TouchableOpacity
+              onPress={() => router.push("/create-post")}
+              style={[styles.createBtn, { backgroundColor: colors.primary }]}
+            >
               <Feather name="plus" size={16} color="#FFF" />
               <Text style={styles.createBtnText}>Create Post</Text>
             </TouchableOpacity>
@@ -189,14 +249,22 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1, gap: 12 },
+  header: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1,
+  },
   headerLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
-  logoSmall: { width: 34, height: 34, borderRadius: 10, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  logoSmall: {
+    width: 36, height: 36, borderRadius: 10, borderWidth: 1,
+    alignItems: "center", justifyContent: "center",
+  },
   logoChar: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  headerTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  headerTitle: { fontSize: 20, fontFamily: "Inter_700Bold" },
   headerCollege: { fontSize: 11, fontFamily: "Inter_400Regular" },
-  headerBtn: { flex: 1, flexDirection: "row", alignItems: "center", gap: 7, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
-  headerSearchText: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  headerIconBtn: {
+    width: 38, height: 38, borderRadius: 10, borderWidth: 1,
+    alignItems: "center", justifyContent: "center",
+  },
   shortcuts: { paddingHorizontal: 12, paddingVertical: 14, gap: 6, borderBottomWidth: 1 },
   shortcut: { alignItems: "center", gap: 6, marginHorizontal: 6 },
   shortcutIcon: { width: 52, height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center" },
@@ -205,8 +273,15 @@ const styles = StyleSheet.create({
   filterTab: { flex: 1, alignItems: "center", paddingVertical: 12 },
   filterText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   emptyState: { alignItems: "center", gap: 14, paddingTop: 64, paddingHorizontal: 32 },
+  emptyIconWrap: {
+    width: 80, height: 80, borderRadius: 24,
+    alignItems: "center", justifyContent: "center",
+  },
   emptyTitle: { fontSize: 20, fontFamily: "Inter_700Bold" },
   emptySub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
-  createBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12, marginTop: 8 },
+  createBtn: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12, marginTop: 8,
+  },
   createBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#FFF" },
 });

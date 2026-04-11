@@ -45,7 +45,7 @@ export default function CreateTeamScreen() {
         poster: user?.username || "anonymous",
         posterId: user?.id || "",
       });
-      showSuccess("Team post created! 🎉", "Your team request is now live.");
+      showSuccess("Team post created!", "Your team request is now live.");
       router.replace("/teams");
     } catch {
       showError("Failed to post", "Please try again.");

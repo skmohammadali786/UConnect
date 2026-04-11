@@ -78,7 +78,7 @@ export default function EditProfileScreen() {
     setSaving(true);
     await updateUser({ displayName: displayName.trim(), bio: bio.trim(), interests: selectedInterests, avatar: avatarUri });
     setSaving(false);
-    showSuccess("Profile updated! ✨", "Your changes have been saved.");
+    showSuccess("Profile updated!", "Your changes have been saved.");
     router.back();
   };
 

@@ -27,7 +27,7 @@ export default function RateScreen() {
   const handleSubmit = () => {
     if (rating === 0) return;
     setSubmitted(true);
-    showSuccess("Thank you! ⭐", "Your review helps us grow.");
+    showSuccess("Thank you!", "Your review helps us grow.");
   };
 
   if (submitted) {
@@ -44,7 +44,7 @@ export default function RateScreen() {
           <View style={[styles.successIcon, { backgroundColor: colors.primary + "15" }]}>
             <Feather name="heart" size={48} color={colors.primary} />
           </View>
-          <Text style={[styles.successTitle, { color: colors.foreground }]}>Thank you! 🎉</Text>
+          <Text style={[styles.successTitle, { color: colors.foreground }]}>Thank you!</Text>
           <Text style={[styles.successSubtitle, { color: colors.mutedForeground }]}>
             Your {rating}-star review means a lot to our team. We'll keep making UConnect better for you!
           </Text>
@@ -61,7 +61,7 @@ export default function RateScreen() {
     );
   }
 
-  const messages = ["", "It was bad 😕", "Could be better 😐", "It was okay 🙂", "Really good! 😊", "Absolutely love it! 🤩"];
+  const messages = ["", "It was bad", "Could be better", "It was okay", "Really good!", "Absolutely love it!"];
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

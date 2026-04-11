@@ -90,7 +90,7 @@ export default function AboutScreen() {
           </View>
 
           <Text style={[styles.footer, { color: colors.mutedForeground }]}>
-            Made with ❤️ for students, by students{"\n"}© 2025 UConnect. All rights reserved.
+            Made for students, by students{"\n"}© 2025 UConnect. All rights reserved.
           </Text>
         </View>
       </ScrollView>

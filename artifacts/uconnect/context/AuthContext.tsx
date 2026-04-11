@@ -43,7 +43,7 @@ export const DEMO_USER: User = {
   college: "IIT Delhi",
   branch: "Computer Science",
   year: "3rd Year",
-  bio: "Building cool stuff. Coffee-fueled. Always learning. 🚀",
+  bio: "Building cool stuff. Coffee-fueled. Always learning.",
   avatar: null,
   interests: ["Coding", "Machine Learning", "Startups", "Gaming", "Open Source"],
   followers: 128,

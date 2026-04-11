@@ -76,7 +76,7 @@ function EventCard({ item, index, rsvpIds, onRSVP, colors }: any) {
             onPress={(e) => { e.stopPropagation?.(); onRSVP(item.id); }}
             style={[styles.attendBtn, { backgroundColor: isGoing ? colors.primary : "transparent", borderColor: isGoing ? colors.primary : colors.border }]}
           >
-            <Text style={[styles.attendBtnText, { color: isGoing ? "#FFF" : colors.foreground }]}>{isGoing ? "✓ Going" : "Attend"}</Text>
+            <Text style={[styles.attendBtnText, { color: isGoing ? "#FFF" : colors.foreground }]}>{isGoing ? "Going" : "Attend"}</Text>
           </TouchableOpacity>
         </View>
       </TouchableOpacity>

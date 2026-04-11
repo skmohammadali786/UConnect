@@ -53,7 +53,7 @@ export default function InternshipDetailScreen() {
       Animated.spring(applyAnim, { toValue: 1.08, tension: 200, friction: 5, useNativeDriver: ND }),
       Animated.spring(applyAnim, { toValue: 1, tension: 200, friction: 5, useNativeDriver: ND }),
     ]).start();
-    showSuccess(`Applied to ${internship.company}! 🎉`, "Application sent. They'll contact your college email.");
+    showSuccess(`Applied to ${internship.company}!`, "Application sent. They'll contact your college email.");
   };
 
   return (

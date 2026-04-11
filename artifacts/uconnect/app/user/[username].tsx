@@ -67,7 +67,7 @@ export default function UserProfileScreen() {
       Animated.spring(followAnim, { toValue: 1, tension: 200, friction: 8, useNativeDriver: ND }),
     ]).start();
     toggleFollow(profile.id);
-    showSuccess(following ? `Unfollowed @${key}` : `Now following @${key}! 🎉`);
+    showSuccess(following ? `Unfollowed @${key}` : `Now following @${key}!`);
   };
 
   const handleMessage = () => {

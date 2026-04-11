@@ -147,7 +147,7 @@ export default function CreatePostScreen() {
       autoDeleteAt,
     });
     setLoading(false);
-    showSuccess("Post published! 🎉", isAnonymous ? "Posted anonymously" : `Posted as @${user.username}`);
+    showSuccess("Post published!", isAnonymous ? "Posted anonymously" : `Posted as @${user.username}`);
     router.back();
   };
 
@@ -277,7 +277,7 @@ export default function CreatePostScreen() {
             <View style={[styles.mediaDivider, { backgroundColor: colors.border }]} />
             <TouchableOpacity onPress={handlePickVideo} disabled={!!videoUri} style={[styles.mediaBtn, { opacity: videoUri ? 0.4 : 1 }]}>
               <Feather name="video" size={16} color={colors.primary} />
-              <Text style={[styles.mediaBtnText, { color: colors.primary }]}>{videoUri ? "Video ✓" : "Video (≤30s)"}</Text>
+              <Text style={[styles.mediaBtnText, { color: colors.primary }]}>{videoUri ? "Video added" : "Video (≤30s)"}</Text>
             </TouchableOpacity>
           </View>
 

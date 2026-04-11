@@ -2,7 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Animated, FlatList, Platform, ScrollView, StyleSheet,
+  Animated, Easing, FlatList, Platform, ScrollView, StyleSheet,
   Text, TextInput, TouchableOpacity, View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -35,7 +35,7 @@ const SAMPLE_PEOPLE = [
   { id: "user_cs_nerd", username: "cs_nerd", displayName: "CS Nerd", college: "IIT Bombay", branch: "Computer Science", followers: 342, bio: "ICPC World Finalist. Algorithms & Coffee." },
   { id: "user_startup_girl", username: "startup_girl", displayName: "Startup Girl", college: "IIM Ahmedabad", branch: "MBA", followers: 891, bio: "Building the next big thing. Failed 2x, learning forever." },
   { id: "user_shreya", username: "shreya_ee24", displayName: "Shreya EE", college: "IIT Delhi", branch: "Electrical", followers: 124, bio: "Circuit wizard. Loves robotics." },
-  { id: "user_arjun", username: "arjun_mech22", displayName: "Arjun Mech", college: "IIT Delhi", branch: "Mechanical", followers: 89, bio: "Mech + coding = ❤️" },
+  { id: "user_arjun", username: "arjun_mech22", displayName: "Arjun Mech", college: "IIT Delhi", branch: "Mechanical", followers: 89, bio: "Mech + coding." },
   { id: "user_priya", username: "priya_cs23", displayName: "Priya CS", college: "IIT Delhi", branch: "Computer Science", followers: 210, bio: "Full-stack dev. Open source enthusiast." },
 ];
 
@@ -57,10 +57,18 @@ function FadeSlideItem({ children, index, delay = 0, style }: { children: React.
   useEffect(() => {
     const t = setTimeout(() => {
       Animated.parallel([
-        Animated.timing(fadeAnim, { toValue: 1, duration: 280, useNativeDriver: ND }),
-        Animated.spring(slideAnim, { toValue: 0, tension: 100, friction: 14, useNativeDriver: ND }),
+        Animated.timing(fadeAnim, {
+          toValue: 1, duration: 380,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0, duration: 380,
+          easing: Easing.out(Easing.back(1.15)),
+          useNativeDriver: false,
+        }),
       ]).start();
-    }, delay + index * 50);
+    }, delay + index * 60);
     return () => clearTimeout(t);
   }, []);
 
@@ -215,7 +223,7 @@ export default function SearchScreen() {
             <Text style={[styles.tagName, { color: colors.foreground }]}>#{item.tag}</Text>
             {item.hot && (
               <View style={[styles.hotPill, { backgroundColor: "#EF444420", borderColor: "#EF444440" }]}>
-                <Text style={styles.hotText}>🔥 Hot</Text>
+                <Text style={styles.hotText}>Hot</Text>
               </View>
             )}
           </View>
@@ -394,7 +402,9 @@ export default function SearchScreen() {
                     >
                       <View style={styles.trendTop}>
                         <Text style={[styles.trendHash, { color: colors.primary }]}>#</Text>
-                        {item.hot && <Text style={styles.fireEmoji}>🔥</Text>}
+                        {item.hot && (
+                          <View style={[styles.hotDot, { backgroundColor: "#EF4444" }]} />
+                        )}
                       </View>
                       <Text style={[styles.trendTagName, { color: colors.foreground }]}>{item.tag}</Text>
                       <Text style={[styles.trendPostCount, { color: colors.mutedForeground }]}>{item.posts.toLocaleString()} posts</Text>
@@ -509,7 +519,7 @@ const styles = StyleSheet.create({
   trendCard: { flex: 1, borderRadius: 14, borderWidth: 1, padding: 14, gap: 4 },
   trendTop: { flexDirection: "row", alignItems: "center", gap: 2 },
   trendHash: { fontSize: 20, fontFamily: "Inter_700Bold" },
-  fireEmoji: { fontSize: 16 },
+  hotDot: { width: 7, height: 7, borderRadius: 3.5, marginLeft: 2 },
   trendTagName: { fontSize: 14, fontFamily: "Inter_700Bold" },
   trendPostCount: { fontSize: 11, fontFamily: "Inter_400Regular" },
   personHorizontalCard: { width: 150, borderRadius: 16, borderWidth: 1, padding: 14, alignItems: "center", gap: 6 },

@@ -79,21 +79,21 @@ export default function MyReportsScreen() {
                 {report.status === "pending" && (
                   <View style={[styles.pendingNote, { backgroundColor: "#F59E0B10", borderColor: "#F59E0B30" }]}>
                     <Text style={[styles.pendingNoteText, { color: "#F59E0B" }]}>
-                      ⏳ Your report is in the review queue. We take every report seriously.
+                      Your report is in the review queue. We take every report seriously.
                     </Text>
                   </View>
                 )}
                 {report.status === "reviewed" && (
                   <View style={[styles.pendingNote, { backgroundColor: "#3B82F610", borderColor: "#3B82F630" }]}>
                     <Text style={[styles.pendingNoteText, { color: "#3B82F6" }]}>
-                      👁 This report has been reviewed by our moderation team.
+                      This report has been reviewed by our moderation team.
                     </Text>
                   </View>
                 )}
                 {report.status === "resolved" && (
                   <View style={[styles.pendingNote, { backgroundColor: "#00A86B10", borderColor: "#00A86B30" }]}>
                     <Text style={[styles.pendingNoteText, { color: "#00A86B" }]}>
-                      ✅ Action has been taken. Thank you for keeping UConnect safe.
+                      Action has been taken. Thank you for keeping UConnect safe.
                     </Text>
                   </View>
                 )}

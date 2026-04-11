@@ -90,7 +90,7 @@ function TeamCard({ item, index, requestedIds, onRequest, onCancel, isMyTeam, pe
               ]}
             >
               <Text style={[styles.requestText, { color: requested ? colors.foreground : "#FFF" }]}>
-                {requested ? "✓ Requested" : "Request"}
+                {requested ? "Requested" : "Request"}
               </Text>
             </TouchableOpacity>
           ) : (
@@ -133,7 +133,7 @@ export default function TeamsScreen() {
       college: user.college,
       message: "I'd love to join your team!",
     });
-    showSuccess("Request sent! 🎉", "The team admin will review your request.");
+    showSuccess("Request sent!", "The team admin will review your request.");
   };
 
   const handleCancel = async (teamId: string) => {
