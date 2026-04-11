@@ -1,0 +1,14 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "gpcj7DwEQ2efy4_qFRLcc"
+uri = "file://artifacts/uconnect/assets/images/icon.png"
+type = "image"
+title = "uconnect app icon"
+
+[[generated]]
+id = "6_UUoPHfje2MS8nevtt_i"
+uri = "file://artifacts/uconnect/assets/images/splash.png"
+type = "image"
+title = "uconnect splash screen"
