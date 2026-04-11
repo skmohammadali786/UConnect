@@ -15,7 +15,7 @@ const DISCOVER_SECTIONS = [
   { id: "events", icon: "calendar", label: "Events", route: "/events" },
   { id: "teams", icon: "users", label: "Teams", route: "/teams" },
   { id: "confessions", icon: "message-square", label: "Confessions", route: "/confessions" },
-  { id: "communities", icon: "globe", label: "Communities", route: "/communities" },
+  { id: "invite", icon: "user-plus", label: "Invite Friends", route: "/invite" },
 ];
 
 export default function SearchScreen() {
