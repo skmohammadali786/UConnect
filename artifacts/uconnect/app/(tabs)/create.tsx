@@ -1,15 +1,12 @@
 import { router } from "expo-router";
 import React, { useEffect } from "react";
 import { View } from "react-native";
+import { useColors } from "@/hooks/useColors";
 
 export default function CreateTab() {
+  const colors = useColors();
   useEffect(() => {
-    // Push instead of replace so back button works
-    const timer = setTimeout(() => {
-      router.push("/create-post");
-    }, 50);
-    return () => clearTimeout(timer);
+    router.replace("/create-post" as any);
   }, []);
-
-  return <View style={{ flex: 1 }} />;
+  return <View style={{ flex: 1, backgroundColor: colors.background }} />;
 }

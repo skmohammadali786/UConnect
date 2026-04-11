@@ -12,7 +12,7 @@ import { useToast } from "@/components/Toast";
 
 const ND = Platform.OS !== "web";
 
-const FILTERS = ["Trending", "Latest", "Following"];
+const FILTERS = ["Latest", "Trending", "Following"];
 
 const SHORTCUTS = [
   { icon: "message-circle", label: "Confessions", route: "/confessions", color: "#EF4444" },
@@ -22,6 +22,28 @@ const SHORTCUTS = [
   { icon: "book-open", label: "Notes", route: "/notes", color: "#3B82F6" },
   { icon: "send", label: "Chat", route: "/chat", color: "#06B6D4" },
 ];
+
+function AnimatedPostCard({ post, index, currentUserId, onDelete }: any) {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
+
+  useEffect(() => {
+    const delay = Math.min(index * 60, 400);
+    const timer = setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(fadeAnim, { toValue: 1, duration: 320, useNativeDriver: ND }),
+        Animated.spring(slideAnim, { toValue: 0, tension: 90, friction: 14, useNativeDriver: ND }),
+      ]).start();
+    }, delay);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+      <PostCard post={post} currentUserId={currentUserId} onDelete={onDelete} index={index} />
+    </Animated.View>
+  );
+}
 
 export default function HomeScreen() {
   const colors = useColors();
@@ -33,20 +55,15 @@ export default function HomeScreen() {
   const [activeFilter, setActiveFilter] = useState("Latest");
   const [refreshing, setRefreshing] = useState(false);
 
-  const bellAnim = useRef(new Animated.Value(1)).current;
   const headerAnim = useRef(new Animated.Value(0)).current;
+  const shortcutAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.timing(headerAnim, { toValue: 1, duration: 320, useNativeDriver: ND }).start();
-  }, []);
-
-  const pulseBell = () => {
-    Animated.sequence([
-      Animated.spring(bellAnim, { toValue: 1.25, tension: 300, friction: 5, useNativeDriver: ND }),
-      Animated.spring(bellAnim, { toValue: 1, tension: 200, friction: 8, useNativeDriver: ND }),
+    Animated.stagger(80, [
+      Animated.spring(headerAnim, { toValue: 1, tension: 100, friction: 14, useNativeDriver: ND }),
+      Animated.spring(shortcutAnim, { toValue: 1, tension: 100, friction: 14, useNativeDriver: ND }),
     ]).start();
-    router.push("/notifications" as any);
-  };
+  }, []);
 
   const filteredPosts = posts.filter((p) => {
     if (!settings.showSensitiveContent && p.tag === "Confession" && p.isAnonymous) return false;
@@ -55,7 +72,7 @@ export default function HomeScreen() {
 
   const sortedPosts = [...filteredPosts].sort((a, b) => {
     if (activeFilter === "Trending") return (b.upvotes + b.commentCount) - (a.upvotes + a.commentCount);
-    if (activeFilter === "Following") return (b.upvotes - a.upvotes);
+    if (activeFilter === "Following") return b.upvotes - a.upvotes;
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
@@ -71,55 +88,70 @@ export default function HomeScreen() {
   }, [deletePost, showSuccess]);
 
   const headerComponent = (
-    <Animated.View style={{ opacity: headerAnim }}>
-      <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 4, backgroundColor: colors.headerBg, borderBottomColor: colors.border }]}>
+    <View>
+      <Animated.View
+        style={[
+          styles.header,
+          {
+            paddingTop: Platform.OS === "web" ? 67 : insets.top + 4,
+            backgroundColor: colors.headerBg,
+            borderBottomColor: colors.border,
+            opacity: headerAnim,
+            transform: [{ translateY: headerAnim.interpolate({ inputRange: [0, 1], outputRange: [-12, 0] }) }],
+          },
+        ]}
+      >
         <View style={styles.headerLeft}>
           <View style={[styles.logoSmall, { backgroundColor: colors.primary + "20", borderColor: colors.primary + "40" }]}>
             <Text style={[styles.logoChar, { color: colors.primary }]}>U</Text>
           </View>
           <View>
             <Text style={[styles.headerTitle, { color: colors.foreground }]}>UConnect</Text>
-            {user?.college && <Text style={[styles.headerCollege, { color: colors.mutedForeground }]}>{user.college}</Text>}
+            {user?.college && (
+              <Text style={[styles.headerCollege, { color: colors.mutedForeground }]}>{user.college}</Text>
+            )}
           </View>
         </View>
-        <TouchableOpacity onPress={pulseBell} style={styles.headerBtn}>
-          <Animated.View style={{ transform: [{ scale: bellAnim }] }}>
-            <Feather name="bell" size={20} color={colors.foreground} />
-          </Animated.View>
+        <TouchableOpacity onPress={() => router.push("/search")} style={[styles.headerBtn, { backgroundColor: colors.input, borderColor: colors.border }]}>
+          <Feather name="search" size={17} color={colors.mutedForeground} />
+          <Text style={[styles.headerSearchText, { color: colors.mutedForeground }]}>Search...</Text>
         </TouchableOpacity>
-      </View>
+      </Animated.View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.shortcuts, { borderBottomColor: colors.border }]}>
-        {SHORTCUTS.map((s, i) => (
-          <TouchableOpacity key={s.label} onPress={() => router.push(s.route as any)} style={styles.shortcut}>
-            <View style={[styles.shortcutIcon, { backgroundColor: s.color + "18" }]}>
-              <Feather name={s.icon as any} size={20} color={s.color} />
-            </View>
-            <Text style={[styles.shortcutLabel, { color: colors.mutedForeground }]}>{s.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <Animated.View
+        style={{
+          opacity: shortcutAnim,
+          transform: [{ translateY: shortcutAnim.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }],
+        }}
+      >
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={[styles.shortcuts, { borderBottomColor: colors.border }]}
+        >
+          {SHORTCUTS.map((s) => (
+            <TouchableOpacity key={s.label} onPress={() => router.push(s.route as any)} style={styles.shortcut} activeOpacity={0.75}>
+              <View style={[styles.shortcutIcon, { backgroundColor: s.color + "18" }]}>
+                <Feather name={s.icon as any} size={20} color={s.color} />
+              </View>
+              <Text style={[styles.shortcutLabel, { color: colors.mutedForeground }]}>{s.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
 
-      <View style={[styles.filterRow, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-        {FILTERS.map((f) => (
-          <TouchableOpacity key={f} onPress={() => setActiveFilter(f)} style={[styles.filterTab, activeFilter === f && { borderBottomColor: colors.primary, borderBottomWidth: 2.5 }]}>
-            <Text style={[styles.filterText, { color: activeFilter === f ? colors.primary : colors.mutedForeground }]}>{f}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {!settings.showSensitiveContent && (
-        <View style={[styles.filterNotice, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Feather name="eye-off" size={13} color={colors.mutedForeground} />
-          <Text style={[styles.filterNoticeText, { color: colors.mutedForeground }]}>
-            Sensitive confessions hidden · Enable in Settings
-          </Text>
-          <TouchableOpacity onPress={() => router.push("/settings" as any)}>
-            <Text style={[styles.filterNoticeAction, { color: colors.primary }]}>Settings</Text>
-          </TouchableOpacity>
+        <View style={[styles.filterRow, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+          {FILTERS.map((f) => (
+            <TouchableOpacity
+              key={f}
+              onPress={() => setActiveFilter(f)}
+              style={[styles.filterTab, activeFilter === f && { borderBottomColor: colors.primary, borderBottomWidth: 2.5 }]}
+            >
+              <Text style={[styles.filterText, { color: activeFilter === f ? colors.primary : colors.mutedForeground }]}>{f}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
-      )}
-    </Animated.View>
+      </Animated.View>
+    </View>
   );
 
   return (
@@ -128,7 +160,7 @@ export default function HomeScreen() {
         data={sortedPosts}
         keyExtractor={(item) => item.id}
         renderItem={({ item, index }) => (
-          <PostCard
+          <AnimatedPostCard
             post={item}
             currentUserId={user?.id || ""}
             onDelete={handleDelete}
@@ -157,13 +189,14 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1 },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1, gap: 12 },
   headerLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
   logoSmall: { width: 34, height: 34, borderRadius: 10, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   logoChar: { fontSize: 18, fontFamily: "Inter_700Bold" },
   headerTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
   headerCollege: { fontSize: 11, fontFamily: "Inter_400Regular" },
-  headerBtn: { padding: 8 },
+  headerBtn: { flex: 1, flexDirection: "row", alignItems: "center", gap: 7, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
+  headerSearchText: { fontSize: 14, fontFamily: "Inter_400Regular" },
   shortcuts: { paddingHorizontal: 12, paddingVertical: 14, gap: 6, borderBottomWidth: 1 },
   shortcut: { alignItems: "center", gap: 6, marginHorizontal: 6 },
   shortcutIcon: { width: 52, height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center" },
@@ -171,9 +204,6 @@ const styles = StyleSheet.create({
   filterRow: { flexDirection: "row", borderBottomWidth: 1 },
   filterTab: { flex: 1, alignItems: "center", paddingVertical: 12 },
   filterText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  filterNotice: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1 },
-  filterNoticeText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular" },
-  filterNoticeAction: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
   emptyState: { alignItems: "center", gap: 14, paddingTop: 64, paddingHorizontal: 32 },
   emptyTitle: { fontSize: 20, fontFamily: "Inter_700Bold" },
   emptySub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },

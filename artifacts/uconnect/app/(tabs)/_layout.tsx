@@ -2,8 +2,54 @@ import { BlurView } from "expo-blur";
 import { Tabs, router } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { Platform, StyleSheet, View } from "react-native";
+import { Animated, Platform, StyleSheet, TouchableOpacity, View } from "react-native";
 import { useColors } from "@/hooks/useColors";
+
+const ND = Platform.OS !== "web";
+
+function CreateTabButton() {
+  const colors = useColors();
+  const scaleAnim = React.useRef(new Animated.Value(1)).current;
+
+  const onPressIn = () => {
+    Animated.spring(scaleAnim, { toValue: 0.88, tension: 300, friction: 8, useNativeDriver: ND }).start();
+  };
+
+  const onPressOut = () => {
+    Animated.spring(scaleAnim, { toValue: 1, tension: 200, friction: 8, useNativeDriver: ND }).start();
+  };
+
+  const onPress = () => {
+    Animated.sequence([
+      Animated.spring(scaleAnim, { toValue: 0.82, tension: 350, friction: 6, useNativeDriver: ND }),
+      Animated.spring(scaleAnim, { toValue: 1, tension: 200, friction: 8, useNativeDriver: ND }),
+    ]).start();
+    router.push("/create-post");
+  };
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      activeOpacity={1}
+      style={styles.createTabWrap}
+    >
+      <Animated.View
+        style={[
+          styles.createBtn,
+          {
+            backgroundColor: colors.primary,
+            shadowColor: colors.primary,
+            transform: [{ scale: scaleAnim }],
+          },
+        ]}
+      >
+        <Feather name="plus" size={24} color="#FFF" />
+      </Animated.View>
+    </TouchableOpacity>
+  );
+}
 
 export default function TabLayout() {
   const colors = useColors();
@@ -41,7 +87,9 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Home",
-          tabBarIcon: ({ color }) => <Feather name="home" size={22} color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <Feather name={focused ? "home" : "home"} size={22} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -55,18 +103,9 @@ export default function TabLayout() {
         name="create"
         options={{
           title: "",
-          tabBarIcon: ({ color, focused }) => (
-            <View style={[styles.createBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]}>
-              <Feather name="plus" size={24} color="#FFFFFF" />
-            </View>
-          ),
+          tabBarLabel: () => null,
+          tabBarButton: () => <CreateTabButton />,
         }}
-        listeners={() => ({
-          tabPress: (e) => {
-            e.preventDefault();
-            router.push("/create-post");
-          },
-        })}
       />
       <Tabs.Screen
         name="notifications"
@@ -87,16 +126,21 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
-  createBtn: {
-    width: 50,
-    height: 50,
-    borderRadius: 15,
+  createTabWrap: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 4,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.45,
-    shadowRadius: 10,
-    elevation: 10,
+    paddingBottom: 4,
+  },
+  createBtn: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 14,
+    elevation: 12,
   },
 });
