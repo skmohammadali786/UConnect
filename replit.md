@@ -80,6 +80,18 @@ pnpm workspace monorepo with UConnect — a React Native Expo mobile app for pri
 - `EXPO_PUBLIC_SUPABASE_URL` — Supabase project URL
 - `EXPO_PUBLIC_SUPABASE_ANON_KEY` — Supabase anon key (secret)
 
+### Android APK Build (E2E testing)
+- `artifacts/uconnect/app.json` now includes Android package metadata required for builds.
+- `artifacts/uconnect/eas.json` includes:
+  - `preview` profile → internal distribution APK
+  - `production` profile → Android App Bundle (AAB)
+- Build commands from repo root:
+  - `cd artifacts/uconnect && pnpm run build:apk` (generates installable APK with EAS)
+  - `cd artifacts/uconnect && pnpm run build:aab` (generates production AAB)
+- First-time setup:
+  - Sign in to Expo before building: `pnpm dlx eas-cli@latest login`
+  - Ensure `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` are set for runtime API access during E2E testing.
+
 ### Animation Pattern
 - **Always** use `const ND = Platform.OS !== "web"` for `useNativeDriver`
 - Applies to ALL screens — PostCard, AppButton, FadeInView, settings, confessions, etc.
