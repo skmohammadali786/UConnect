@@ -2,10 +2,11 @@ import { Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, FlatList, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Animated, Easing, FlatList, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useToast } from "@/components/Toast";
+import { TypewriterText } from "@/components/TypewriterText";
 
 interface Note {
   id: string;
@@ -89,6 +90,15 @@ export default function NotesScreen() {
   const [activeSubject, setActiveSubject] = useState("All");
   const [search, setSearch] = useState("");
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  const headerAnim = useRef(new Animated.Value(0)).current;
+  const headerSlide = useRef(new Animated.Value(-14)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(headerAnim, { toValue: 1, duration: 320, easing: Easing.out(Easing.cubic), useNativeDriver: false }),
+      Animated.spring(headerSlide, { toValue: 0, friction: 9, tension: 100, useNativeDriver: false }),
+    ]).start();
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -117,18 +127,23 @@ export default function NotesScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, backgroundColor: colors.headerBg, borderBottomColor: colors.border }]}>
+      <Animated.View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, backgroundColor: colors.headerBg, borderBottomColor: colors.border, opacity: headerAnim, transform: [{ translateY: headerSlide }] }]}>
         <TouchableOpacity onPress={() => router.back()}>
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
         <View>
-          <Text style={[styles.title, { color: colors.foreground }]}>Notes</Text>
+          <TypewriterText
+            text="Notes"
+            style={[styles.title, { color: colors.foreground }]}
+            delay={300}
+            speed={70}
+          />
           {savedIds.size > 0 && <Text style={[styles.subtitle, { color: colors.primary }]}>{savedIds.size} saved</Text>}
         </View>
         <TouchableOpacity onPress={() => router.push("/notes/upload" as any)}>
           <Feather name="upload" size={20} color={colors.primary} />
         </TouchableOpacity>
-      </View>
+      </Animated.View>
       <View style={[styles.searchWrap, { borderBottomColor: colors.border }]}>
         <View style={[styles.searchBar, { backgroundColor: colors.input, borderColor: colors.border }]}>
           <Feather name="search" size={16} color={colors.mutedForeground} />

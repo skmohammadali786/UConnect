@@ -2,10 +2,11 @@ import { Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, FlatList, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Animated, Easing, FlatList, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useToast } from "@/components/Toast";
+import { TypewriterText } from "@/components/TypewriterText";
 
 interface Event {
   id: string;
@@ -90,6 +91,15 @@ export default function EventsScreen() {
   const { showSuccess } = useToast();
   const [activeCategory, setActiveCategory] = useState("All");
   const [rsvpIds, setRsvpIds] = useState<Set<string>>(new Set());
+  const headerAnim = useRef(new Animated.Value(0)).current;
+  const headerSlide = useRef(new Animated.Value(-14)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(headerAnim, { toValue: 1, duration: 320, easing: Easing.out(Easing.cubic), useNativeDriver: false }),
+      Animated.spring(headerSlide, { toValue: 0, friction: 9, tension: 100, useNativeDriver: false }),
+    ]).start();
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -114,18 +124,23 @@ export default function EventsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, borderBottomColor: colors.border }]}>
+      <Animated.View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, borderBottomColor: colors.border, opacity: headerAnim, transform: [{ translateY: headerSlide }] }]}>
         <TouchableOpacity onPress={() => router.back()}>
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
         <View>
-          <Text style={[styles.title, { color: colors.foreground }]}>Events</Text>
+          <TypewriterText
+            text="Events"
+            style={[styles.title, { color: colors.foreground }]}
+            delay={300}
+            speed={70}
+          />
           {rsvpIds.size > 0 && <Text style={[styles.subtitle, { color: colors.primary }]}>{rsvpIds.size} attending</Text>}
         </View>
         <TouchableOpacity onPress={() => router.push("/events/create")}>
           <Feather name="plus" size={22} color={colors.primary} />
         </TouchableOpacity>
-      </View>
+      </Animated.View>
       <FlatList
         data={filtered}
         keyExtractor={(item) => item.id}

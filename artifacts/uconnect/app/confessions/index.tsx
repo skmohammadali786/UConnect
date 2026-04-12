@@ -7,6 +7,7 @@ import { useColors } from "@/hooks/useColors";
 import { useConfessions } from "@/context/ConfessionsContext";
 import { useSettings } from "@/context/SettingsContext";
 import { formatRelativeTime } from "@/utils/time";
+import { TypewriterText } from "@/components/TypewriterText";
 
 const ND = Platform.OS !== "web";
 
@@ -108,7 +109,12 @@ export default function ConfessionsScreen() {
             <Feather name="arrow-left" size={22} color={colors.foreground} />
           </TouchableOpacity>
           <View>
-            <Text style={[styles.title, { color: colors.foreground }]}>Confessions</Text>
+            <TypewriterText
+              text="Confessions"
+              style={[styles.title, { color: colors.foreground }]}
+              delay={300}
+              speed={55}
+            />
             <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>{confessions.length} anonymous confessions</Text>
           </View>
           <TouchableOpacity onPress={() => router.push("/confessions/create")} style={[styles.addBtn, { backgroundColor: colors.primary }]}>

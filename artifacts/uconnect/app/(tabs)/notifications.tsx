@@ -1,12 +1,13 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React from "react";
-import { FlatList, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { Animated, Easing, FlatList, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useNotifications } from "@/context/NotificationsContext";
 import type { Notification, NotificationType } from "@/context/NotificationsContext";
 import { formatRelativeTime } from "@/utils/time";
+import { TypewriterText } from "@/components/TypewriterText";
 
 const NOTIFICATION_ICONS: Record<NotificationType, keyof typeof Feather.glyphMap> = {
   reply: "message-circle",
@@ -32,6 +33,15 @@ export default function NotificationsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { notifications, unreadCount, markRead, markAllRead, deleteNotification } = useNotifications();
+  const headerAnim = useRef(new Animated.Value(0)).current;
+  const headerSlide = useRef(new Animated.Value(-16)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(headerAnim, { toValue: 1, duration: 340, easing: Easing.out(Easing.cubic), useNativeDriver: false }),
+      Animated.spring(headerSlide, { toValue: 0, friction: 9, tension: 100, useNativeDriver: false }),
+    ]).start();
+  }, []);
 
   const handlePress = (n: Notification) => {
     markRead(n.id);
@@ -44,14 +54,30 @@ export default function NotificationsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, backgroundColor: colors.headerBg, borderBottomColor: colors.border }]}>
-        <Text style={[styles.title, { color: colors.foreground }]}>Notifications</Text>
+      <Animated.View
+        style={[
+          styles.header,
+          {
+            paddingTop: Platform.OS === "web" ? 67 : insets.top + 8,
+            backgroundColor: colors.headerBg,
+            borderBottomColor: colors.border,
+            opacity: headerAnim,
+            transform: [{ translateY: headerSlide }],
+          },
+        ]}
+      >
+        <TypewriterText
+          text="Notifications"
+          style={[styles.title, { color: colors.foreground }]}
+          delay={300}
+          speed={55}
+        />
         {unreadCount > 0 && (
           <TouchableOpacity onPress={markAllRead}>
             <Text style={[styles.markAll, { color: colors.primary }]}>Mark all read</Text>
           </TouchableOpacity>
         )}
-      </View>
+      </Animated.View>
 
       <FlatList
         data={notifications}

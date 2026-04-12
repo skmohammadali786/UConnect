@@ -9,6 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useToast } from "@/components/Toast";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { TypewriterText } from "@/components/TypewriterText";
 
 const ND = Platform.OS !== "web";
 
@@ -124,7 +125,12 @@ export default function SettingsScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.foreground }]}>Settings</Text>
+        <TypewriterText
+          text="Settings"
+          style={[styles.title, { color: colors.foreground }]}
+          delay={300}
+          speed={70}
+        />
         <View style={{ width: 30 }} />
       </View>
 

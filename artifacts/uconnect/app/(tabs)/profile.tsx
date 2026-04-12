@@ -13,6 +13,7 @@ import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { usePosts } from "@/context/PostsContext";
 import { useToast } from "@/components/Toast";
+import { TypewriterText } from "@/components/TypewriterText";
 
 const INTERNSHIP_KEY = "@uconnect_applied_internships";
 const NOTES_KEY = "@uconnect_saved_notes";
@@ -214,7 +215,12 @@ export default function ProfileScreen() {
   const ListHeader = (
     <View>
       <View style={[styles.topBar, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, backgroundColor: colors.headerBg, borderBottomColor: colors.border }]}>
-        <Text style={[styles.topBarTitle, { color: colors.foreground }]}>Profile</Text>
+        <TypewriterText
+          text="Profile"
+          style={[styles.topBarTitle, { color: colors.foreground }]}
+          delay={260}
+          speed={70}
+        />
         <View style={{ width: 36 }} />
       </View>
 

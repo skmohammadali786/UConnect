@@ -13,6 +13,7 @@ import { useSocial } from "@/context/SocialContext";
 import { useToast } from "@/components/Toast";
 import { PostCard } from "@/components/PostCard";
 import { formatRelativeTime } from "@/utils/time";
+import { TypewriterText } from "@/components/TypewriterText";
 
 const ND = Platform.OS !== "web";
 
@@ -264,7 +265,12 @@ export default function SearchScreen() {
         ]}
       >
         <View style={styles.headerTop}>
-          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Search</Text>
+          <TypewriterText
+            text="Search"
+            style={[styles.headerTitle, { color: colors.foreground }]}
+            delay={360}
+            speed={70}
+          />
         </View>
         <Animated.View style={[styles.searchBarWrap, { transform: [{ scale: barScaleAnim }] }]}>
           <View style={[styles.searchBar, { backgroundColor: colors.input, borderColor: focused ? colors.primary + "80" : colors.border }]}>

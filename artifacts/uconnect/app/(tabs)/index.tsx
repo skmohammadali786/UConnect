@@ -12,6 +12,7 @@ import { usePosts } from "@/context/PostsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useToast } from "@/components/Toast";
+import { TypewriterText } from "@/components/TypewriterText";
 
 const FILTERS = ["Latest", "Trending", "Following"];
 
@@ -142,7 +143,12 @@ export default function HomeScreen() {
             <Text style={[styles.logoChar, { color: colors.primary }]}>U</Text>
           </View>
           <View>
-            <Text style={[styles.headerTitle, { color: colors.foreground }]}>UConnect</Text>
+            <TypewriterText
+              text="UConnect"
+              style={[styles.headerTitle, { color: colors.foreground }]}
+              delay={350}
+              speed={65}
+            />
             {user?.college && (
               <Text style={[styles.headerCollege, { color: colors.mutedForeground }]}>{user.college}</Text>
             )}
