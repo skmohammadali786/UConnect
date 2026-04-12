@@ -110,13 +110,11 @@ export default function SettingsScreen() {
   const handleLogout = async () => {
     setLogoutConfirm(false);
     await logout();
-    router.replace("/auth/welcome");
   };
 
   const handleDeleteAccount = async () => {
     setDeleteConfirm(false);
     if (deleteAccount) await deleteAccount();
-    router.replace("/auth/welcome");
   };
 
   return (

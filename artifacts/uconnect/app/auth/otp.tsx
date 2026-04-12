@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
   backBtn: { marginBottom: 32 },
   backText: { fontSize: 14, fontFamily: "Inter_500Medium" },
   content: { gap: 24 },
-  title: { fontSize: 30, fontFamily: "Inter_700Bold", lineHeight: 38, letterSpacing: -0.5 },
+  title: { fontSize: 30, fontFamily: "Inter_700Bold", lineHeight: 38, letterSpacing: -0.5, textAlign: "center" },
   subtitle: { fontSize: 15, fontFamily: "Inter_400Regular", lineHeight: 24, textAlign: "center" },
   otpRow: { flexDirection: "row", justifyContent: "center", gap: 10 },
   otpInput: {

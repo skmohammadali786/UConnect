@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
   container: { flexGrow: 1, paddingHorizontal: 24, gap: 18 },
   backBtn: {},
   backText: { fontSize: 14, fontFamily: "Inter_500Medium" },
-  title: { fontSize: 28, fontFamily: "Inter_700Bold", lineHeight: 36, letterSpacing: -0.5 },
+  title: { fontSize: 28, fontFamily: "Inter_700Bold", lineHeight: 36, letterSpacing: -0.5, textAlign: "center" },
   avatarSection: { alignItems: "center", gap: 10 },
   avatar: { width: 80, height: 80, borderRadius: 40, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
   uploadText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },

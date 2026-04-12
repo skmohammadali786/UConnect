@@ -7,7 +7,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { useAuth } from "@/context/AuthContext";
 
 const { width: W, height: H } = Dimensions.get("window");
 const LOGO_SECTION_H = Math.max(H * 0.30, 180);
@@ -22,8 +21,6 @@ const FEATURES = [
 export default function WelcomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { loginAsDemo } = useAuth();
-
   // Logo
   const logoScale = useRef(new Animated.Value(0)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
@@ -227,20 +224,6 @@ export default function WelcomeScreen() {
           <Text style={[styles.outlineBtnText, { color: colors.primary }]}>Sign In</Text>
         </SpringButton>
 
-        <View style={styles.orRow}>
-          <View style={[styles.orLine, { backgroundColor: colors.border }]} />
-          <Text style={[styles.orText, { color: colors.mutedForeground }]}>or</Text>
-          <View style={[styles.orLine, { backgroundColor: colors.border }]} />
-        </View>
-
-        <TouchableOpacity
-          onPress={async () => { await loginAsDemo(); router.replace("/(tabs)/"); }}
-          style={[styles.demoBtn, { borderColor: colors.border }]}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.demoBtnText, { color: colors.mutedForeground }]}>Explore Demo (no sign up)</Text>
-        </TouchableOpacity>
-
         <Text style={[styles.disclaimer, { color: colors.mutedForeground }]}>
           Only students with a valid college email can join
         </Text>
@@ -342,13 +325,5 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
   outlineBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  orRow: { flexDirection: "row", alignItems: "center", gap: 14 },
-  orLine: { flex: 1, height: 1 },
-  orText: { fontSize: 12, fontFamily: "Inter_400Regular" },
-  demoBtn: {
-    borderWidth: 1, borderRadius: 12, paddingVertical: 12,
-    alignItems: "center",
-  },
-  demoBtnText: { fontSize: 14, fontFamily: "Inter_500Medium" },
   disclaimer: { fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "center", opacity: 0.6 },
 });
