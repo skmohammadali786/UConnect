@@ -74,8 +74,8 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
 
   const pulse = (anim: Animated.Value) => {
     Animated.sequence([
-      Animated.spring(anim, { toValue: 1.35, useNativeDriver: ND, tension: 250, friction: 5 }),
-      Animated.spring(anim, { toValue: 1, useNativeDriver: ND, tension: 250, friction: 5 }),
+      Animated.spring(anim, { toValue: 1.45, useNativeDriver: false, tension: 300, friction: 4 }),
+      Animated.spring(anim, { toValue: 1, useNativeDriver: false, tension: 200, friction: 6 }),
     ]).start();
   };
 
@@ -98,11 +98,11 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
   };
 
   const handlePressIn = () => {
-    Animated.spring(scaleAnim, { toValue: 0.982, useNativeDriver: ND, tension: 300, friction: 12 }).start();
+    Animated.spring(scaleAnim, { toValue: 0.97, useNativeDriver: false, tension: 280, friction: 10 }).start();
   };
 
   const handlePressOut = () => {
-    Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: ND, tension: 300, friction: 12 }).start();
+    Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: false, tension: 200, friction: 10 }).start();
   };
 
   const handlePress = () => {

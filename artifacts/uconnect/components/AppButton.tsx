@@ -41,11 +41,11 @@ export function AppButton({
   const ND = Platform.OS !== "web";
 
   const handlePressIn = () => {
-    Animated.spring(scale, { toValue: 0.96, useNativeDriver: ND, tension: 200, friction: 10 }).start();
+    Animated.spring(scale, { toValue: 0.93, useNativeDriver: false, tension: 280, friction: 8 }).start();
   };
 
   const handlePressOut = () => {
-    Animated.spring(scale, { toValue: 1, useNativeDriver: ND, tension: 200, friction: 10 }).start();
+    Animated.spring(scale, { toValue: 1, useNativeDriver: false, tension: 180, friction: 8 }).start();
   };
 
   const handlePress = () => {

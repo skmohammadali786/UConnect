@@ -26,29 +26,24 @@ const SHORTCUTS = [
 
 function AnimatedPostCard({ post, index, currentUserId, onDelete }: any) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(40)).current;
-  const scaleAnim = useRef(new Animated.Value(0.96)).current;
+  const slideAnim = useRef(new Animated.Value(56)).current;
+  const scaleAnim = useRef(new Animated.Value(0.88)).current;
 
   useEffect(() => {
-    const delay = Math.min(index * 80, 480);
+    const delay = Math.min(index * 90, 500);
     const timer = setTimeout(() => {
       Animated.parallel([
         Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 400,
+          toValue: 1, duration: 380,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: false,
         }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 380,
-          easing: Easing.out(Easing.back(1.2)),
+        Animated.spring(slideAnim, {
+          toValue: 0, friction: 8, tension: 80,
           useNativeDriver: false,
         }),
-        Animated.timing(scaleAnim, {
-          toValue: 1,
-          duration: 380,
-          easing: Easing.out(Easing.cubic),
+        Animated.spring(scaleAnim, {
+          toValue: 1, friction: 7, tension: 90,
           useNativeDriver: false,
         }),
       ]).start();
@@ -57,12 +52,7 @@ function AnimatedPostCard({ post, index, currentUserId, onDelete }: any) {
   }, []);
 
   return (
-    <Animated.View
-      style={{
-        opacity: fadeAnim,
-        transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
-      }}
-    >
+    <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }, { scale: scaleAnim }] }}>
       <PostCard post={post} currentUserId={currentUserId} onDelete={onDelete} index={index} />
     </Animated.View>
   );

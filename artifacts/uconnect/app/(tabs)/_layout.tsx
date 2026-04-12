@@ -12,17 +12,18 @@ function CreateTabButton() {
   const scaleAnim = React.useRef(new Animated.Value(1)).current;
 
   const onPressIn = () => {
-    Animated.spring(scaleAnim, { toValue: 0.88, tension: 300, friction: 8, useNativeDriver: ND }).start();
+    Animated.spring(scaleAnim, { toValue: 0.82, tension: 380, friction: 7, useNativeDriver: false }).start();
   };
 
   const onPressOut = () => {
-    Animated.spring(scaleAnim, { toValue: 1, tension: 200, friction: 8, useNativeDriver: ND }).start();
+    Animated.spring(scaleAnim, { toValue: 1, tension: 180, friction: 7, useNativeDriver: false }).start();
   };
 
   const onPress = () => {
     Animated.sequence([
-      Animated.spring(scaleAnim, { toValue: 0.82, tension: 350, friction: 6, useNativeDriver: ND }),
-      Animated.spring(scaleAnim, { toValue: 1, tension: 200, friction: 8, useNativeDriver: ND }),
+      Animated.spring(scaleAnim, { toValue: 0.75, tension: 400, friction: 5, useNativeDriver: false }),
+      Animated.spring(scaleAnim, { toValue: 1.08, tension: 200, friction: 6, useNativeDriver: false }),
+      Animated.spring(scaleAnim, { toValue: 1, tension: 300, friction: 8, useNativeDriver: false }),
     ]).start();
     router.push("/create-post");
   };
