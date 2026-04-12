@@ -42,3 +42,8 @@ externalPort = 3000
 [[ports]]
 localPort = 20773
 externalPort = 3003
+
+[userenv]
+
+[userenv.shared]
+EXPO_PUBLIC_SUPABASE_URL = "https://lyrntcjjcigvsueyszom.supabase.co"
