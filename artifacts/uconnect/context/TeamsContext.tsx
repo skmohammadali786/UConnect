@@ -40,13 +40,6 @@ interface TeamsContextType {
 
 const TeamsContext = createContext<TeamsContextType | undefined>(undefined);
 
-const DEFAULT_TEAMS: Team[] = [
-  { id: "t1", title: "Looking for ML team members for Smart India Hackathon", type: "Hackathon", description: "Building an AI-based crop disease detection system. Need 2 more team members.", skills: ["Python", "TensorFlow", "Computer Vision"], members: 2, maxMembers: 4, deadline: "Nov 20", poster: "priya_cs23", posterId: "user_priya", requests: [], createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() },
-  { id: "t2", title: "Startup co-founders wanted - EdTech idea", type: "Startup", description: "Working on a peer-to-peer tutoring platform. Looking for a designer and a backend dev.", skills: ["React Native", "Node.js", "UI/UX"], members: 1, maxMembers: 3, deadline: "Open", poster: "arjun_mech22", posterId: "user_arjun", requests: [], createdAt: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString() },
-  { id: "t3", title: "ACM ICPC team — need competitive programmer", type: "Competition", description: "Our team qualified for regionals. One member dropped. Need someone rated 1800+ on Codeforces.", skills: ["CP", "Algorithms", "C++"], members: 2, maxMembers: 3, deadline: "Nov 30", poster: "anonymous", posterId: "user_anon", requests: [], createdAt: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString() },
-  { id: "t4", title: "Research project: NLP for Indian languages", type: "Research", description: "IIT Delhi NLP lab project. Looking for students interested in NLP and ML research.", skills: ["NLP", "Python", "PyTorch"], members: 3, maxMembers: 5, deadline: "Dec 15", poster: "shreya_ee24", posterId: "user_shreya", requests: [], createdAt: new Date(Date.now() - 96 * 60 * 60 * 1000).toISOString() },
-];
-
 function rowToTeam(row: any, requests: TeamRequest[] = []): Team {
   return {
     id: row.id,
@@ -66,7 +59,7 @@ function rowToTeam(row: any, requests: TeamRequest[] = []): Team {
 
 export function TeamsProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const [teams, setTeams] = useState<Team[]>(DEFAULT_TEAMS);
+  const [teams, setTeams] = useState<Team[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -101,7 +94,7 @@ export function TeamsProvider({ children }: { children: React.ReactNode }) {
           setTeams(data.map((row: any) => rowToTeam(row, reqMap.get(row.id) ?? [])));
         }
       } catch {
-        setTeams(DEFAULT_TEAMS);
+        setTeams([]);
       }
     })();
   }, [user?.id]);
