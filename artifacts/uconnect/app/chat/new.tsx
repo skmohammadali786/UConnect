@@ -92,9 +92,11 @@ export default function NewChatScreen() {
         }
         renderItem={({ item }) => (
           <TouchableOpacity
-            onPress={() => {
-              const convId = startConversation(item.id, item.username, false);
-              router.replace({ pathname: "/chat/[id]" as any, params: { id: convId } });
+            onPress={async () => {
+              try {
+                const convId = await startConversation(item.id, item.username, false);
+                router.replace({ pathname: "/chat/[id]" as any, params: { id: convId } });
+              } catch {}
             }}
             style={[styles.userItem, { borderBottomColor: colors.separator }]}
           >

@@ -85,7 +85,7 @@ export default function NoteDetailScreen() {
   if (!note) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background, alignItems: "center", justifyContent: "center", padding: 24 }]}>
-        <Feather name="file-x" size={40} color={colors.mutedForeground} />
+        <Feather name="file" size={40} color={colors.mutedForeground} />
         <Text style={[{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 12, textAlign: "center" }]}>Note not found</Text>
         <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 16, paddingHorizontal: 20, paddingVertical: 10, backgroundColor: colors.primary, borderRadius: 10 }}>
           <Text style={{ color: "#FFF", fontFamily: "Inter_600SemiBold" }}>Go Back</Text>
