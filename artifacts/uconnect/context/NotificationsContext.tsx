@@ -26,27 +26,17 @@ interface NotificationsContextType {
 
 const NotificationsContext = createContext<NotificationsContextType | undefined>(undefined);
 
-const SAMPLE_NOTIFICATIONS: Notification[] = [
-  { id: "n1", type: "upvote", title: "Your post is trending", body: "142 people upvoted your anonymous post", isRead: false, createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(), actionId: "sp1", actionType: "post" },
-  { id: "n2", type: "reply", title: "priya_cs23 replied", body: "\"Totally agree! The DSA sheet really helped me too\"", isRead: false, createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(), actionId: "sp2", actionType: "post" },
-  { id: "n3", type: "follow", title: "New follower", body: "arjun_mech22 started following you", isRead: false, createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), actionId: "arjun_mech22", actionType: "profile" },
-  { id: "n4", type: "mention", title: "You were mentioned", body: "shreya_ee24 mentioned you in a comment", isRead: true, createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(), actionId: "sp6", actionType: "post" },
-  { id: "n5", type: "message", title: "New message", body: "Someone wants to connect anonymously", isRead: true, createdAt: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), actionId: "c1", actionType: "chat" },
-  { id: "n6", type: "event", title: "Rendezvous 2025", body: "Registration closing in 2 days. Don't miss out!", isRead: true, createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString() },
-  { id: "n7", type: "system", title: "Welcome to UConnect", body: "You're now part of the IIT Delhi community on UConnect", isRead: true, createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() },
-];
-
 function generateId() {
   return Date.now().toString() + Math.random().toString(36).substr(2, 9);
 }
 
 export function NotificationsProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const [notifications, setNotifications] = useState<Notification[]>(SAMPLE_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
   useEffect(() => {
     if (!user) {
-      setNotifications(SAMPLE_NOTIFICATIONS);
+      setNotifications([]);
       return;
     }
     (async () => {
@@ -57,22 +47,18 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
           .eq("user_id", user.id)
           .order("created_at", { ascending: false })
           .limit(50);
-        if (data && data.length > 0) {
-          setNotifications(data.map((row: any) => ({
-            id: row.id,
-            type: row.type as NotificationType,
-            title: row.title,
-            body: row.body,
-            isRead: row.is_read,
-            createdAt: row.created_at,
-            actionId: row.action_id ?? undefined,
-            actionType: row.action_type ?? undefined,
-          })));
-        } else {
-          setNotifications(SAMPLE_NOTIFICATIONS);
-        }
+        setNotifications((data ?? []).map((row: any) => ({
+          id: row.id,
+          type: row.type as NotificationType,
+          title: row.title,
+          body: row.body,
+          isRead: row.is_read,
+          createdAt: row.created_at,
+          actionId: row.action_id ?? undefined,
+          actionType: row.action_type ?? undefined,
+        })));
       } catch {
-        setNotifications(SAMPLE_NOTIFICATIONS);
+        setNotifications([]);
       }
     })();
   }, [user?.id]);

@@ -29,29 +29,11 @@ interface ConfessionsContextType {
   addConfessionComment: (confessionId: string, comment: Omit<ConfessionComment, "id" | "createdAt" | "upvotes">) => void;
 }
 
-const INITIAL: Confession[] = [
-  { id: "c1", content: "I've been telling my parents I go to college every day but I haven't attended a single class in 2 months. The attendance just shows up somehow. I'm terrified they find out.", upvotes: 892, commentCount: 2, userVote: null, hasSensitiveContent: false, createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(), comments: [
-    { id: "cc1", authorId: "anon", isAnonymous: true, content: "This is too relatable lol. The attendance portal is broken for me too.", upvotes: 45, createdAt: new Date(Date.now() - 40 * 60 * 1000).toISOString() },
-    { id: "cc2", authorId: "anon2", isAnonymous: true, content: "You're not alone. Half the class does this. Just don't fail internals.", upvotes: 32, createdAt: new Date(Date.now() - 20 * 60 * 1000).toISOString() },
-  ]},
-  { id: "c2", content: "I helped my best friend cheat on their final exam and now they got placed at a company I got rejected from. I don't know how to feel about this.", upvotes: 445, commentCount: 1, userVote: null, hasSensitiveContent: false, createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(), comments: [
-    { id: "cc3", authorId: "anon3", isAnonymous: true, content: "That karma hits different. You're a better person for not resenting them.", upvotes: 78, createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() },
-  ]},
-  { id: "c3", content: "I have a massive crush on my professor. I know it's wrong. I just needed to say this somewhere.", upvotes: 234, commentCount: 0, userVote: null, hasSensitiveContent: true, createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), comments: [] },
-  { id: "c4", content: "I failed my first two semesters and almost dropped out. Now I'm in 4th year with a 9.1 CGPA. It's possible. Believe in yourself.", upvotes: 1203, commentCount: 2, userVote: null, hasSensitiveContent: false, createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), comments: [
-    { id: "cc4", authorId: "anon4", isAnonymous: true, content: "This is exactly what I needed to read today. Thank you.", upvotes: 120, createdAt: new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString() },
-    { id: "cc5", authorId: "anon5", isAnonymous: false, content: "How did you turn it around? What changed for you?", upvotes: 89, createdAt: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString() },
-  ]},
-  { id: "c5", content: "I pretend to be confident in class but I cry in the bathroom between lectures because imposter syndrome is crushing me.", upvotes: 678, commentCount: 1, userVote: null, hasSensitiveContent: false, createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), comments: [
-    { id: "cc6", authorId: "anon6", isAnonymous: true, content: "Imposter syndrome is real. You belong here. We all feel this way.", upvotes: 234, createdAt: new Date(Date.now() - 20 * 60 * 60 * 1000).toISOString() },
-  ]},
-];
-
 const ConfessionsContext = createContext<ConfessionsContextType | undefined>(undefined);
 
 export function ConfessionsProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const [confessions, setConfessions] = useState<Confession[]>(INITIAL);
+  const [confessions, setConfessions] = useState<Confession[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -85,7 +67,7 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
           setConfessions(mapped);
         }
       } catch {
-        setConfessions(INITIAL);
+        setConfessions([]);
       }
     })();
   }, [user?.id]);

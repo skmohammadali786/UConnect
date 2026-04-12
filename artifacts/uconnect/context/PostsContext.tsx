@@ -111,18 +111,12 @@ function rowToComment(row: any, userVote: "up" | "down" | null = null, replies: 
   };
 }
 
-const SAMPLE_POSTS: Post[] = [
-  { id: "sp1", authorId: "user1", authorUsername: "anonymous", authorAvatar: null, college: "IIT Delhi", isAnonymous: true, tag: "Confession", content: "I've been spending more time in the library pretending to study than actually studying. The WiFi is just too good there. Anyone else?\n\n#confession #procrastination", mediaUrls: [], videoUrl: null, upvotes: 142, downvotes: 3, userVote: null, commentCount: 18, isBookmarked: false, createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), comments: [] },
-  { id: "sp2", authorId: "user2", authorUsername: "priya_cs23", authorAvatar: null, college: "IIT Delhi", isAnonymous: false, tag: "Academic", content: "Just got placed at Google with 45 LPA! Two years ago I was failing my DSA class. It gets better, keep grinding.\n\nResources that helped:\n• Striver's SDE Sheet\n• NeetCode 150\n• Mock interviews with seniors\n\n#placement #Google #DSA #achievement", mediaUrls: [], videoUrl: null, upvotes: 892, downvotes: 12, userVote: null, commentCount: 67, isBookmarked: false, createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), comments: [] },
-  { id: "sp3", authorId: "user3", authorUsername: "anonymous", authorAvatar: null, college: "IIT Delhi", isAnonymous: true, tag: "Rant", content: "The canteen food has gotten SO bad this semester. Paying 150 rs for something that tastes like cardboard. Where is the hostel mess committee?\n\n#messfood #iitdelhi #rant", mediaUrls: [], videoUrl: null, upvotes: 234, downvotes: 7, userVote: null, commentCount: 42, isBookmarked: false, createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), comments: [] },
-];
-
 export function PostsProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const [posts, setPosts] = useState<Post[]>(SAMPLE_POSTS);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const postsRef = useRef<Post[]>(SAMPLE_POSTS);
+  const postsRef = useRef<Post[]>([]);
 
   const applyPosts = useCallback((list: Post[]) => {
     postsRef.current = list;
@@ -152,7 +146,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
         );
         applyPosts(mapped);
       } else {
-        applyPosts(SAMPLE_POSTS);
+        applyPosts([]);
       }
 
       // Fetch drafts
@@ -173,7 +167,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
         }
       }
     } catch {
-      applyPosts(SAMPLE_POSTS);
+      applyPosts([]);
     }
     setIsLoading(false);
   }, [user, applyPosts]);
