@@ -7,7 +7,6 @@ import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { useTeams } from "@/context/TeamsContext";
 import { useToast } from "@/components/Toast";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { TypewriterText } from "@/components/TypewriterText";
 
 const TYPES = ["All", "Hackathon", "Startup", "Research", "Competition", "Project"];
@@ -19,7 +18,6 @@ const TYPE_COLORS: Record<string, string> = {
   Project: "#06B6D4",
   Other: "#6B7280",
 };
-const STORAGE_KEY = "@uconnect_requested_teams";
 
 function TeamCard({ item, index, requestedIds, onRequest, onCancel, isMyTeam, pendingCount, colors }: any) {
   const anim = useRef(new Animated.Value(0)).current;
@@ -124,10 +122,16 @@ export default function TeamsScreen() {
   }, []);
 
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then((v) => {
-      if (v) setRequestedIds(new Set(JSON.parse(v)));
-    });
-  }, []);
+    if (!user) return;
+    const ids = new Set(
+      teams.flatMap((t) =>
+        t.requests
+          .filter((r) => r.userId === user.id && r.status === "pending")
+          .map(() => t.id)
+      )
+    );
+    setRequestedIds(ids);
+  }, [teams, user?.id]);
 
   const pendingRequests = user ? getPendingRequests(user.id) : [];
 
@@ -145,6 +149,7 @@ export default function TeamsScreen() {
     });
     showSuccess("Request sent!", "The team admin will review your request.");
   };
+
 
   const handleCancel = async (teamId: string) => {
     setRequestedIds((prev) => { const n = new Set(prev); n.delete(teamId); return n; });

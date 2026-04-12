@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 export interface User {
   id: string;
@@ -29,11 +30,11 @@ interface AuthContextType {
   updateUser: (updates: Partial<User>) => Promise<void>;
   setUserData: (user: User) => Promise<void>;
   loginAsDemo: () => Promise<void>;
+  sendOtp: (email: string) => Promise<{ error: string | null }>;
+  verifyOtp: (email: string, token: string) => Promise<{ error: string | null; isNewUser: boolean }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-const STORAGE_KEY = "@uconnect_user";
 
 export const DEMO_USER: User = {
   id: "demo_user_001",
@@ -53,67 +54,117 @@ export const DEMO_USER: User = {
   joinedAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
 };
 
+function rowToUser(row: any): User {
+  return {
+    id: row.id,
+    email: row.email,
+    username: row.username,
+    displayName: row.display_name,
+    college: row.college,
+    branch: row.branch,
+    year: row.year,
+    bio: row.bio,
+    avatar: row.avatar,
+    interests: row.interests ?? [],
+    followers: row.followers ?? 0,
+    following: row.following ?? 0,
+    postsCount: row.posts_count ?? 0,
+    isVerified: row.is_verified ?? false,
+    joinedAt: row.joined_at,
+  };
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadUser();
+    // Check existing Supabase session
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        await loadProfile(session.user.id);
+      } else {
+        // Fallback: check demo user in AsyncStorage
+        try {
+          const raw = await AsyncStorage.getItem("@uconnect_demo_user");
+          if (raw) setUser(JSON.parse(raw));
+        } catch {}
+      }
+      setIsLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_IN" && session?.user) {
+        await loadProfile(session.user.id);
+      } else if (event === "SIGNED_OUT") {
+        setUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const loadUser = async () => {
+  const loadProfile = async (userId: string) => {
     try {
-      const data = await AsyncStorage.getItem(STORAGE_KEY);
-      if (data) {
-        setUser(JSON.parse(data));
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .single();
+      if (data && !error) {
+        setUser(rowToUser(data));
       }
-      // No auto-seeding — new users go through onboarding
     } catch {}
-    setIsLoading(false);
   };
 
-  const login = async (_email: string) => {
-    // OTP flow handled in auth screens
+  const sendOtp = async (email: string): Promise<{ error: string | null }> => {
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim().toLowerCase(),
+      options: { shouldCreateUser: true },
+    });
+    return { error: error ? error.message : null };
   };
+
+  const verifyOtp = async (email: string, token: string): Promise<{ error: string | null; isNewUser: boolean }> => {
+    const { data, error } = await supabase.auth.verifyOtp({
+      email: email.trim().toLowerCase(),
+      token,
+      type: "email",
+    });
+    if (error) return { error: error.message, isNewUser: false };
+
+    const userId = data.user?.id;
+    if (!userId) return { error: "Authentication failed", isNewUser: false };
+
+    // Check if profile exists
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", userId)
+      .single();
+
+    return { error: null, isNewUser: !profile };
+  };
+
+  const login = async (_email: string) => {};
 
   const loginAsDemo = async () => {
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(DEMO_USER));
+    await AsyncStorage.setItem("@uconnect_demo_user", JSON.stringify(DEMO_USER));
     setUser(DEMO_USER);
   };
 
   const logout = async () => {
-    await AsyncStorage.multiRemove([
-      STORAGE_KEY,
-      "@uconnect_posts",
-      "@uconnect_confessions",
-      "@uconnect_settings",
-      "@uconnect_applied_internships",
-      "@uconnect_saved_notes",
-      "@uconnect_rsvp_events",
-      "@uconnect_requested_teams",
-      "@uconnect_drafts",
-      "@uconnect_following",
-      "@uconnect_reports",
-      "@uconnect_teams",
-    ]);
+    await AsyncStorage.removeItem("@uconnect_demo_user");
+    await supabase.auth.signOut();
     setUser(null);
   };
 
   const deleteAccount = async () => {
-    await AsyncStorage.multiRemove([
-      STORAGE_KEY,
-      "@uconnect_posts",
-      "@uconnect_confessions",
-      "@uconnect_settings",
-      "@uconnect_applied_internships",
-      "@uconnect_saved_notes",
-      "@uconnect_rsvp_events",
-      "@uconnect_requested_teams",
-      "@uconnect_drafts",
-      "@uconnect_following",
-      "@uconnect_reports",
-      "@uconnect_teams",
-    ]);
+    if (user && user.id !== "demo_user_001") {
+      await supabase.from("profiles").delete().eq("id", user.id);
+    }
+    await AsyncStorage.removeItem("@uconnect_demo_user");
+    await supabase.auth.signOut();
     setUser(null);
   };
 
@@ -121,12 +172,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
     const updated = { ...user, ...updates };
     setUser(updated);
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+
+    if (user.id === "demo_user_001") {
+      await AsyncStorage.setItem("@uconnect_demo_user", JSON.stringify(updated));
+      return;
+    }
+
+    await supabase.from("profiles").update({
+      display_name: updated.displayName,
+      username: updated.username,
+      college: updated.college,
+      branch: updated.branch,
+      year: updated.year,
+      bio: updated.bio,
+      avatar: updated.avatar,
+      interests: updated.interests,
+    }).eq("id", user.id);
   };
 
   const setUserData = async (newUser: User) => {
     setUser(newUser);
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
+    if (newUser.id === "demo_user_001") {
+      await AsyncStorage.setItem("@uconnect_demo_user", JSON.stringify(newUser));
+      return;
+    }
+    // Upsert profile
+    await supabase.from("profiles").upsert({
+      id: newUser.id,
+      email: newUser.email,
+      username: newUser.username,
+      display_name: newUser.displayName,
+      college: newUser.college,
+      branch: newUser.branch,
+      year: newUser.year,
+      bio: newUser.bio,
+      avatar: newUser.avatar,
+      interests: newUser.interests,
+      followers: newUser.followers,
+      following: newUser.following,
+      posts_count: newUser.postsCount,
+      is_verified: newUser.isVerified,
+      joined_at: newUser.joinedAt,
+    });
   };
 
   return (
@@ -141,6 +228,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         updateUser,
         setUserData,
         loginAsDemo,
+        sendOtp,
+        verifyOtp,
       }}
     >
       {children}

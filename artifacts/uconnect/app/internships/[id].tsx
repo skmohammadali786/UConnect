@@ -1,5 +1,4 @@
 import { Feather } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -7,9 +6,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useToast } from "@/components/Toast";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/context/AuthContext";
 
 const ND = Platform.OS !== "web";
-const STORAGE_KEY = "@uconnect_applied_internships";
 
 const INTERNSHIP_DATA: Record<string, any> = {
   i1: { id: "i1", company: "Google", role: "Software Engineering Intern", location: "Bangalore", duration: "3 months", stipend: "₹1,00,000/month", type: "Hybrid", skills: ["Python", "Algorithms", "System Design", "Data Structures"], deadline: "Nov 30, 2025", postedBy: "placement_cell", isVerified: true, description: "Join Google's engineering team to work on real products used by millions. Interns work on meaningful projects with full software engineer mentorship.", requirements: ["Currently pursuing B.Tech/M.Tech in CS or related", "Strong DSA fundamentals", "Problem solving skills", "Competitive programming background preferred"] },
@@ -24,6 +24,7 @@ export default function InternshipDetailScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { showSuccess, showInfo } = useToast();
+  const { user } = useAuth();
   const [applied, setApplied] = useState(false);
   const [applyConfirm, setApplyConfirm] = useState(false);
   const applyAnim = useRef(new Animated.Value(0)).current;
@@ -33,22 +34,25 @@ export default function InternshipDetailScreen() {
 
   useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 280, useNativeDriver: ND }).start();
-    AsyncStorage.getItem(STORAGE_KEY).then((v) => {
-      if (v) {
-        const ids: string[] = JSON.parse(v);
-        if (ids.includes(internship.id)) setApplied(true);
-      }
-    });
-  }, [internship.id]);
+    if (user && user.id !== "demo_user_001") {
+      supabase.from("internship_applications")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("internship_id", internship.id)
+        .single()
+        .then(({ data }) => { if (data) setApplied(true); });
+    }
+  }, [internship.id, user?.id]);
 
   const handleApply = async () => {
     setApplyConfirm(false);
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    const ids: string[] = raw ? JSON.parse(raw) : [];
-    if (!ids.includes(internship.id)) {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify([...ids, internship.id]));
-    }
     setApplied(true);
+    if (user && user.id !== "demo_user_001") {
+      await supabase.from("internship_applications").insert({
+        user_id: user.id,
+        internship_id: internship.id,
+      }).select();
+    }
     Animated.sequence([
       Animated.spring(applyAnim, { toValue: 1.08, tension: 200, friction: 5, useNativeDriver: ND }),
       Animated.spring(applyAnim, { toValue: 1, tension: 200, friction: 5, useNativeDriver: ND }),

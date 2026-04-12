@@ -1,4 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
@@ -8,8 +7,6 @@ import { AppButton } from "@/components/AppButton";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { checkRateLimit, recordAttempt, clearRateLimit, formatLockTime } from "@/utils/rateLimit";
-
-const USER_KEY = "@uconnect_user";
 
 const FAIL_MAX = 5;
 const FAIL_WINDOW = 30 * 60 * 1000;
@@ -23,8 +20,7 @@ export default function OTPScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { email, flow } = useLocalSearchParams<{ email: string; flow: string }>();
-  const { setUserData } = useAuth();
-  const isSignIn = flow === "signin";
+  const { verifyOtp, sendOtp } = useAuth();
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
@@ -110,49 +106,40 @@ export default function OTPScreen() {
 
     setError("");
     setLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    if (isSignIn) {
-      try {
-        const stored = await AsyncStorage.getItem(USER_KEY);
-        if (stored) {
-          const existingUser = JSON.parse(stored);
-          if (existingUser.email === email) {
-            await clearRateLimit(rlKey(email));
-            await setUserData(existingUser);
-            setLoading(false);
-            router.replace("/(tabs)/");
-            return;
-          }
-        }
-        const result = await recordAttempt(rlKey(email), FAIL_MAX, FAIL_WINDOW, FAIL_LOCKOUT);
-        setLoading(false);
-        if (result.isLocked) {
-          setIsLocked(true);
-          setLockSecondsLeft(result.secondsLeft);
-          startLockTimer(result.secondsLeft);
-          setError("Too many failed attempts. Account temporarily locked.");
-        } else {
-          setAttemptsLeft(result.attemptsLeft);
-          setError("No account found with this email. Please sign up first.");
-        }
-        shake();
-      } catch {
-        setLoading(false);
-        setError("Something went wrong. Please try again.");
-        shake();
-      }
-    } else {
-      await clearRateLimit(rlKey(email));
+    const { error: verifyError, isNewUser } = await verifyOtp(email, code);
+
+    if (verifyError) {
       setLoading(false);
+      const result = await recordAttempt(rlKey(email), FAIL_MAX, FAIL_WINDOW, FAIL_LOCKOUT);
+      if (result.isLocked) {
+        setIsLocked(true);
+        setLockSecondsLeft(result.secondsLeft);
+        startLockTimer(result.secondsLeft);
+        setError("Too many failed attempts. Account temporarily locked.");
+      } else {
+        setAttemptsLeft(result.attemptsLeft);
+        setError("Invalid or expired code. Please try again.");
+      }
+      shake();
+      return;
+    }
+
+    await clearRateLimit(rlKey(email));
+    setLoading(false);
+
+    if (isNewUser) {
       router.push({ pathname: "/auth/college-select", params: { email } });
+    } else {
+      router.replace("/(tabs)/");
     }
   };
 
-  const handleResend = () => {
+  const handleResend = async () => {
     setResendTimer(30);
     setOtp(["", "", "", "", "", ""]);
     setError("");
+    await sendOtp(email);
   };
 
   const filledCount = otp.filter(Boolean).length;
@@ -213,14 +200,7 @@ export default function OTPScreen() {
           ) : (
             <>
               {error ? <Text style={[styles.error, { color: colors.destructive }]}>{error}</Text> : null}
-              {warnAttempts && !error ? (
-                <View style={[styles.warnBox, { backgroundColor: "#F59E0B15", borderColor: "#F59E0B40" }]}>
-                  <Feather name="alert-triangle" size={14} color="#F59E0B" />
-                  <Text style={[styles.warnText, { color: "#F59E0B" }]}>
-                    {attemptsLeft} attempt{attemptsLeft !== 1 ? "s" : ""} left before lockout
-                  </Text>
-                </View>
-              ) : warnAttempts && error ? (
+              {warnAttempts ? (
                 <View style={[styles.warnBox, { backgroundColor: "#F59E0B15", borderColor: "#F59E0B40" }]}>
                   <Feather name="alert-triangle" size={14} color="#F59E0B" />
                   <Text style={[styles.warnText, { color: "#F59E0B" }]}>
@@ -267,15 +247,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 30, fontFamily: "Inter_700Bold", lineHeight: 38, letterSpacing: -0.5, textAlign: "center" },
   subtitle: { fontSize: 15, fontFamily: "Inter_400Regular", lineHeight: 24, textAlign: "center" },
   otpRow: { flexDirection: "row", justifyContent: "center", gap: 10 },
-  otpInput: {
-    width: 48,
-    height: 56,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    fontSize: 22,
-    fontFamily: "Inter_700Bold",
-    textAlign: "center",
-  },
+  otpInput: { width: 48, height: 56, borderRadius: 12, borderWidth: 1.5, fontSize: 22, fontFamily: "Inter_700Bold", textAlign: "center" },
   error: { textAlign: "center", fontSize: 13, fontFamily: "Inter_400Regular" },
   lockBox: { flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 14, borderWidth: 1, padding: 16 },
   lockTitle: { fontSize: 14, fontFamily: "Inter_700Bold" },

@@ -1,5 +1,6 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/context/AuthContext";
 
 export interface Report {
   postId: string;
@@ -19,56 +20,62 @@ interface SocialContextType {
 }
 
 const SocialContext = createContext<SocialContextType | undefined>(undefined);
-const FOLLOWING_KEY = "@uconnect_following";
-const REPORTS_KEY = "@uconnect_reports";
 
 export function SocialProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
   const [reports, setReports] = useState<Report[]>([]);
 
   useEffect(() => {
+    if (!user || user.id === "demo_user_001") return;
     (async () => {
       try {
-        const [f, r] = await Promise.all([
-          AsyncStorage.getItem(FOLLOWING_KEY),
-          AsyncStorage.getItem(REPORTS_KEY),
+        const [followRes, reportRes] = await Promise.all([
+          supabase.from("following").select("following_id").eq("follower_id", user.id),
+          supabase.from("reports").select("post_id, reason, created_at, status").eq("reporter_id", user.id),
         ]);
-        if (f) setFollowingIds(new Set(JSON.parse(f)));
-        if (r) {
-          const parsed = JSON.parse(r);
-          if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === "object" && "postId" in parsed[0]) {
-            setReports(parsed as Report[]);
-          } else if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === "string") {
-            setReports((parsed as string[]).map((id) => ({ postId: id, reason: "Reported", timestamp: new Date().toISOString(), status: "pending" })));
-          }
+        if (followRes.data) {
+          setFollowingIds(new Set(followRes.data.map((r: any) => r.following_id)));
+        }
+        if (reportRes.data) {
+          setReports(reportRes.data.map((r: any) => ({
+            postId: r.post_id,
+            reason: r.reason,
+            timestamp: r.created_at,
+            status: r.status as Report["status"],
+          })));
         }
       } catch {}
     })();
-  }, []);
+  }, [user?.id]);
 
   const toggleFollow = useCallback(async (userId: string) => {
+    if (!user || user.id === "demo_user_001") return;
+    const isNowFollowing = followingIds.has(userId);
     setFollowingIds((prev) => {
       const next = new Set(prev);
-      if (next.has(userId)) { next.delete(userId); } else { next.add(userId); }
-      AsyncStorage.setItem(FOLLOWING_KEY, JSON.stringify([...next]));
+      if (isNowFollowing) next.delete(userId);
+      else next.add(userId);
       return next;
     });
-  }, []);
+    if (isNowFollowing) {
+      await supabase.rpc("unfollow_user", { p_follower_id: user.id, p_following_id: userId });
+    } else {
+      await supabase.rpc("follow_user", { p_follower_id: user.id, p_following_id: userId });
+    }
+  }, [user, followingIds]);
 
   const isFollowing = useCallback((userId: string) => followingIds.has(userId), [followingIds]);
 
   const reportPost = useCallback(async (postId: string, reason: string) => {
+    if (!user || user.id === "demo_user_001") return;
     const newReport: Report = { postId, reason, timestamp: new Date().toISOString(), status: "pending" };
-    setReports((prev) => {
-      if (prev.some((r) => r.postId === postId)) return prev;
-      const next = [...prev, newReport];
-      AsyncStorage.setItem(REPORTS_KEY, JSON.stringify(next));
-      return next;
-    });
-  }, []);
+    setReports((prev) => [...prev, newReport]);
+    await supabase.from("reports").insert({ reporter_id: user.id, post_id: postId, reason });
+  }, [user]);
 
+  const hasReported = useCallback((postId: string) => reports.some((r) => r.postId === postId), [reports]);
   const reportedIds = new Set(reports.map((r) => r.postId));
-  const hasReported = useCallback((postId: string) => reportedIds.has(postId), [reports]);
 
   return (
     <SocialContext.Provider value={{ followingIds, toggleFollow, isFollowing, reports, reportedIds, reportPost, hasReported }}>

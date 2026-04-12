@@ -1,5 +1,4 @@
 import { Feather } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Easing, FlatList, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -7,6 +6,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useToast } from "@/components/Toast";
 import { TypewriterText } from "@/components/TypewriterText";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/context/AuthContext";
 
 interface Event {
   id: string;
@@ -32,7 +33,6 @@ const INITIAL_EVENTS: Event[] = [
 
 const CATEGORIES = ["All", "Tech", "Cultural", "Sports", "Finance", "Academic"];
 const CAT_COLORS: Record<string, string> = { Tech: "#3B82F6", Cultural: "#8B5CF6", Sports: "#F59E0B", Finance: "#00A86B", Academic: "#06B6D4" };
-const STORAGE_KEY = "@uconnect_rsvp_events";
 
 function EventCard({ item, index, rsvpIds, onRSVP, colors }: any) {
   const anim = useRef(new Animated.Value(0)).current;
@@ -89,6 +89,7 @@ export default function EventsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { showSuccess } = useToast();
+  const { user } = useAuth();
   const [activeCategory, setActiveCategory] = useState("All");
   const [rsvpIds, setRsvpIds] = useState<Set<string>>(new Set());
   const headerAnim = useRef(new Animated.Value(0)).current;
@@ -102,20 +103,30 @@ export default function EventsScreen() {
   }, []);
 
   useEffect(() => {
+    if (!user || user.id === "demo_user_001") return;
     (async () => {
       try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        if (raw) setRsvpIds(new Set(JSON.parse(raw)));
+        const { data } = await supabase
+          .from("event_rsvps")
+          .select("event_id")
+          .eq("user_id", user.id);
+        if (data) setRsvpIds(new Set(data.map((r: any) => r.event_id)));
       } catch {}
     })();
-  }, []);
+  }, [user?.id]);
 
   const handleRSVP = async (id: string) => {
     const already = rsvpIds.has(id);
     const updated = new Set(rsvpIds);
     if (already) { updated.delete(id); } else { updated.add(id); }
     setRsvpIds(updated);
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify([...updated]));
+    if (user && user.id !== "demo_user_001") {
+      if (already) {
+        await supabase.rpc("unrsvp_event", { p_user_id: user.id, p_event_id: id });
+      } else {
+        await supabase.rpc("rsvp_event", { p_user_id: user.id, p_event_id: id });
+      }
+    }
     const event = INITIAL_EVENTS.find((e) => e.id === id);
     if (!already) showSuccess(`RSVP confirmed!`, event?.title);
   };

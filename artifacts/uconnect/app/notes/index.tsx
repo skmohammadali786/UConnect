@@ -1,5 +1,4 @@
 import { Feather } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Easing, FlatList, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
@@ -7,6 +6,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useToast } from "@/components/Toast";
 import { TypewriterText } from "@/components/TypewriterText";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/context/AuthContext";
 
 interface Note {
   id: string;
@@ -29,8 +30,6 @@ const SAMPLE_NOTES: Note[] = [
   { id: "n4", subject: "Electrical", title: "Circuit Analysis Problem Sets with Solutions", uploader: "shreya_ee24", college: "IIT Delhi", year: "2nd Year", fileSize: "3.2 MB", downloads: 432, createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString() },
   { id: "n5", subject: "Economics", title: "Microeconomics Exam Notes 2024", uploader: "anonymous", college: "IIT Delhi", year: "1st Year", fileSize: "1.1 MB", downloads: 78, createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString() },
 ];
-
-const STORAGE_KEY = "@uconnect_saved_notes";
 
 function NoteCard({ item, index, savedIds, onSave, colors }: any) {
   const anim = useRef(new Animated.Value(0)).current;
@@ -87,6 +86,7 @@ export default function NotesScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { showSuccess } = useToast();
+  const { user } = useAuth();
   const [activeSubject, setActiveSubject] = useState("All");
   const [search, setSearch] = useState("");
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
@@ -101,20 +101,30 @@ export default function NotesScreen() {
   }, []);
 
   useEffect(() => {
+    if (!user || user.id === "demo_user_001") return;
     (async () => {
       try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        if (raw) setSavedIds(new Set(JSON.parse(raw)));
+        const { data } = await supabase
+          .from("note_saves")
+          .select("note_id")
+          .eq("user_id", user.id);
+        if (data) setSavedIds(new Set(data.map((r: any) => r.note_id)));
       } catch {}
     })();
-  }, []);
+  }, [user?.id]);
 
   const handleSave = async (id: string) => {
     const already = savedIds.has(id);
     const updated = new Set(savedIds);
     if (already) { updated.delete(id); } else { updated.add(id); }
     setSavedIds(updated);
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify([...updated]));
+    if (user && user.id !== "demo_user_001") {
+      if (already) {
+        await supabase.from("note_saves").delete().eq("user_id", user.id).eq("note_id", id);
+      } else {
+        await supabase.from("note_saves").insert({ user_id: user.id, note_id: id });
+      }
+    }
     const note = SAMPLE_NOTES.find((n) => n.id === id);
     if (!already) showSuccess("Note saved!", note?.title);
   };

@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppButton } from "@/components/AppButton";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabase";
 
 const INTERESTS = [
   "Coding", "Machine Learning", "Web Dev", "App Dev", "Competitive Programming",
@@ -19,6 +20,7 @@ export default function InterestsScreen() {
   const insets = useSafeAreaInsets();
   const { email, college, username, displayName, branch, year, bio } = useLocalSearchParams<Record<string, string>>();
   const [selected, setSelected] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
   const { setUserData } = useAuth();
 
   const toggle = (interest: string) => {
@@ -28,25 +30,69 @@ export default function InterestsScreen() {
   };
 
   const handleDone = async () => {
-    const user = {
-      id: Date.now().toString(),
-      email: email || "",
-      username: username || "",
-      displayName: displayName || username || "",
-      college: college || "",
-      branch: branch || "",
-      year: year || "",
-      bio: bio || "",
-      avatar: null,
-      interests: selected,
-      followers: 0,
-      following: 0,
-      postsCount: 0,
-      isVerified: true,
-      joinedAt: new Date().toISOString(),
-    };
-    await setUserData(user);
-    router.replace("/(tabs)/");
+    setLoading(true);
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      const userId = authUser?.id;
+
+      if (!userId) {
+        setLoading(false);
+        return;
+      }
+
+      const now = new Date().toISOString();
+      const profile = {
+        id: userId,
+        email: email || authUser?.email || "",
+        username: username || "",
+        display_name: displayName || username || "",
+        college: college || "",
+        branch: branch || "",
+        year: year || "",
+        bio: bio || "",
+        avatar: null,
+        interests: selected,
+        followers: 0,
+        following: 0,
+        posts_count: 0,
+        is_verified: false,
+        joined_at: now,
+      };
+
+      await supabase.from("profiles").upsert(profile);
+
+      // Create default settings
+      await supabase.from("user_settings").upsert({
+        user_id: userId,
+        push_notifications: true,
+        default_anonymous: false,
+        show_sensitive_content: false,
+        compact_mode: false,
+        updated_at: now,
+      });
+
+      await setUserData({
+        id: userId,
+        email: profile.email,
+        username: profile.username,
+        displayName: profile.display_name,
+        college: profile.college,
+        branch: profile.branch,
+        year: profile.year,
+        bio: profile.bio,
+        avatar: null,
+        interests: selected,
+        followers: 0,
+        following: 0,
+        postsCount: 0,
+        isVerified: false,
+        joinedAt: now,
+      });
+
+      router.replace("/(tabs)/");
+    } catch {
+      setLoading(false);
+    }
   };
 
   return (
@@ -74,15 +120,13 @@ export default function InterestsScreen() {
         })}
       </View>
       <Text style={[styles.counter, { color: colors.mutedForeground }]}>{selected.length}/10 selected</Text>
-      <AppButton title="Finish Setup" onPress={handleDone} disabled={selected.length === 0} fullWidth size="lg" />
+      <AppButton title="Finish Setup" onPress={handleDone} loading={loading} disabled={selected.length === 0 || loading} fullWidth size="lg" />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flexGrow: 1, paddingHorizontal: 24, gap: 20 },
-  backBtn: {},
-  backText: { fontSize: 14, fontFamily: "Inter_500Medium" },
   title: { fontSize: 28, fontFamily: "Inter_700Bold", lineHeight: 36, letterSpacing: -0.5, textAlign: "center" },
   subtitle: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 20, textAlign: "center" },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 10 },

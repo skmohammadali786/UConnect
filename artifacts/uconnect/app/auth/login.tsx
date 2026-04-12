@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppButton } from "@/components/AppButton";
 import { AppInput } from "@/components/AppInput";
 import { useColors } from "@/hooks/useColors";
+import { useAuth } from "@/context/AuthContext";
 import { checkRateLimit, recordAttempt, formatLockTime } from "@/utils/rateLimit";
 
 const OTP_MAX = 3;
@@ -20,6 +21,7 @@ export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { flow } = useLocalSearchParams<{ flow: string }>();
+  const { sendOtp } = useAuth();
   const isSignIn = flow === "signin";
 
   const [email, setEmail] = useState("");
@@ -31,9 +33,7 @@ export default function LoginScreen() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, []);
 
   const startLockTimer = (secondsLeft: number) => {
@@ -77,22 +77,28 @@ export default function LoginScreen() {
     setError("");
     setLoading(true);
 
-    const result = await recordAttempt(rlKey(email), OTP_MAX, OTP_WINDOW, OTP_LOCKOUT);
-
-    if (result.isLocked) {
+    const rlResult = await recordAttempt(rlKey(email), OTP_MAX, OTP_WINDOW, OTP_LOCKOUT);
+    if (rlResult.isLocked) {
       setLoading(false);
-      setLockStatus({ isLocked: true, secondsLeft: result.secondsLeft, attemptsLeft: 0 });
-      startLockTimer(result.secondsLeft);
+      setLockStatus({ isLocked: true, secondsLeft: rlResult.secondsLeft, attemptsLeft: 0 });
+      startLockTimer(rlResult.secondsLeft);
       shake();
       return;
     }
 
-    setLockStatus({ isLocked: false, secondsLeft: 0, attemptsLeft: result.attemptsLeft });
+    setLockStatus({ isLocked: false, secondsLeft: 0, attemptsLeft: rlResult.attemptsLeft });
 
-    setTimeout(() => {
-      setLoading(false);
-      router.push({ pathname: "/auth/otp", params: { email: email.trim(), flow: flow || "signup" } });
-    }, 800);
+    // Send real OTP via Supabase
+    const { error: otpError } = await sendOtp(email.trim());
+    setLoading(false);
+
+    if (otpError) {
+      setError(otpError);
+      shake();
+      return;
+    }
+
+    router.push({ pathname: "/auth/otp", params: { email: email.trim(), flow: flow || "signup" } });
   };
 
   const isDisabled = lockStatus?.isLocked === true;

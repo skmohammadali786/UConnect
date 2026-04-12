@@ -7,8 +7,6 @@ import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { useTeams } from "@/context/TeamsContext";
 import { useToast } from "@/components/Toast";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
 const TYPE_COLORS: Record<string, string> = {
   Hackathon: "#3B82F6",
   Startup: "#00A86B",
@@ -17,7 +15,6 @@ const TYPE_COLORS: Record<string, string> = {
   Project: "#06B6D4",
   Other: "#6B7280",
 };
-const STORAGE_KEY = "@uconnect_requested_teams";
 
 const ND = Platform.OS !== "web";
 
@@ -102,13 +99,11 @@ export default function TeamDetailScreen() {
   const team = teams.find((t) => t.id === id);
 
   React.useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then((v) => {
-      if (v) {
-        const ids: string[] = JSON.parse(v);
-        setRequested(ids.includes(id));
-      }
-    });
-  }, [id]);
+    if (team && user) {
+      const hasRequested = team.requests.some((r) => r.userId === user.id && r.status === "pending");
+      setRequested(hasRequested);
+    }
+  }, [team, user?.id]);
 
   if (!team) {
     return (

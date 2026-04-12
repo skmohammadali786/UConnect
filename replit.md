@@ -9,21 +9,37 @@ pnpm workspace monorepo with UConnect — a React Native Expo mobile app for pri
 - **Monorepo tool**: pnpm workspaces
 - **Package manager**: pnpm
 - **Mobile**: React Native (Expo) — `artifacts/uconnect`
+- **Backend**: Supabase (PostgreSQL + Auth + RLS) — Project `lyrntcjjcigvsueyszom`
 - **Styling**: Dark mode (#0A0A0A bg, #00A86B emerald primary), Inter font
-- **State**: React Context + AsyncStorage (no backend)
+- **State**: React Context + Supabase (AsyncStorage only for theme/rate-limiting/demo)
 - **Navigation**: expo-router (file-based)
+
+## Supabase Migration (Completed)
+
+- **URL**: `https://lyrntcjjcigvsueyszom.supabase.co`
+- **Schema**: `artifacts/uconnect/lib/schema.sql` — run once in Supabase SQL Editor
+- **Client**: `artifacts/uconnect/lib/supabase.ts`
+- **Auth**: Real OTP via `supabase.auth.signInWithOtp` + `verifyOtp`
+- **Demo user**: `id: "demo_user_001"` — bypasses Supabase, uses AsyncStorage only
+- **Pattern**: Optimistic updates + fire-and-forget Supabase calls; sample data shown on empty DB
+
+### Tables
+`profiles`, `user_settings`, `posts`, `post_votes`, `bookmarks`, `comments`, `comment_votes`, `drafts`, `following`, `reports`, `confessions`, `confession_votes`, `confession_comments`, `conversations`, `messages`, `notifications`, `teams`, `team_requests`, `events`, `event_rsvps`, `internships`, `internship_applications`, `notes`, `note_saves`
+
+### Stored RPCs
+`vote_post`, `vote_confession`, `increment_comment_count`, `increment_confession_comment_count`, `follow_user`, `unfollow_user`, `rsvp_event`, `unrsvp_event`
 
 ## UConnect App (artifacts/uconnect)
 
-### Contexts
-- `AuthContext` — user auth, demo login, logout, deleteAccount; `@uconnect_user` storage
-- `PostsContext` — create/vote/bookmark/delete posts, drafts; `@uconnect_posts`, `@uconnect_drafts` storage. **Fixed: functional updater pattern to prevent stale closure bug**
-- `ConfessionsContext` — anonymous confessions with comments; `@uconnect_confessions` storage. **Fixed: functional updater prevents stale closure**
-- `ChatContext` — chat threads
-- `NotificationsContext` — notifications
-- `SettingsContext` — push notifications, anonymous mode, sensitive content, compact mode; `@uconnect_settings` storage
-- `SocialContext` — follow/unfollow, reports; `@uconnect_following`, `@uconnect_reports` storage
-- `TeamsContext` — teams with join requests; `@uconnect_teams` storage
+### Contexts (all Supabase-backed)
+- `AuthContext` — real OTP auth, demo login, profile upsert; `sendOtp`/`verifyOtp` methods
+- `PostsContext` — posts/votes/bookmarks/drafts via Supabase; sample data fallback; exposes `isLoading`
+- `ConfessionsContext` — anonymous confessions with comments + votes via Supabase
+- `ChatContext` — conversations/messages via Supabase
+- `NotificationsContext` — notifications via Supabase
+- `SettingsContext` — `user_settings` table; AsyncStorage as local backup
+- `SocialContext` — follow/unfollow via `follow_user`/`unfollow_user` RPCs
+- `TeamsContext` — teams + `team_requests` via Supabase
 
 ### Auth Flow
 - Welcome screen → login (email) → OTP → college-select → username → profile-setup → interests → main app
@@ -54,11 +70,15 @@ pnpm workspace monorepo with UConnect — a React Native Expo mobile app for pri
 - **Settings** — theme (dark/light/system), all preferences as toggles, Delete Account with ConfirmModal, Sign Out with ConfirmModal
 - **User profile** — follow/unfollow with animation, fade-in entrance
 
-### AsyncStorage Keys
-- `@uconnect_user`, `@uconnect_posts`, `@uconnect_drafts`, `@uconnect_confessions`
-- `@uconnect_settings`, `@uconnect_applied_internships`, `@uconnect_saved_notes`
-- `@uconnect_rsvp_events`, `@uconnect_requested_teams`, `@uconnect_following`
-- `@uconnect_reports`, `@uconnect_theme`, `@uconnect_teams`
+### AsyncStorage Keys (remaining intentional uses)
+- `@uconnect_demo_user` — demo user data (bypasses Supabase)
+- `@uconnect_theme` — theme preference (NOT cleared on logout, dark/light/system)
+- `@uconnect_settings` — fallback for settings when Supabase unavailable
+- `@rl_*` — rate limit state (OTP send/verify, post creation)
+
+### Env Vars
+- `EXPO_PUBLIC_SUPABASE_URL` — Supabase project URL
+- `EXPO_PUBLIC_SUPABASE_ANON_KEY` — Supabase anon key (secret)
 
 ### Animation Pattern
 - **Always** use `const ND = Platform.OS !== "web"` for `useNativeDriver`

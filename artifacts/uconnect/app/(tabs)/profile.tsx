@@ -1,6 +1,5 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated, FlatList, Image, Platform, RefreshControl, ScrollView,
@@ -14,11 +13,7 @@ import { useAuth } from "@/context/AuthContext";
 import { usePosts } from "@/context/PostsContext";
 import { useToast } from "@/components/Toast";
 import { TypewriterText } from "@/components/TypewriterText";
-
-const INTERNSHIP_KEY = "@uconnect_applied_internships";
-const NOTES_KEY = "@uconnect_saved_notes";
-const EVENTS_KEY = "@uconnect_rsvp_events";
-const TEAMS_KEY = "@uconnect_requested_teams";
+import { supabase } from "@/lib/supabase";
 
 const SAMPLE_INTERNSHIPS = [
   { id: "i1", role: "Frontend Developer", company: "Razorpay", stipend: "₹25,000/mo", location: "Remote" },
@@ -62,19 +57,18 @@ export default function ProfileScreen() {
   }, []);
 
   const loadActivity = useCallback(async () => {
+    if (!user || user.id === "demo_user_001") return;
     try {
-      const [a, e, n, t] = await Promise.all([
-        AsyncStorage.getItem(INTERNSHIP_KEY),
-        AsyncStorage.getItem(EVENTS_KEY),
-        AsyncStorage.getItem(NOTES_KEY),
-        AsyncStorage.getItem(TEAMS_KEY),
+      const [apps, rsvps, noteSaves] = await Promise.all([
+        supabase.from("internship_applications").select("internship_id").eq("user_id", user.id),
+        supabase.from("event_rsvps").select("event_id").eq("user_id", user.id),
+        supabase.from("note_saves").select("note_id").eq("user_id", user.id),
       ]);
-      setAppliedIds(a ? JSON.parse(a) : []);
-      setRsvpIds(e ? JSON.parse(e) : []);
-      setSavedNoteIds(n ? JSON.parse(n) : []);
-      setRequestedTeamIds(t ? JSON.parse(t) : []);
+      setAppliedIds((apps.data ?? []).map((r: any) => r.internship_id));
+      setRsvpIds((rsvps.data ?? []).map((r: any) => r.event_id));
+      setSavedNoteIds((noteSaves.data ?? []).map((r: any) => r.note_id));
     } catch {}
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => { loadActivity(); }, [loadActivity]);
 

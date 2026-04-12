@@ -1,5 +1,6 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/context/AuthContext";
 
 export type NotificationType = "reply" | "mention" | "upvote" | "follow" | "message" | "event" | "system";
 
@@ -24,7 +25,6 @@ interface NotificationsContextType {
 }
 
 const NotificationsContext = createContext<NotificationsContextType | undefined>(undefined);
-const STORAGE_KEY = "@uconnect_notifications";
 
 const SAMPLE_NOTIFICATIONS: Notification[] = [
   { id: "n1", type: "upvote", title: "Your post is trending", body: "142 people upvoted your anonymous post", isRead: false, createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(), actionId: "sp1", actionType: "post" },
@@ -41,59 +41,76 @@ function generateId() {
 }
 
 export function NotificationsProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>(SAMPLE_NOTIFICATIONS);
 
   useEffect(() => {
-    loadNotifications();
-  }, []);
-
-  const loadNotifications = async () => {
-    try {
-      const data = await AsyncStorage.getItem(STORAGE_KEY);
-      if (data) {
-        const stored = JSON.parse(data) as Notification[];
-        if (stored.length > 0) setNotifications(stored);
+    if (!user || user.id === "demo_user_001") {
+      setNotifications(SAMPLE_NOTIFICATIONS);
+      return;
+    }
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from("notifications")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(50);
+        if (data && data.length > 0) {
+          setNotifications(data.map((row: any) => ({
+            id: row.id,
+            type: row.type as NotificationType,
+            title: row.title,
+            body: row.body,
+            isRead: row.is_read,
+            createdAt: row.created_at,
+            actionId: row.action_id ?? undefined,
+            actionType: row.action_type ?? undefined,
+          })));
+        } else {
+          setNotifications(SAMPLE_NOTIFICATIONS);
+        }
+      } catch {
+        setNotifications(SAMPLE_NOTIFICATIONS);
       }
-    } catch {}
-  };
-
-  const save = async (items: Notification[]) => {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-    } catch {}
-  };
+    })();
+  }, [user?.id]);
 
   const markRead = (id: string) => {
-    setNotifications((prev) => {
-      const updated = prev.map((n) => (n.id === id ? { ...n, isRead: true } : n));
-      save(updated);
-      return updated;
-    });
+    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, isRead: true } : n));
+    if (user && user.id !== "demo_user_001") {
+      supabase.from("notifications").update({ is_read: true }).eq("id", id).then(() => {});
+    }
   };
 
   const markAllRead = () => {
-    setNotifications((prev) => {
-      const updated = prev.map((n) => ({ ...n, isRead: true }));
-      save(updated);
-      return updated;
-    });
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    if (user && user.id !== "demo_user_001") {
+      supabase.from("notifications").update({ is_read: true }).eq("user_id", user.id).then(() => {});
+    }
   };
 
   const deleteNotification = (id: string) => {
-    setNotifications((prev) => {
-      const updated = prev.filter((n) => n.id !== id);
-      save(updated);
-      return updated;
-    });
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    if (user && user.id !== "demo_user_001") {
+      supabase.from("notifications").delete().eq("id", id).then(() => {});
+    }
   };
 
   const addNotification = (n: Omit<Notification, "id" | "createdAt" | "isRead">) => {
     const newN: Notification = { ...n, id: generateId(), createdAt: new Date().toISOString(), isRead: false };
-    setNotifications((prev) => {
-      const updated = [newN, ...prev];
-      save(updated);
-      return updated;
-    });
+    setNotifications((prev) => [newN, ...prev]);
+    if (user && user.id !== "demo_user_001") {
+      supabase.from("notifications").insert({
+        user_id: user.id,
+        type: n.type,
+        title: n.title,
+        body: n.body,
+        action_id: n.actionId ?? null,
+        action_type: n.actionType ?? null,
+      }).then(() => {});
+    }
   };
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;

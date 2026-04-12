@@ -1,5 +1,4 @@
 import { Feather } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Easing, FlatList, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -7,6 +6,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useToast } from "@/components/Toast";
 import { TypewriterText } from "@/components/TypewriterText";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/context/AuthContext";
 
 interface Internship {
   id: string;
@@ -31,7 +32,6 @@ const INTERNSHIPS: Internship[] = [
 ];
 
 const TYPE_COLORS: Record<string, string> = { Remote: "#00A86B", Hybrid: "#3B82F6", Onsite: "#8B5CF6" };
-const STORAGE_KEY = "@uconnect_applied_internships";
 
 function InternshipCard({ item, index, appliedIds, onApply, colors }: any) {
   const anim = useRef(new Animated.Value(0)).current;
@@ -96,6 +96,7 @@ export default function InternshipsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { showSuccess } = useToast();
+  const { user } = useAuth();
   const [activeType, setActiveType] = useState<string>("All");
   const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set());
   const headerAnim = useRef(new Animated.Value(0)).current;
@@ -109,20 +110,30 @@ export default function InternshipsScreen() {
   }, []);
 
   useEffect(() => {
+    if (!user || user.id === "demo_user_001") return;
     (async () => {
       try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        if (raw) setAppliedIds(new Set(JSON.parse(raw)));
+        const { data } = await supabase
+          .from("internship_applications")
+          .select("internship_id")
+          .eq("user_id", user.id);
+        if (data) setAppliedIds(new Set(data.map((r: any) => r.internship_id)));
       } catch {}
     })();
-  }, []);
+  }, [user?.id]);
 
   const handleApply = async (id: string) => {
     const already = appliedIds.has(id);
     const updated = new Set(appliedIds);
     if (already) { updated.delete(id); } else { updated.add(id); }
     setAppliedIds(updated);
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify([...updated]));
+    if (user && user.id !== "demo_user_001") {
+      if (already) {
+        await supabase.from("internship_applications").delete().eq("user_id", user.id).eq("internship_id", id);
+      } else {
+        await supabase.from("internship_applications").insert({ user_id: user.id, internship_id: id });
+      }
+    }
     const item = INTERNSHIPS.find((i) => i.id === id);
     if (!already) showSuccess(`Applied to ${item?.company}!`, "Application tracked successfully.");
   };

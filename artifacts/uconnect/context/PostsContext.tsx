@@ -1,5 +1,6 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/context/AuthContext";
 
 export type PostTag =
   | "General" | "Academic" | "Campus Life" | "Rant" | "Advice"
@@ -54,6 +55,7 @@ interface PostsContextType {
   posts: Post[];
   savedPosts: Post[];
   drafts: Draft[];
+  isLoading: boolean;
   createPost: (post: Omit<Post, "id" | "upvotes" | "downvotes" | "userVote" | "commentCount" | "isBookmarked" | "createdAt" | "comments">) => Promise<void>;
   votePost: (postId: string, vote: "up" | "down") => void;
   bookmarkPost: (postId: string) => void;
@@ -67,93 +69,175 @@ interface PostsContextType {
 }
 
 const PostsContext = createContext<PostsContextType | undefined>(undefined);
-const STORAGE_KEY = "@uconnect_posts";
-const DRAFTS_KEY = "@uconnect_drafts";
+
+function rowToPost(row: any, userVote: "up" | "down" | null = null, isBookmarked = false, comments: Comment[] = []): Post {
+  return {
+    id: row.id,
+    authorId: row.author_id,
+    authorUsername: row.is_anonymous ? "anonymous" : row.author_username,
+    authorAvatar: row.is_anonymous ? null : row.author_avatar,
+    college: row.college,
+    isAnonymous: row.is_anonymous,
+    tag: row.tag as PostTag,
+    content: row.content,
+    mediaUrls: row.media_urls ?? [],
+    videoUrl: row.video_url ?? null,
+    upvotes: row.upvotes ?? 0,
+    downvotes: row.downvotes ?? 0,
+    userVote,
+    commentCount: row.comment_count ?? 0,
+    isBookmarked,
+    createdAt: row.created_at,
+    comments,
+    autoDeleteAt: row.auto_delete_at ?? undefined,
+  };
+}
+
+function rowToComment(row: any, userVote: "up" | "down" | null = null, replies: Comment[] = []): Comment {
+  return {
+    id: row.id,
+    postId: row.post_id,
+    parentId: row.parent_id ?? null,
+    authorId: row.author_id,
+    authorUsername: row.is_anonymous ? "anonymous" : row.author_username,
+    authorAvatar: row.is_anonymous ? null : row.author_avatar,
+    isAnonymous: row.is_anonymous,
+    content: row.content,
+    upvotes: row.upvotes ?? 0,
+    downvotes: row.downvotes ?? 0,
+    userVote,
+    createdAt: row.created_at,
+    replies,
+  };
+}
 
 const SAMPLE_POSTS: Post[] = [
   { id: "sp1", authorId: "user1", authorUsername: "anonymous", authorAvatar: null, college: "IIT Delhi", isAnonymous: true, tag: "Confession", content: "I've been spending more time in the library pretending to study than actually studying. The WiFi is just too good there. Anyone else?\n\n#confession #procrastination", mediaUrls: [], videoUrl: null, upvotes: 142, downvotes: 3, userVote: null, commentCount: 18, isBookmarked: false, createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), comments: [] },
   { id: "sp2", authorId: "user2", authorUsername: "priya_cs23", authorAvatar: null, college: "IIT Delhi", isAnonymous: false, tag: "Academic", content: "Just got placed at Google with 45 LPA! Two years ago I was failing my DSA class. It gets better, keep grinding.\n\nResources that helped:\n• Striver's SDE Sheet\n• NeetCode 150\n• Mock interviews with seniors\n\n#placement #Google #DSA #achievement", mediaUrls: [], videoUrl: null, upvotes: 892, downvotes: 12, userVote: null, commentCount: 67, isBookmarked: false, createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), comments: [] },
   { id: "sp3", authorId: "user3", authorUsername: "anonymous", authorAvatar: null, college: "IIT Delhi", isAnonymous: true, tag: "Rant", content: "The canteen food has gotten SO bad this semester. Paying 150 rs for something that tastes like cardboard. Where is the hostel mess committee?\n\n#messfood #iitdelhi #rant", mediaUrls: [], videoUrl: null, upvotes: 234, downvotes: 7, userVote: null, commentCount: 42, isBookmarked: false, createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), comments: [] },
-  { id: "sp4", authorId: "user4", authorUsername: "arjun_mech22", authorAvatar: null, college: "IIT Delhi", isAnonymous: false, tag: "Event", content: "Rendezvous 2025 registrations are OPEN! Biggest cultural fest of Delhi. DJ nights and competitions with 10L+ prize pool. Register by Nov 15.\n\n#rendezvous2025 #iitdelhi #events", mediaUrls: [], videoUrl: null, upvotes: 456, downvotes: 2, userVote: null, commentCount: 89, isBookmarked: false, createdAt: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), comments: [] },
-  { id: "sp5", authorId: "user5", authorUsername: "anonymous", authorAvatar: null, college: "IIT Delhi", isAnonymous: true, tag: "Advice", content: "To every fresher: Don't waste your first year trying to be a topper. Join clubs, make friends, explore. The real learning happens outside classrooms.\n\n#fresher #advice #campuslife", mediaUrls: [], videoUrl: null, upvotes: 1204, downvotes: 18, userVote: null, commentCount: 103, isBookmarked: false, createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), comments: [] },
-  { id: "sp6", authorId: "user6", authorUsername: "shreya_ee24", authorAvatar: null, college: "IIT Delhi", isAnonymous: false, tag: "Question", content: "Has anyone done the Embedded Systems elective in 4th year? Is it worth taking or should I go for Computer Vision instead? My placements are in Dec.\n\n#embeddedsystems #computervision #electives", mediaUrls: [], videoUrl: null, upvotes: 34, downvotes: 0, userVote: null, commentCount: 15, isBookmarked: false, createdAt: new Date(Date.now() - 16 * 60 * 60 * 1000).toISOString(), comments: [] },
 ];
 
-function generateId() {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
-}
-
-function migrate(p: any): Post {
-  return {
-    ...p,
-    authorAvatar: p.authorAvatar ?? null,
-    mediaUrls: p.mediaUrls ?? (p.mediaUrl ? [p.mediaUrl] : []),
-    videoUrl: p.videoUrl ?? null,
-    comments: (p.comments || []).map((c: Comment) => ({ ...c, authorAvatar: c.authorAvatar ?? null })),
-  };
-}
-
-function filterExpired(posts: Post[]): Post[] {
-  const now = new Date();
-  return posts.filter((p) => !p.autoDeleteAt || new Date(p.autoDeleteAt) > now);
-}
-
 export function PostsProvider({ children }: { children: React.ReactNode }) {
-  const [posts, _setPosts] = useState<Post[]>(SAMPLE_POSTS);
-  const postsRef = useRef<Post[]>(SAMPLE_POSTS);
+  const { user } = useAuth();
+  const [posts, setPosts] = useState<Post[]>(SAMPLE_POSTS);
   const [drafts, setDrafts] = useState<Draft[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const postsRef = useRef<Post[]>(SAMPLE_POSTS);
 
   const applyPosts = useCallback((list: Post[]) => {
     postsRef.current = list;
-    _setPosts(list);
+    setPosts(list);
   }, []);
 
-  const savePosts = useCallback(async (list: Post[]) => {
-    try { await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(list)); } catch {}
-  }, []);
+  const fetchPosts = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [postsRes, votesRes, bookmarksRes] = await Promise.all([
+        supabase.from("posts").select("*").order("created_at", { ascending: false }).limit(100),
+        user && user.id !== "demo_user_001"
+          ? supabase.from("post_votes").select("post_id, vote").eq("user_id", user.id)
+          : Promise.resolve({ data: [] }),
+        user && user.id !== "demo_user_001"
+          ? supabase.from("bookmarks").select("post_id").eq("user_id", user.id)
+          : Promise.resolve({ data: [] }),
+      ]);
+
+      if (postsRes.data && postsRes.data.length > 0) {
+        const voteMap = new Map<string, "up" | "down">();
+        (votesRes.data ?? []).forEach((v: any) => voteMap.set(v.post_id, v.vote));
+        const bookmarkSet = new Set<string>((bookmarksRes.data ?? []).map((b: any) => b.post_id));
+
+        const mapped = postsRes.data.map((row: any) =>
+          rowToPost(row, voteMap.get(row.id) ?? null, bookmarkSet.has(row.id))
+        );
+        applyPosts(mapped);
+      } else {
+        applyPosts(SAMPLE_POSTS);
+      }
+
+      // Fetch drafts
+      if (user && user.id !== "demo_user_001") {
+        const { data: draftRows } = await supabase
+          .from("drafts")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("saved_at", { ascending: false });
+        if (draftRows) {
+          setDrafts(draftRows.map((d: any) => ({
+            id: d.id,
+            content: d.content,
+            tag: d.tag as PostTag,
+            isAnonymous: d.is_anonymous,
+            savedAt: d.saved_at,
+          })));
+        }
+      }
+    } catch {
+      applyPosts(SAMPLE_POSTS);
+    }
+    setIsLoading(false);
+  }, [user, applyPosts]);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const data = await AsyncStorage.getItem(STORAGE_KEY);
-        if (data) {
-          const stored = JSON.parse(data) as any[];
-          if (stored.length > 0) {
-            const migrated = filterExpired(stored.map(migrate));
-            applyPosts(migrated);
-            return;
-          }
-        }
-      } catch {}
-      applyPosts(SAMPLE_POSTS);
-    })();
-
-    (async () => {
-      try {
-        const raw = await AsyncStorage.getItem(DRAFTS_KEY);
-        if (raw) setDrafts(JSON.parse(raw));
-      } catch {}
-    })();
-  }, [applyPosts]);
+    fetchPosts();
+  }, [user?.id]);
 
   const createPost = useCallback(async (postData: Omit<Post, "id" | "upvotes" | "downvotes" | "userVote" | "commentCount" | "isBookmarked" | "createdAt" | "comments">) => {
-    const newPost: Post = {
-      ...postData,
-      id: generateId(),
-      upvotes: 0,
-      downvotes: 0,
-      userVote: null,
-      commentCount: 0,
-      isBookmarked: false,
-      createdAt: new Date().toISOString(),
-      comments: [],
-    };
-    const updated = [newPost, ...postsRef.current];
-    applyPosts(updated);
-    await savePosts(updated);
-  }, [applyPosts, savePosts]);
+    if (!user || user.id === "demo_user_001") {
+      // Demo mode: local only
+      const newPost: Post = {
+        ...postData,
+        id: "local_" + Date.now(),
+        upvotes: 0,
+        downvotes: 0,
+        userVote: null,
+        commentCount: 0,
+        isBookmarked: false,
+        createdAt: new Date().toISOString(),
+        comments: [],
+      };
+      applyPosts([newPost, ...postsRef.current]);
+      return;
+    }
+
+    const { data, error } = await supabase.from("posts").insert({
+      author_id: user.id,
+      author_username: user.username,
+      author_avatar: user.avatar,
+      college: postData.college,
+      is_anonymous: postData.isAnonymous,
+      tag: postData.tag,
+      content: postData.content,
+      media_urls: postData.mediaUrls,
+      video_url: postData.videoUrl,
+      auto_delete_at: postData.autoDeleteAt ?? null,
+    }).select().single();
+
+    if (data) {
+      const newPost = rowToPost(data);
+      applyPosts([newPost, ...postsRef.current]);
+      // Update post count
+      await supabase.from("profiles").update({ posts_count: (user.postsCount ?? 0) + 1 }).eq("id", user.id);
+    }
+  }, [user, applyPosts]);
 
   const votePost = useCallback((postId: string, vote: "up" | "down") => {
+    if (!user || user.id === "demo_user_001") {
+      const updated = postsRef.current.map((p) => {
+        if (p.id !== postId) return p;
+        const wasVoted = p.userVote === vote;
+        return {
+          ...p,
+          upvotes: vote === "up" ? (wasVoted ? p.upvotes - 1 : p.upvotes + 1 + (p.userVote === "down" ? 1 : 0)) : p.upvotes - (p.userVote === "up" ? 1 : 0),
+          downvotes: vote === "down" ? (wasVoted ? p.downvotes - 1 : p.downvotes + 1 + (p.userVote === "up" ? 1 : 0)) : p.downvotes - (p.userVote === "down" ? 1 : 0),
+          userVote: wasVoted ? null : vote,
+        };
+      });
+      applyPosts(updated);
+      return;
+    }
+
+    // Optimistic update
     const updated = postsRef.current.map((p) => {
       if (p.id !== postId) return p;
       const wasVoted = p.userVote === vote;
@@ -165,25 +249,37 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
       };
     });
     applyPosts(updated);
-    savePosts(updated);
-  }, [applyPosts, savePosts]);
+    supabase.rpc("vote_post", { p_post_id: postId, p_user_id: user.id, p_vote: vote }).then(() => {});
+  }, [user, applyPosts]);
 
   const bookmarkPost = useCallback((postId: string) => {
+    const post = postsRef.current.find((p) => p.id === postId);
+    if (!post) return;
+
     const updated = postsRef.current.map((p) => p.id === postId ? { ...p, isBookmarked: !p.isBookmarked } : p);
     applyPosts(updated);
-    savePosts(updated);
-  }, [applyPosts, savePosts]);
+
+    if (!user || user.id === "demo_user_001") return;
+
+    if (post.isBookmarked) {
+      supabase.from("bookmarks").delete().eq("user_id", user.id).eq("post_id", postId).then(() => {});
+    } else {
+      supabase.from("bookmarks").insert({ user_id: user.id, post_id: postId }).then(() => {});
+    }
+  }, [user, applyPosts]);
 
   const deletePost = useCallback((postId: string) => {
     const updated = postsRef.current.filter((p) => p.id !== postId);
     applyPosts(updated);
-    savePosts(updated);
-  }, [applyPosts, savePosts]);
+    if (user && user.id !== "demo_user_001") {
+      supabase.from("posts").delete().eq("id", postId).then(() => {});
+    }
+  }, [user, applyPosts]);
 
   const addComment = useCallback((postId: string, commentData: Omit<Comment, "id" | "createdAt" | "upvotes" | "downvotes" | "userVote" | "replies">) => {
     const newComment: Comment = {
       ...commentData,
-      id: generateId(),
+      id: "local_" + Date.now(),
       upvotes: 0,
       downvotes: 0,
       userVote: null,
@@ -204,8 +300,20 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
       return { ...p, commentCount: p.commentCount + 1, comments: [...p.comments, newComment] };
     });
     applyPosts(updated);
-    savePosts(updated);
-  }, [applyPosts, savePosts]);
+
+    if (user && user.id !== "demo_user_001") {
+      supabase.from("comments").insert({
+        post_id: postId,
+        parent_id: commentData.parentId ?? null,
+        author_id: user.id,
+        author_username: user.username,
+        author_avatar: user.avatar,
+        is_anonymous: commentData.isAnonymous,
+        content: commentData.content,
+      }).then(() => {});
+      supabase.rpc("increment_comment_count", { p_post_id: postId }).then(() => {});
+    }
+  }, [user, applyPosts]);
 
   const voteComment = useCallback((postId: string, commentId: string, vote: "up" | "down") => {
     const updated = postsRef.current.map((p) => {
@@ -222,47 +330,46 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
       };
     });
     applyPosts(updated);
-    savePosts(updated);
-  }, [applyPosts, savePosts]);
+  }, [applyPosts]);
 
-  const reportPost = useCallback((_postId: string, _reason: string) => {}, []);
+  const reportPost = useCallback((postId: string, reason: string) => {
+    if (!user || user.id === "demo_user_001") return;
+    supabase.from("reports").insert({ reporter_id: user.id, post_id: postId, reason }).then(() => {});
+  }, [user]);
 
   const saveDraft = useCallback(async (draftData: Omit<Draft, "id" | "savedAt">) => {
-    const newDraft: Draft = { ...draftData, id: generateId(), savedAt: new Date().toISOString() };
-    setDrafts((prev) => {
-      const updated = [newDraft, ...prev];
-      AsyncStorage.setItem(DRAFTS_KEY, JSON.stringify(updated));
-      return updated;
-    });
-  }, []);
+    if (!user || user.id === "demo_user_001") {
+      const newDraft: Draft = { ...draftData, id: "draft_" + Date.now(), savedAt: new Date().toISOString() };
+      setDrafts((prev) => [newDraft, ...prev]);
+      return;
+    }
+    const { data } = await supabase.from("drafts").insert({
+      user_id: user.id,
+      content: draftData.content,
+      tag: draftData.tag,
+      is_anonymous: draftData.isAnonymous,
+    }).select().single();
+    if (data) {
+      const newDraft: Draft = { id: data.id, content: data.content, tag: data.tag, isAnonymous: data.is_anonymous, savedAt: data.saved_at };
+      setDrafts((prev) => [newDraft, ...prev]);
+    }
+  }, [user]);
 
   const deleteDraft = useCallback(async (draftId: string) => {
-    setDrafts((prev) => {
-      const updated = prev.filter((d) => d.id !== draftId);
-      AsyncStorage.setItem(DRAFTS_KEY, JSON.stringify(updated));
-      return updated;
-    });
-  }, []);
+    setDrafts((prev) => prev.filter((d) => d.id !== draftId));
+    if (user && user.id !== "demo_user_001") {
+      await supabase.from("drafts").delete().eq("id", draftId);
+    }
+  }, [user]);
 
   const refreshPosts = useCallback(async () => {
-    try {
-      const data = await AsyncStorage.getItem(STORAGE_KEY);
-      if (data) {
-        const stored = JSON.parse(data) as any[];
-        if (stored.length > 0) {
-          const migrated = filterExpired(stored.map(migrate));
-          applyPosts(migrated);
-          return;
-        }
-      }
-    } catch {}
-    applyPosts(SAMPLE_POSTS);
-  }, [applyPosts]);
+    await fetchPosts();
+  }, [fetchPosts]);
 
   const savedPosts = posts.filter((p) => p.isBookmarked);
 
   return (
-    <PostsContext.Provider value={{ posts, savedPosts, drafts, createPost, votePost, bookmarkPost, deletePost, addComment, voteComment, reportPost, saveDraft, deleteDraft, refreshPosts }}>
+    <PostsContext.Provider value={{ posts, savedPosts, drafts, isLoading, createPost, votePost, bookmarkPost, deletePost, addComment, voteComment, reportPost, saveDraft, deleteDraft, refreshPosts }}>
       {children}
     </PostsContext.Provider>
   );
