@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { Image } from "react-native";
 import { router } from "expo-router";
 import React, { useCallback, useRef, useEffect, useState } from "react";
 import {
@@ -139,8 +140,8 @@ export default function HomeScreen() {
         ]}
       >
         <View style={styles.headerLeft}>
-          <View style={[styles.logoSmall, { backgroundColor: colors.primary + "20", borderColor: colors.primary + "40" }]}>
-            <Text style={[styles.logoChar, { color: colors.primary }]}>U</Text>
+          <View style={[styles.logoSmall, colors.background === "#0A0A0A" ? { backgroundColor: "#FFFFFF", borderColor: "rgba(255,255,255,0.15)" } : { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" }]}>
+            <Image source={require("@/assets/images/logo.png")} style={styles.logoImg} resizeMode="contain" />
           </View>
           <View>
             <TypewriterText
@@ -252,9 +253,9 @@ const styles = StyleSheet.create({
   headerLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
   logoSmall: {
     width: 36, height: 36, borderRadius: 10, borderWidth: 1,
-    alignItems: "center", justifyContent: "center",
+    alignItems: "center", justifyContent: "center", overflow: "hidden",
   },
-  logoChar: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  logoImg: { width: 32, height: 32 },
   headerTitle: { fontSize: 20, fontFamily: "Inter_700Bold" },
   headerCollege: { fontSize: 11, fontFamily: "Inter_400Regular" },
   headerIconBtn: {

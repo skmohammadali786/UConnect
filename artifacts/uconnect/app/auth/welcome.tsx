@@ -2,7 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useEffect, useRef } from "react";
 import {
-  Animated, Dimensions, Easing, Platform,
+  Animated, Dimensions, Easing, Image, Platform,
   ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -153,10 +153,12 @@ export default function WelcomeScreen() {
             transform: [{ scale: Animated.multiply(logoScale, logoPulse) }],
           }}
         >
-          <View style={[styles.logoOuter, { borderColor: colors.primary + "50" }]}>
-            <View style={[styles.logoInner, { backgroundColor: colors.primary + "1A", borderColor: colors.primary + "35" }]}>
-              <Text style={[styles.logoChar, { color: colors.primary }]}>U</Text>
-            </View>
+          <View style={[styles.logoWrap, colors.background === "#0A0A0A" ? styles.logoWrapDark : styles.logoWrapLight]}>
+            <Image
+              source={require("@/assets/images/logo.png")}
+              style={styles.logoImg}
+              resizeMode="contain"
+            />
           </View>
         </Animated.View>
       </View>
@@ -272,23 +274,18 @@ const styles = StyleSheet.create({
     borderRadius: 68,
     borderWidth: 1.5,
   },
-  logoOuter: {
+  logoWrap: {
     width: 104,
     height: 104,
-    borderRadius: 28,
+    borderRadius: 24,
     borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
   },
-  logoInner: {
-    width: 82,
-    height: 82,
-    borderRadius: 20,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  logoChar: { fontSize: 44, fontFamily: "Inter_700Bold", lineHeight: 52 },
+  logoWrapLight: { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" },
+  logoWrapDark: { backgroundColor: "#FFFFFF", borderColor: "rgba(255,255,255,0.2)" },
+  logoImg: { width: 90, height: 90 },
   textSection: {
     paddingHorizontal: 28,
     paddingTop: 8,

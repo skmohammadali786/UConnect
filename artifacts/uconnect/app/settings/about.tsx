@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
-import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 
@@ -35,8 +35,8 @@ export default function AboutScreen() {
 
       <ScrollView contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
         <View style={[styles.hero, { backgroundColor: colors.primary + "10" }]}>
-          <View style={[styles.logoCircle, { backgroundColor: colors.primary + "20", borderColor: colors.primary + "40" }]}>
-            <Text style={[styles.logoChar, { color: colors.primary }]}>U</Text>
+          <View style={[styles.logoCircle, colors.background === "#0A0A0A" ? { backgroundColor: "#FFFFFF", borderColor: "rgba(255,255,255,0.15)" } : { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" }]}>
+            <Image source={require("@/assets/images/logo.png")} style={styles.logoImg} resizeMode="contain" />
           </View>
           <Text style={[styles.appName, { color: colors.foreground }]}>UConnect</Text>
           <Text style={[styles.tagline, { color: colors.primary }]}>Your college. Your voice.</Text>
@@ -104,8 +104,8 @@ const styles = StyleSheet.create({
   backBtn: { padding: 4 },
   title: { fontSize: 18, fontFamily: "Inter_700Bold" },
   hero: { alignItems: "center", paddingVertical: 40, gap: 12 },
-  logoCircle: { width: 88, height: 88, borderRadius: 24, borderWidth: 2, alignItems: "center", justifyContent: "center" },
-  logoChar: { fontSize: 44, fontFamily: "Inter_700Bold" },
+  logoCircle: { width: 88, height: 88, borderRadius: 24, borderWidth: 1.5, alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  logoImg: { width: 78, height: 78 },
   appName: { fontSize: 28, fontFamily: "Inter_700Bold" },
   tagline: { fontSize: 16, fontFamily: "Inter_500Medium" },
   versionBadge: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1, marginTop: 4 },

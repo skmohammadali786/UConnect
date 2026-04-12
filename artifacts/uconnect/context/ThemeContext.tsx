@@ -9,14 +9,14 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType>({
-  themeMode: "dark",
+  themeMode: "light",
   setThemeMode: async () => {},
 });
 
 const STORAGE_KEY = "@uconnect_theme";
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [themeMode, setThemeModeState] = useState<ThemeMode>("dark");
+  const [themeMode, setThemeModeState] = useState<ThemeMode>("light");
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then((v) => {
