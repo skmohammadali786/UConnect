@@ -154,7 +154,7 @@ export function TeamsProvider({ children }: { children: React.ReactNode }) {
     }));
     if (user) {
       await supabase.from("team_requests").update({ status: "approved" }).eq("team_id", teamId).eq("user_id", userId);
-      await supabase.from("teams").update({ members: teams.find((t) => t.id === teamId)?.members ?? 1 + 1 }).eq("id", teamId);
+      await supabase.from("teams").update({ members: (teams.find((t) => t.id === teamId)?.members ?? 1) + 1 }).eq("id", teamId);
     }
   }, [user, teams]);
 

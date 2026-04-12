@@ -28,7 +28,7 @@ export interface Conversation {
 interface ChatContextType {
   conversations: Conversation[];
   sendMessage: (conversationId: string, content: string, senderId: string) => void;
-  startConversation: (participantId: string, participantUsername: string, isAnonymous: boolean) => string;
+  startConversation: (participantId: string, participantUsername: string, isAnonymous: boolean) => Promise<string>;
   markRead: (conversationId: string) => void;
   revealIdentity: (conversationId: string) => void;
   blockUser: (conversationId: string) => void;
@@ -134,12 +134,42 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const startConversation = (participantId: string, participantUsername: string, isAnonymous: boolean): string => {
+  const startConversation = async (participantId: string, participantUsername: string, isAnonymous: boolean): Promise<string> => {
     const existing = conversations.find((c) => c.participantId === participantId);
     if (existing) return existing.id;
-    const newConvId = generateId();
+
+    if (!user) {
+      const newConvId = generateId();
+      const newConv: Conversation = {
+        id: newConvId,
+        participantId,
+        participantUsername,
+        participantAvatar: null,
+        isAnonymous,
+        isRevealed: !isAnonymous,
+        isBlocked: false,
+        lastMessage: "",
+        lastMessageAt: new Date().toISOString(),
+        unreadCount: 0,
+        messages: [],
+      };
+      setConversations((prev) => [newConv, ...prev]);
+      return newConvId;
+    }
+
+    const { data, error } = await supabase.from("conversations").insert({
+      user_a: user.id,
+      user_b: participantId,
+      is_anonymous: isAnonymous,
+      is_revealed: !isAnonymous,
+    }).select("id").single();
+
+    if (error || !data?.id) {
+      throw new Error(error?.message ?? "Failed to start conversation");
+    }
+
     const newConv: Conversation = {
-      id: newConvId,
+      id: data.id,
       participantId,
       participantUsername,
       participantAvatar: null,
@@ -152,15 +182,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       messages: [],
     };
     setConversations((prev) => [newConv, ...prev]);
-    if (user) {
-      supabase.from("conversations").insert({
-        user_a: user.id,
-        user_b: participantId,
-        is_anonymous: isAnonymous,
-        is_revealed: !isAnonymous,
-      }).then(() => {});
-    }
-    return newConvId;
+    return data.id;
   };
 
   const markRead = (conversationId: string) => {

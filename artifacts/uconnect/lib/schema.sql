@@ -8,6 +8,7 @@ create extension if not exists "uuid-ossp";
 create table if not exists profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text not null,
+  phone text not null default '',
   username text unique not null,
   display_name text not null default '',
   college text not null default '',
@@ -136,16 +137,17 @@ alter table drafts enable row level security;
 create policy "Users can manage own drafts" on drafts for all using (auth.uid() = user_id);
 
 -- ─── FOLLOWING ───────────────────────────────────────────────────────────────
-create table if not exists drafts (
+create table if not exists following (
   id uuid primary key default uuid_generate_v4(),
-  user_id uuid not null references profiles(id) on delete cascade,
-  content text not null,
-  tag text not null default 'General',
-  is_anonymous boolean not null default false,
-  saved_at timestamptz not null default now()
+  follower_id uuid not null references profiles(id) on delete cascade,
+  following_id uuid not null references profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique(follower_id, following_id),
+  check (follower_id <> following_id)
 );
-alter table drafts enable row level security;
-create policy "Users can manage own drafts" on drafts for all using (auth.uid() = user_id);
+alter table following enable row level security;
+create policy "Users can manage own following" on following for all using (auth.uid() = follower_id);
+create policy "Following is viewable" on following for select using (true);
 -- ─── REPORTS ─────────────────────────────────────────────────────────────────
 create table if not exists reports (
   id uuid primary key default uuid_generate_v4(),
@@ -508,3 +510,25 @@ begin
   update events set rsvp_count = greatest(0, rsvp_count - 1) where id = p_event_id;
 end;
 $$;
+
+-- Delete account and all related data
+create or replace function delete_account()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  calling_user_id uuid;
+begin
+  calling_user_id := auth.uid();
+  if calling_user_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  delete from profiles where id = calling_user_id;
+  delete from auth.users where id = calling_user_id;
+end;
+$$;
+
+grant execute on function delete_account() to authenticated;
