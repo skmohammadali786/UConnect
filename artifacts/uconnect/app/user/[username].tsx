@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, FlatList, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Animated, FlatList, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PostCard } from "@/components/PostCard";
 import { useColors } from "@/hooks/useColors";
@@ -9,12 +9,9 @@ import { useAuth } from "@/context/AuthContext";
 import { usePosts } from "@/context/PostsContext";
 import { useSocial } from "@/context/SocialContext";
 import { useToast } from "@/components/Toast";
+import { supabase } from "@/lib/supabase";
 
 const ND = Platform.OS !== "web";
-
-function generateUserId(username: string) {
-  return "user_" + username.replace(/[^a-z0-9]/gi, "").toLowerCase();
-}
 
 const SAMPLE_PROFILES: Record<string, any> = {
   "cs_nerd": { id: "user_cs_nerd", displayName: "CS Nerd", username: "cs_nerd", college: "IIT Bombay", branch: "Computer Science", year: "4th Year", bio: "Algorithms, Coffee, and Code. ICPC World Finalist.", interests: ["Competitive Programming", "Algorithms", "Open Source"], followers: 342, following: 89, isVerified: true },
@@ -34,6 +31,11 @@ export default function UserProfileScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(14)).current;
 
+  const [profile, setProfile] = useState<any>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  const key = username?.toLowerCase() || "";
+
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 1, duration: 280, useNativeDriver: ND }),
@@ -41,27 +43,81 @@ export default function UserProfileScreen() {
     ]).start();
   }, []);
 
-  const key = username?.toLowerCase() || "";
-  const profile = SAMPLE_PROFILES[key] || {
-    id: generateUserId(key),
-    displayName: username,
-    username: key,
-    college: "Unknown College",
-    branch: "",
-    year: "",
-    bio: "",
-    interests: [],
-    followers: 0,
-    following: 0,
-    isVerified: false,
-  };
+  useEffect(() => {
+    if (!key) { setProfileLoading(false); return; }
 
-  const isMe = me?.id === profile.id || me?.username === key;
-  const following = isFollowing(profile.id);
+    if (SAMPLE_PROFILES[key]) {
+      setProfile(SAMPLE_PROFILES[key]);
+      setProfileLoading(false);
+      return;
+    }
 
-  const userPosts = posts.filter((p) => p.authorId === profile.id || p.authorUsername === key);
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("username", key)
+          .maybeSingle();
+
+        if (data) {
+          setProfile({
+            id: data.id,
+            displayName: data.display_name || data.username,
+            username: data.username,
+            college: data.college || "",
+            branch: data.branch || "",
+            year: data.year || "",
+            bio: data.bio || "",
+            interests: data.interests || [],
+            followers: data.followers_count ?? 0,
+            following: data.following_count ?? 0,
+            isVerified: false,
+            avatar: data.avatar || null,
+          });
+        } else {
+          setProfile({
+            id: "user_" + key,
+            displayName: username,
+            username: key,
+            college: "",
+            branch: "",
+            year: "",
+            bio: "",
+            interests: [],
+            followers: 0,
+            following: 0,
+            isVerified: false,
+          });
+        }
+      } catch {
+        setProfile({
+          id: "user_" + key,
+          displayName: username,
+          username: key,
+          college: "",
+          branch: "",
+          year: "",
+          bio: "",
+          interests: [],
+          followers: 0,
+          following: 0,
+          isVerified: false,
+        });
+      }
+      setProfileLoading(false);
+    })();
+  }, [key]);
+
+  const isMe = profile && (me?.id === profile.id || me?.username === key);
+  const following = profile ? isFollowing(profile.id) : false;
+
+  const userPosts = posts.filter((p) =>
+    profile ? (p.authorId === profile.id || p.authorUsername === key) : false
+  );
 
   const handleFollow = () => {
+    if (!profile) return;
     Animated.sequence([
       Animated.spring(followAnim, { toValue: 0.88, tension: 250, friction: 6, useNativeDriver: ND }),
       Animated.spring(followAnim, { toValue: 1, tension: 200, friction: 8, useNativeDriver: ND }),
@@ -71,11 +127,30 @@ export default function UserProfileScreen() {
   };
 
   const handleMessage = () => {
+    if (!profile) return;
     router.push({ pathname: "/chat/[id]" as any, params: { id: profile.id, username: profile.username } });
   };
 
-  const followerCount = profile.followers + (following ? 1 : 0);
+  if (profileLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, backgroundColor: colors.headerBg, borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <Feather name="arrow-left" size={22} color={colors.foreground} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>@{key}</Text>
+          <View style={{ width: 38 }} />
+        </View>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </View>
+    );
+  }
 
+  if (!profile) return null;
+
+  const followerCount = profile.followers + (following ? 1 : 0);
   const initials = profile.displayName?.charAt(0)?.toUpperCase() || "U";
 
   return (
@@ -151,18 +226,18 @@ export default function UserProfileScreen() {
                 </View>
                 <Text style={[styles.usernameText, { color: colors.mutedForeground }]}>@{profile.username}</Text>
                 <View style={styles.metaRow}>
-                  {profile.college && (
+                  {profile.college ? (
                     <View style={[styles.metaPill, { backgroundColor: colors.secondary }]}>
                       <Feather name="book" size={11} color={colors.mutedForeground} />
                       <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{profile.college}</Text>
                     </View>
-                  )}
-                  {profile.year && (
+                  ) : null}
+                  {profile.year ? (
                     <View style={[styles.metaPill, { backgroundColor: colors.secondary }]}>
                       <Feather name="award" size={11} color={colors.mutedForeground} />
                       <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{profile.year}</Text>
                     </View>
-                  )}
+                  ) : null}
                 </View>
                 {profile.bio ? <Text style={[styles.bio, { color: colors.foreground }]}>{profile.bio}</Text> : null}
               </View>

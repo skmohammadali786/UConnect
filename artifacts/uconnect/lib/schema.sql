@@ -136,17 +136,16 @@ alter table drafts enable row level security;
 create policy "Users can manage own drafts" on drafts for all using (auth.uid() = user_id);
 
 -- ─── FOLLOWING ───────────────────────────────────────────────────────────────
-create table if not exists following (
+create table if not exists drafts (
   id uuid primary key default uuid_generate_v4(),
-  follower_id uuid not null references profiles(id) on delete cascade,
-  following_id uuid not null references profiles(id) on delete cascade,
-  created_at timestamptz not null default now(),
-  unique(follower_id, following_id)
+  user_id uuid not null references profiles(id) on delete cascade,
+  content text not null,
+  tag text not null default 'General',
+  is_anonymous boolean not null default false,
+  saved_at timestamptz not null default now()
 );
-alter table following enable row level security;
-create policy "Following is viewable" on following for select using (true);
-create policy "Users can manage own follows" on following for all using (auth.uid() = follower_id);
-
+alter table drafts enable row level security;
+create policy "Users can manage own drafts" on drafts for all using (auth.uid() = user_id);
 -- ─── REPORTS ─────────────────────────────────────────────────────────────────
 create table if not exists reports (
   id uuid primary key default uuid_generate_v4(),

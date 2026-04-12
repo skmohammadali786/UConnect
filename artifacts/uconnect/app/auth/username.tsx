@@ -1,11 +1,12 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppButton } from "@/components/AppButton";
 import { AppInput } from "@/components/AppInput";
 import { useColors } from "@/hooks/useColors";
+import { supabase } from "@/lib/supabase";
 
 const SUGGESTIONS = [
   "shadow_coder", "night_owl_dev", "silent_grinder", "campus_ninja",
@@ -28,6 +29,7 @@ export default function UsernameScreen() {
   const [username, setUsername] = useState("");
   const [suggestions] = useState(() => generateSuggestions(email || "user"));
   const [error, setError] = useState("");
+  const [checking, setChecking] = useState(false);
 
   const validate = (u: string) => {
     if (!u) { setError("Username is required"); return false; }
@@ -36,6 +38,27 @@ export default function UsernameScreen() {
     if (!/^[a-z0-9_]+$/.test(u)) { setError("Only lowercase letters, numbers, and _"); return false; }
     setError("");
     return true;
+  };
+
+  const handleContinue = async () => {
+    if (!validate(username)) return;
+    setChecking(true);
+    try {
+      const { data } = await supabase
+        .from("profiles")
+        .select("username")
+        .eq("username", username)
+        .maybeSingle();
+
+      if (data) {
+        setError("Username is already taken. Try another.");
+        setChecking(false);
+        return;
+      }
+    } catch {
+    }
+    setChecking(false);
+    router.push({ pathname: "/auth/profile-setup", params: { email, college, username } });
   };
 
   return (
@@ -71,23 +94,24 @@ export default function UsernameScreen() {
       </View>
 
       <AppButton
-        title="Continue"
-        onPress={() => {
-          if (validate(username)) {
-            router.push({ pathname: "/auth/profile-setup", params: { email, college, username } });
-          }
-        }}
+        title={checking ? "Checking..." : "Continue"}
+        onPress={handleContinue}
+        disabled={!username || checking}
         fullWidth
         size="lg"
+        icon={checking ? undefined : "arrow-right"}
       />
+      {checking && (
+        <View style={{ alignItems: "center", marginTop: 8 }}>
+          <ActivityIndicator size="small" color={colors.primary} />
+        </View>
+      )}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flexGrow: 1, paddingHorizontal: 24, gap: 20 },
-  backBtn: {},
-  backText: { fontSize: 14, fontFamily: "Inter_500Medium" },
   title: { fontSize: 28, fontFamily: "Inter_700Bold", lineHeight: 36, letterSpacing: -0.5, textAlign: "center" },
   subtitle: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 20, textAlign: "center" },
   suggestionsSection: { gap: 10 },

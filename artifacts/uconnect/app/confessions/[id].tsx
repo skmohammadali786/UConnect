@@ -2,7 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  Animated, KeyboardAvoidingView, Platform, ScrollView,
+  ActivityIndicator, Animated, KeyboardAvoidingView, Platform, ScrollView,
   StyleSheet, Switch, Text, TextInput, TouchableOpacity, View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -10,9 +10,15 @@ import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { useConfessions } from "@/context/ConfessionsContext";
 import { useSettings } from "@/context/SettingsContext";
+import { supabase } from "@/lib/supabase";
 import { formatRelativeTime } from "@/utils/time";
+import type { ConfessionComment } from "@/context/ConfessionsContext";
 
 const ND = Platform.OS !== "web";
+
+function isUUID(s: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
+}
 
 export default function ConfessionDetailScreen() {
   const colors = useColors();
@@ -24,6 +30,8 @@ export default function ConfessionDetailScreen() {
   const [comment, setComment] = useState("");
   const [isAnon, setIsAnon] = useState(true);
   const [revealed, setRevealed] = useState(false);
+  const [loadedComments, setLoadedComments] = useState<ConfessionComment[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(true);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const confession = confessions.find((c) => c.id === id);
@@ -31,6 +39,42 @@ export default function ConfessionDetailScreen() {
   useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 280, useNativeDriver: ND }).start();
   }, []);
+
+  useEffect(() => {
+    if (!confession) { setCommentsLoading(false); return; }
+
+    if (!isUUID(confession.id)) {
+      setLoadedComments(confession.comments);
+      setCommentsLoading(false);
+      return;
+    }
+
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from("confession_comments")
+          .select("*")
+          .eq("confession_id", confession.id)
+          .order("created_at", { ascending: true });
+
+        if (data) {
+          setLoadedComments(data.map((row: any) => ({
+            id: row.id,
+            authorId: row.is_anonymous ? "anon" : row.author_id,
+            isAnonymous: row.is_anonymous,
+            content: row.content,
+            upvotes: row.upvotes ?? 0,
+            createdAt: row.created_at,
+          })));
+        } else {
+          setLoadedComments(confession.comments);
+        }
+      } catch {
+        setLoadedComments(confession.comments);
+      }
+      setCommentsLoading(false);
+    })();
+  }, [confession?.id]);
 
   if (!confession) {
     return (
@@ -47,6 +91,15 @@ export default function ConfessionDetailScreen() {
 
   const handleSendComment = () => {
     if (!comment.trim() || !user) return;
+    const newComment: ConfessionComment = {
+      id: "local_" + Date.now(),
+      authorId: isAnon ? "anon" : user.id,
+      isAnonymous: isAnon,
+      content: comment.trim(),
+      upvotes: 0,
+      createdAt: new Date().toISOString(),
+    };
+    setLoadedComments((prev) => [...prev, newComment]);
     addConfessionComment(confession.id, {
       authorId: isAnon ? "anon" : user.id,
       isAnonymous: isAnon,
@@ -54,6 +107,11 @@ export default function ConfessionDetailScreen() {
     });
     setComment("");
   };
+
+  const displayComments = [
+    ...loadedComments.filter((c) => !c.id.startsWith("local_")),
+    ...loadedComments.filter((c) => c.id.startsWith("local_")),
+  ];
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={insets.bottom + 56}>
@@ -102,38 +160,43 @@ export default function ConfessionDetailScreen() {
 
           <View style={[styles.commentsHeader, { borderBottomColor: colors.border }]}>
             <Text style={[styles.commentsTitle, { color: colors.foreground }]}>
-              {confession.commentCount > 0 ? `${confession.commentCount} Comment${confession.commentCount !== 1 ? "s" : ""}` : "Be the first to comment"}
+              {displayComments.length > 0 ? `${displayComments.length} Comment${displayComments.length !== 1 ? "s" : ""}` : "Be the first to comment"}
             </Text>
           </View>
 
           <View style={{ paddingHorizontal: 16, paddingBottom: 100 }}>
-            {confession.comments.length === 0 && (
+            {commentsLoading ? (
+              <View style={styles.noComments}>
+                <ActivityIndicator size="small" color={colors.primary} />
+              </View>
+            ) : displayComments.length === 0 ? (
               <View style={styles.noComments}>
                 <Feather name="message-circle" size={36} color={colors.mutedForeground} />
                 <Text style={[styles.noCommentsText, { color: colors.mutedForeground }]}>No comments yet</Text>
                 <Text style={[styles.noCommentsSub, { color: colors.mutedForeground }]}>Share your thoughts anonymously</Text>
               </View>
-            )}
-            {confession.comments.map((c) => (
-              <View key={c.id} style={[styles.commentCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <View style={styles.commentHeader}>
-                  <View style={[styles.commentAvatar, { backgroundColor: c.isAnonymous ? colors.secondary : colors.primary + "20" }]}>
-                    <Feather name={c.isAnonymous ? "user-x" : "user"} size={13} color={c.isAnonymous ? colors.mutedForeground : colors.primary} />
+            ) : (
+              displayComments.map((c) => (
+                <View key={c.id} style={[styles.commentCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <View style={styles.commentHeader}>
+                    <View style={[styles.commentAvatar, { backgroundColor: c.isAnonymous ? colors.secondary : colors.primary + "20" }]}>
+                      <Feather name={c.isAnonymous ? "user-x" : "user"} size={13} color={c.isAnonymous ? colors.mutedForeground : colors.primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.commentAuthor, { color: c.isAnonymous ? colors.mutedForeground : colors.foreground }]}>
+                        {c.isAnonymous ? "Anonymous" : `@${c.authorId}`}
+                      </Text>
+                      <Text style={[styles.commentTime, { color: colors.mutedForeground }]}>{formatRelativeTime(c.createdAt)}</Text>
+                    </View>
+                    <View style={[styles.upvotePill, { backgroundColor: colors.primary + "12" }]}>
+                      <Feather name="arrow-up" size={12} color={colors.primary} />
+                      <Text style={[styles.upvoteText, { color: colors.primary }]}>{c.upvotes}</Text>
+                    </View>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.commentAuthor, { color: c.isAnonymous ? colors.mutedForeground : colors.foreground }]}>
-                      {c.isAnonymous ? "Anonymous" : `@${c.authorId}`}
-                    </Text>
-                    <Text style={[styles.commentTime, { color: colors.mutedForeground }]}>{formatRelativeTime(c.createdAt)}</Text>
-                  </View>
-                  <View style={[styles.upvotePill, { backgroundColor: colors.primary + "12" }]}>
-                    <Feather name="arrow-up" size={12} color={colors.primary} />
-                    <Text style={[styles.upvoteText, { color: colors.primary }]}>{c.upvotes}</Text>
-                  </View>
+                  <Text style={[styles.commentContent, { color: colors.foreground }]}>{c.content}</Text>
                 </View>
-                <Text style={[styles.commentContent, { color: colors.foreground }]}>{c.content}</Text>
-              </View>
-            ))}
+              ))
+            )}
           </View>
         </ScrollView>
 
@@ -167,6 +230,8 @@ export default function ConfessionDetailScreen() {
 const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: 1 },
   headerTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  notFound: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16 },
+  backFallback: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10 },
   confessionCard: { margin: 16, borderRadius: 18, borderWidth: 1, padding: 20, gap: 14 },
   anonBadge: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, alignSelf: "flex-start" },
   anonText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
@@ -197,6 +262,4 @@ const styles = StyleSheet.create({
   anonToggle: { flexDirection: "row", alignItems: "center", gap: 2, paddingHorizontal: 6, paddingVertical: 6, borderRadius: 10 },
   commentInput: { flex: 1, borderRadius: 14, borderWidth: 1.5, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, fontFamily: "Inter_400Regular", maxHeight: 100 },
   sendBtn: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  notFound: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16 },
-  backFallback: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
 });
