@@ -14,6 +14,7 @@ import { useToast } from "@/components/Toast";
 import { PostCard } from "@/components/PostCard";
 import { formatRelativeTime } from "@/utils/time";
 import { TypewriterText } from "@/components/TypewriterText";
+import { supabase } from "@/lib/supabase";
 
 const ND = Platform.OS !== "web";
 
@@ -92,6 +93,9 @@ export default function SearchScreen() {
   const [activeTab, setActiveTab] = useState<SearchTab>("posts");
   const [recentSearches, setRecentSearches] = useState<string[]>(["DSA", "placement", "IIT Delhi"]);
   const [focused, setFocused] = useState(false);
+  const [people, setPeople] = useState<{ id: string; username: string; displayName: string; college: string; branch: string; followers: number; bio: string }[]>([]);
+  const [peopleLoading, setPeopleLoading] = useState(false);
+  const [suggestedPeople, setSuggestedPeople] = useState<{ id: string; username: string; displayName: string; college: string; followers: number }[]>([]);
 
   const inputRef = useRef<TextInput>(null);
   const headerAnim = useRef(new Animated.Value(0)).current;
@@ -100,7 +104,50 @@ export default function SearchScreen() {
 
   useEffect(() => {
     Animated.spring(headerAnim, { toValue: 1, tension: 90, friction: 14, useNativeDriver: ND }).start();
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("id, username, display_name, college, followers")
+          .neq("id", user?.id ?? "")
+          .order("followers", { ascending: false })
+          .limit(8);
+        if (data && data.length > 0) {
+          setSuggestedPeople(data.map((r: any) => ({
+            id: r.id, username: r.username, displayName: r.display_name,
+            college: r.college, followers: r.followers ?? 0,
+          })));
+        }
+      } catch {}
+    })();
   }, []);
+
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) { setPeople([]); return; }
+    setPeopleLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("id, username, display_name, college, branch, followers, bio")
+          .or(`username.ilike.%${q}%,display_name.ilike.%${q}%,college.ilike.%${q}%`)
+          .neq("id", user?.id ?? "")
+          .limit(20);
+        setPeople((data ?? []).map((r: any) => ({
+          id: r.id,
+          username: r.username,
+          displayName: r.display_name,
+          college: r.college,
+          branch: r.branch,
+          followers: r.followers ?? 0,
+          bio: r.bio ?? "",
+        })));
+      } catch { setPeople([]); }
+      setPeopleLoading(false);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [query, user?.id]);
 
   const onFocus = () => {
     setFocused(true);
@@ -152,14 +199,7 @@ export default function SearchScreen() {
       )
     : [];
 
-  const filteredPeople = query
-    ? SAMPLE_PEOPLE.filter(
-        (p) =>
-          p.username.toLowerCase().includes(query.toLowerCase()) ||
-          p.displayName.toLowerCase().includes(query.toLowerCase()) ||
-          p.college.toLowerCase().includes(query.toLowerCase())
-      )
-    : SAMPLE_PEOPLE;
+  const filteredPeople = people;
 
   const filteredTags = query
     ? TRENDING_HASHTAGS.filter((t) => t.tag.toLowerCase().includes(query.toLowerCase()))
@@ -431,7 +471,7 @@ export default function SearchScreen() {
                 </TouchableOpacity>
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 4 }}>
-                {SAMPLE_PEOPLE.slice(0, 4).map((person, i) => {
+                {suggestedPeople.slice(0, 4).map((person, i) => {
                   const following = isFollowing(person.id);
                   return (
                     <FadeSlideItem key={person.id} index={i} delay={140}>
@@ -442,7 +482,7 @@ export default function SearchScreen() {
                       >
                         <View style={[styles.personHorizontalAvatar, { backgroundColor: colors.primary + "22" }]}>
                           <Text style={[styles.personHorizontalInitial, { color: colors.primary }]}>
-                            {person.displayName.charAt(0)}
+                            {(person.displayName ?? person.username).charAt(0).toUpperCase()}
                           </Text>
                         </View>
                         <Text style={[styles.personHorizontalName, { color: colors.foreground }]}>{person.displayName}</Text>

@@ -6,9 +6,11 @@ import {
   useFonts,
 } from "@expo-google-fonts/inter";
 import { Stack, router, useSegments } from "expo-router";
+import * as Linking from "expo-linking";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect } from "react";
 import { View } from "react-native";
+import { supabase } from "@/lib/supabase";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -76,6 +78,34 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError]);
+
+  const handleDeepLink = useCallback(async (url: string) => {
+    if (!url.includes("auth/callback")) return;
+    // Hash fragment flow: #access_token=...&refresh_token=...
+    const hash = url.split("#")[1];
+    if (hash) {
+      const p = new URLSearchParams(hash);
+      const access_token = p.get("access_token");
+      const refresh_token = p.get("refresh_token");
+      if (access_token && refresh_token) {
+        await supabase.auth.setSession({ access_token, refresh_token });
+        return;
+      }
+    }
+    // PKCE flow: ?code=...
+    const query = url.split("?")[1]?.split("#")[0];
+    if (query) {
+      const p = new URLSearchParams(query);
+      const code = p.get("code");
+      if (code) await supabase.auth.exchangeCodeForSession(code);
+    }
+  }, []);
+
+  useEffect(() => {
+    Linking.getInitialURL().then((url) => { if (url) handleDeepLink(url); });
+    const sub = Linking.addEventListener("url", ({ url }) => handleDeepLink(url));
+    return () => sub.remove();
+  }, [handleDeepLink]);
 
   if (!fontsLoaded && !fontError) return null;
 

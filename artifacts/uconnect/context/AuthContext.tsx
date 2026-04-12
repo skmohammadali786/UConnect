@@ -120,7 +120,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const sendOtp = async (email: string): Promise<{ error: string | null }> => {
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim().toLowerCase(),
-      options: { shouldCreateUser: true },
+      options: {
+        shouldCreateUser: true,
+        emailRedirectTo: "uconnect://auth/callback",
+      },
     });
     return { error: error ? error.message : null };
   };

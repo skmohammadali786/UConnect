@@ -1,26 +1,56 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useState } from "react";
-import { FlatList, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, FlatList, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useChat } from "@/context/ChatContext";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabase";
 
-const SUGGESTED_USERS = [
-  { id: "u10", username: "priya_cs23", college: "IIT Delhi" },
-  { id: "u11", username: "arjun_mech22", college: "IIT Delhi" },
-  { id: "u12", username: "shreya_ee24", college: "IIT Delhi" },
-  { id: "u13", username: "rahul_civil21", college: "IIT Delhi" },
-  { id: "u14", username: "ananya_ds23", college: "IIT Delhi" },
-];
+interface Profile {
+  id: string;
+  username: string;
+  college: string;
+  displayName: string;
+}
 
 export default function NewChatScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { startConversation } = useChat();
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const filtered = SUGGESTED_USERS.filter((u) => u.username.includes(search.toLowerCase()));
+  useEffect(() => {
+    const q = search.trim().toLowerCase();
+    setLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        let query = supabase
+          .from("profiles")
+          .select("id, username, display_name, college")
+          .neq("id", user?.id ?? "")
+          .limit(25);
+        if (q) {
+          query = query.or(`username.ilike.%${q}%,display_name.ilike.%${q}%`);
+        } else {
+          query = query.order("followers", { ascending: false });
+        }
+        const { data } = await query;
+        setProfiles((data ?? []).map((r: any) => ({
+          id: r.id,
+          username: r.username,
+          displayName: r.display_name,
+          college: r.college,
+        })));
+      } catch { setProfiles([]); }
+      setLoading(false);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search, user?.id]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -34,12 +64,32 @@ export default function NewChatScreen() {
       <View style={[styles.searchWrap, { borderBottomColor: colors.border }]}>
         <View style={[styles.searchBar, { backgroundColor: colors.input, borderColor: colors.border }]}>
           <Feather name="search" size={16} color={colors.mutedForeground} />
-          <TextInput value={search} onChangeText={setSearch} placeholder="Search users..." placeholderTextColor={colors.placeholder} style={[styles.searchInput, { color: colors.foreground }]} autoCapitalize="none" />
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search by username or name..."
+            placeholderTextColor={colors.placeholder}
+            style={[styles.searchInput, { color: colors.foreground }]}
+            autoCapitalize="none"
+            autoFocus
+          />
+          {loading && <ActivityIndicator size="small" color={colors.primary} />}
         </View>
       </View>
       <FlatList
-        data={filtered}
+        data={profiles}
         keyExtractor={(item) => item.id}
+        contentContainerStyle={profiles.length === 0 && !loading ? { flex: 1, justifyContent: "center", alignItems: "center", padding: 24 } : undefined}
+        ListEmptyComponent={
+          !loading ? (
+            <View style={{ alignItems: "center", gap: 8, paddingTop: 40 }}>
+              <Feather name="users" size={32} color={colors.mutedForeground} />
+              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
+                {search ? "No users found" : "Search for people to message"}
+              </Text>
+            </View>
+          ) : null
+        }
         renderItem={({ item }) => (
           <TouchableOpacity
             onPress={() => {
@@ -49,12 +99,15 @@ export default function NewChatScreen() {
             style={[styles.userItem, { borderBottomColor: colors.separator }]}
           >
             <View style={[styles.avatar, { backgroundColor: colors.primary + "20" }]}>
-              <Feather name="user" size={18} color={colors.primary} />
+              <Text style={[styles.avatarText, { color: colors.primary }]}>
+                {(item.displayName ?? item.username).charAt(0).toUpperCase()}
+              </Text>
             </View>
-            <View>
-              <Text style={[styles.username, { color: colors.foreground }]}>@{item.username}</Text>
-              <Text style={[styles.college, { color: colors.mutedForeground }]}>{item.college}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.username, { color: colors.foreground }]}>{item.displayName}</Text>
+              <Text style={[styles.college, { color: colors.mutedForeground }]}>@{item.username} · {item.college}</Text>
             </View>
+            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
           </TouchableOpacity>
         )}
       />
@@ -70,7 +123,9 @@ const styles = StyleSheet.create({
   searchBar: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, height: 40, gap: 8 },
   searchInput: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular" },
   userItem: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1 },
-  avatar: { width: 42, height: 42, borderRadius: 21, alignItems: "center", justifyContent: "center" },
+  avatar: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
+  avatarText: { fontSize: 18, fontFamily: "Inter_700Bold" },
   username: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  college: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  college: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
+  emptyText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
 });

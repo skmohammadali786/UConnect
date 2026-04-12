@@ -120,8 +120,8 @@ export default function LoginScreen() {
           </Text>
           <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
             {isSignIn
-              ? "Enter your registered email. We'll send a verification code to confirm it's you."
-              : "We'll send a verification code. You can use any email — you'll select your college in the next step."}
+              ? "Enter your registered email. We'll send a sign-in link — just tap it to get in."
+              : "We'll send a magic sign-in link. You can use any email — you'll select your college in the next step."}
           </Text>
 
           <Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
@@ -144,7 +144,7 @@ export default function LoginScreen() {
             <View style={[styles.lockBox, { backgroundColor: "#EF444415", borderColor: "#EF444440" }]}>
               <Feather name="lock" size={18} color="#EF4444" />
               <View style={{ flex: 1 }}>
-                <Text style={[styles.lockTitle, { color: "#EF4444" }]}>Too many OTP requests</Text>
+                <Text style={[styles.lockTitle, { color: "#EF4444" }]}>Too many requests</Text>
                 <Text style={[styles.lockSub, { color: colors.mutedForeground }]}>
                   Try again in <Text style={{ fontFamily: "Inter_700Bold", color: "#EF4444" }}>{formatLockTime(lockStatus.secondsLeft)}</Text>
                 </Text>
@@ -154,7 +154,7 @@ export default function LoginScreen() {
             <View style={[styles.warnBox, { backgroundColor: "#F59E0B15", borderColor: "#F59E0B40" }]}>
               <Feather name="alert-triangle" size={15} color="#F59E0B" />
               <Text style={[styles.warnText, { color: "#F59E0B" }]}>
-                {lockStatus.attemptsLeft} OTP request left before temporary lockout
+                {lockStatus.attemptsLeft} request left before temporary lockout
               </Text>
             </View>
           ) : (
@@ -166,7 +166,7 @@ export default function LoginScreen() {
           )}
 
           <AppButton
-            title="Send OTP"
+            title="Send Magic Link"
             onPress={handleContinue}
             loading={loading}
             disabled={isDisabled}
