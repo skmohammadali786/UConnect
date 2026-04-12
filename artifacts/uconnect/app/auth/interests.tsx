@@ -51,9 +51,6 @@ export default function InterestsScreen() {
 
   return (
     <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={[styles.container, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 }]}>
-      <Pressable onPress={() => router.back()} style={styles.backBtn}>
-        <Text style={[styles.backText, { color: colors.mutedForeground }]}>← Back</Text>
-      </Pressable>
       <Text style={[styles.title, { color: colors.foreground }]}>What are you{"\n"}into?</Text>
       <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>Select up to 10 interests. We'll personalize your feed.</Text>
       <View style={styles.chips}>

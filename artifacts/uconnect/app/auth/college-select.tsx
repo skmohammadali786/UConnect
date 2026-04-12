@@ -44,11 +44,6 @@ export default function CollegeSelectScreen() {
   return (
     <Animated.View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top + 16, opacity: fadeAnim }]}>
       <Animated.View style={{ transform: [{ translateY: slideAnim }] }}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Feather name="arrow-left" size={18} color={colors.mutedForeground} />
-          <Text style={[styles.backText, { color: colors.mutedForeground }]}>Back</Text>
-        </Pressable>
-
         <View style={styles.titleSection}>
           <View style={[styles.stepBadge, { backgroundColor: colors.primary + "15" }]}>
             <Text style={[styles.stepText, { color: colors.primary }]}>Step 2 of 4</Text>

@@ -297,9 +297,9 @@ export default function CreatePostScreen() {
                 </TouchableOpacity>
               )}
               <TouchableOpacity onPress={() => setShowAutoDelete(!showAutoDelete)} style={[styles.metaBtn, { borderColor: autoDelete !== "never" ? colors.primary + "60" : colors.border, backgroundColor: autoDelete !== "never" ? colors.primary + "10" : undefined }]}>
-                <Feather name="clock" size={14} color={autoDelete !== "never" ? colors.primary : colors.mutedForeground} />
+                <Feather name={autoDelete !== "never" ? "clock" : "bookmark"} size={14} color={autoDelete !== "never" ? colors.primary : colors.mutedForeground} />
                 <Text style={[styles.metaBtnText, { color: autoDelete !== "never" ? colors.primary : colors.mutedForeground }]}>
-                  {autoDelete !== "never" ? selectedDeleteOption?.label : "Auto-delete"}
+                  {autoDelete !== "never" ? selectedDeleteOption?.label : "Keep forever"}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -331,11 +331,11 @@ export default function CreatePostScreen() {
                     </TouchableOpacity>
                   ))}
                 </View>
-                {autoDelete !== "never" && (
-                  <Text style={[styles.autoDeleteNote, { color: colors.mutedForeground }]}>
-                    This post will disappear {selectedDeleteOption?.label} after posting
-                  </Text>
-                )}
+                <Text style={[styles.autoDeleteNote, { color: autoDelete === "never" ? colors.primary : colors.mutedForeground }]}>
+                  {autoDelete === "never"
+                    ? "This post will stay up permanently"
+                    : `This post will disappear ${selectedDeleteOption?.label} after posting`}
+                </Text>
               </View>
             </Animated.View>
           )}

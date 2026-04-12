@@ -15,6 +15,7 @@ import { useToast } from "@/components/Toast";
 
 const ND = Platform.OS !== "web";
 const INTERESTS = ["Tech", "Music", "Sports", "Gaming", "Finance", "Arts", "Photography", "Travel", "Food", "Books", "Fitness", "Cinema", "Coding", "ML/AI", "Startups", "Design"];
+const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "Postgraduate", "PhD", "Alumni"];
 
 export default function EditProfileScreen() {
   const colors = useColors();
@@ -24,9 +25,11 @@ export default function EditProfileScreen() {
 
   const [displayName, setDisplayName] = useState(user?.displayName || "");
   const [bio, setBio] = useState(user?.bio || "");
+  const [year, setYear] = useState(user?.year || "");
   const [selectedInterests, setSelectedInterests] = useState<string[]>(user?.interests || []);
   const [avatarUri, setAvatarUri] = useState<string | null>(user?.avatar || null);
   const [saving, setSaving] = useState(false);
+  const [showYearPicker, setShowYearPicker] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(24)).current;
@@ -76,7 +79,7 @@ export default function EditProfileScreen() {
       return;
     }
     setSaving(true);
-    await updateUser({ displayName: displayName.trim(), bio: bio.trim(), interests: selectedInterests, avatar: avatarUri });
+    await updateUser({ displayName: displayName.trim(), bio: bio.trim(), year, interests: selectedInterests, avatar: avatarUri });
     setSaving(false);
     showSuccess("Profile updated!", "Your changes have been saved.");
     router.back();
@@ -152,6 +155,32 @@ export default function EditProfileScreen() {
             </View>
           </View>
 
+          <View style={{ gap: 6 }}>
+            <Text style={[styles.label, { color: colors.mutedForeground }]}>Year</Text>
+            <TouchableOpacity
+              onPress={() => setShowYearPicker((v) => !v)}
+              style={[styles.pickerBtn, { backgroundColor: colors.input, borderColor: year ? colors.primary + "80" : colors.border }]}
+            >
+              <Feather name="calendar" size={15} color={year ? colors.primary : colors.mutedForeground} style={{ marginRight: 8 }} />
+              <Text style={[styles.pickerBtnText, { color: year ? colors.foreground : colors.placeholder }]}>{year || "Select your year"}</Text>
+              <Feather name={showYearPicker ? "chevron-up" : "chevron-down"} size={15} color={colors.mutedForeground} />
+            </TouchableOpacity>
+            {showYearPicker && (
+              <View style={[styles.dropdown, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                {YEARS.map((y) => (
+                  <TouchableOpacity
+                    key={y}
+                    onPress={() => { setYear(y); setShowYearPicker(false); }}
+                    style={[styles.dropdownItem, { borderBottomColor: colors.border, backgroundColor: year === y ? colors.primary + "10" : "transparent" }]}
+                  >
+                    <Text style={[styles.dropdownText, { color: year === y ? colors.primary : colors.foreground }]}>{y}</Text>
+                    {year === y && <Feather name="check" size={14} color={colors.primary} />}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+
           <View style={{ gap: 10 }}>
             <Text style={[styles.label, { color: colors.mutedForeground }]}>Interests ({selectedInterests.length} selected)</Text>
             <View style={styles.interestGrid}>
@@ -207,6 +236,11 @@ const styles = StyleSheet.create({
   readonlyText: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
   verifiedBadge: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   verifiedText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  pickerBtn: { flexDirection: "row", alignItems: "center", borderRadius: 12, borderWidth: 1.5, paddingHorizontal: 12, paddingVertical: 13 },
+  pickerBtnText: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
+  dropdown: { borderRadius: 12, borderWidth: 1, overflow: "hidden", marginTop: 4 },
+  dropdownItem: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 14, paddingVertical: 13, borderBottomWidth: 1 },
+  dropdownText: { fontSize: 15, fontFamily: "Inter_400Regular" },
   interestGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   interestChip: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, borderWidth: 1 },
   interestText: { fontSize: 13, fontFamily: "Inter_500Medium" },

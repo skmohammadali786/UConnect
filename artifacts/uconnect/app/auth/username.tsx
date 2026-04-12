@@ -40,9 +40,6 @@ export default function UsernameScreen() {
 
   return (
     <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={[styles.container, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 }]} keyboardShouldPersistTaps="handled">
-      <Pressable onPress={() => router.back()} style={styles.backBtn}>
-        <Text style={[styles.backText, { color: colors.mutedForeground }]}>← Back</Text>
-      </Pressable>
       <Text style={[styles.title, { color: colors.foreground }]}>Choose a{"\n"}username</Text>
       <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>This is how others identify you when you're not posting anonymously</Text>
 

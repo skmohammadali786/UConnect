@@ -24,9 +24,6 @@ export default function ProfileSetupScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={[styles.container, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 }]} keyboardShouldPersistTaps="handled">
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={[styles.backText, { color: colors.mutedForeground }]}>← Back</Text>
-        </Pressable>
         <Text style={[styles.title, { color: colors.foreground }]}>Set up your{"\n"}profile</Text>
 
         {/* Avatar placeholder */}
