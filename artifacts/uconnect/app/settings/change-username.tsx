@@ -35,7 +35,7 @@ export default function ChangeUsernameScreen() {
     setError("");
     setLoading(true);
     try {
-      if (user && user.id !== "demo_user_001") {
+      if (user) {
         const { data: existing } = await supabase
           .from("profiles")
           .select("username")

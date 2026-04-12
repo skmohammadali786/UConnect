@@ -27,7 +27,7 @@ export function SocialProvider({ children }: { children: React.ReactNode }) {
   const [reports, setReports] = useState<Report[]>([]);
 
   useEffect(() => {
-    if (!user || user.id === "demo_user_001") return;
+    if (!user) return;
     (async () => {
       try {
         const [followRes, reportRes] = await Promise.all([
@@ -50,7 +50,7 @@ export function SocialProvider({ children }: { children: React.ReactNode }) {
   }, [user?.id]);
 
   const toggleFollow = useCallback(async (userId: string) => {
-    if (!user || user.id === "demo_user_001") return;
+    if (!user) return;
     const isNowFollowing = followingIds.has(userId);
     setFollowingIds((prev) => {
       const next = new Set(prev);
@@ -68,7 +68,7 @@ export function SocialProvider({ children }: { children: React.ReactNode }) {
   const isFollowing = useCallback((userId: string) => followingIds.has(userId), [followingIds]);
 
   const reportPost = useCallback(async (postId: string, reason: string) => {
-    if (!user || user.id === "demo_user_001") return;
+    if (!user) return;
     const newReport: Report = { postId, reason, timestamp: new Date().toISOString(), status: "pending" };
     setReports((prev) => [...prev, newReport]);
     await supabase.from("reports").insert({ reporter_id: user.id, post_id: postId, reason });

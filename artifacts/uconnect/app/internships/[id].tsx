@@ -34,7 +34,7 @@ export default function InternshipDetailScreen() {
 
   useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 280, useNativeDriver: ND }).start();
-    if (user && user.id !== "demo_user_001") {
+    if (user) {
       supabase.from("internship_applications")
         .select("id")
         .eq("user_id", user.id)
@@ -47,7 +47,7 @@ export default function InternshipDetailScreen() {
   const handleApply = async () => {
     setApplyConfirm(false);
     setApplied(true);
-    if (user && user.id !== "demo_user_001") {
+    if (user) {
       await supabase.from("internship_applications").insert({
         user_id: user.id,
         internship_id: internship.id,

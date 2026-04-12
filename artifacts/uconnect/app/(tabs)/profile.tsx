@@ -15,24 +15,6 @@ import { useToast } from "@/components/Toast";
 import { TypewriterText } from "@/components/TypewriterText";
 import { supabase } from "@/lib/supabase";
 
-const SAMPLE_INTERNSHIPS = [
-  { id: "i1", role: "Frontend Developer", company: "Razorpay", stipend: "₹25,000/mo", location: "Remote" },
-  { id: "i2", role: "ML Research Intern", company: "Google", stipend: "₹60,000/mo", location: "Bangalore" },
-  { id: "i3", role: "Product Design Intern", company: "Swiggy", stipend: "₹40,000/mo", location: "Hyderabad" },
-];
-const SAMPLE_EVENTS = [
-  { id: "e1", title: "TechFest 2025", date: "Jan 15", location: "IIT Bombay" },
-  { id: "e2", title: "Hackathon by Google", date: "Feb 3", location: "Online" },
-  { id: "e3", title: "Startup Summit", date: "Mar 20", location: "Delhi" },
-];
-const SAMPLE_NOTES = [
-  { id: "n1", title: "Operating Systems Notes", subject: "CS301", author: "CS_Nerd" },
-  { id: "n2", title: "ML Algorithms Cheat Sheet", subject: "CS401", author: "DataWhiz" },
-];
-const SAMPLE_TEAMS = [
-  { id: "t1", title: "Need a UI/UX designer for hackathon", type: "Hackathon", members: 3 },
-  { id: "t2", title: "Co-founder wanted for EdTech startup", type: "Startup", members: 2 },
-];
 
 type TabId = "posts" | "saved" | "activity";
 
@@ -47,26 +29,25 @@ export default function ProfileScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  const [appliedIds, setAppliedIds] = useState<string[]>([]);
-  const [rsvpIds, setRsvpIds] = useState<string[]>([]);
-  const [savedNoteIds, setSavedNoteIds] = useState<string[]>([]);
-  const [requestedTeamIds, setRequestedTeamIds] = useState<string[]>([]);
+  const [appliedInternships, setAppliedInternships] = useState<any[]>([]);
+  const [rsvpEvents, setRsvpEvents] = useState<any[]>([]);
+  const [savedNotes, setSavedNotes] = useState<any[]>([]);
 
   useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: Platform.OS !== "web" }).start();
   }, []);
 
   const loadActivity = useCallback(async () => {
-    if (!user || user.id === "demo_user_001") return;
+    if (!user) return;
     try {
       const [apps, rsvps, noteSaves] = await Promise.all([
-        supabase.from("internship_applications").select("internship_id").eq("user_id", user.id),
-        supabase.from("event_rsvps").select("event_id").eq("user_id", user.id),
-        supabase.from("note_saves").select("note_id").eq("user_id", user.id),
+        supabase.from("internship_applications").select("internship_id, internships(id, company, role, stipend, location)").eq("user_id", user.id),
+        supabase.from("event_rsvps").select("event_id, events(id, title, date, location)").eq("user_id", user.id),
+        supabase.from("note_saves").select("note_id, notes(id, title, subject, uploader_username)").eq("user_id", user.id),
       ]);
-      setAppliedIds((apps.data ?? []).map((r: any) => r.internship_id));
-      setRsvpIds((rsvps.data ?? []).map((r: any) => r.event_id));
-      setSavedNoteIds((noteSaves.data ?? []).map((r: any) => r.note_id));
+      setAppliedInternships((apps.data ?? []).map((r: any) => r.internships).filter(Boolean));
+      setRsvpEvents((rsvps.data ?? []).map((r: any) => r.events).filter(Boolean));
+      setSavedNotes((noteSaves.data ?? []).map((r: any) => r.notes).filter(Boolean));
     } catch {}
   }, [user?.id]);
 
@@ -99,11 +80,7 @@ export default function ProfileScreen() {
   const savedPosts = posts.filter((p) => p.isBookmarked);
   const joinedDate = new Date(user.joinedAt).toLocaleDateString("en-IN", { month: "long", year: "numeric" });
 
-  const appliedInternships = SAMPLE_INTERNSHIPS.filter((i) => appliedIds.includes(i.id));
-  const rsvpEvents = SAMPLE_EVENTS.filter((e) => rsvpIds.includes(e.id));
-  const savedNotes = SAMPLE_NOTES.filter((n) => savedNoteIds.includes(n.id));
-  const requestedTeams = SAMPLE_TEAMS.filter((t) => requestedTeamIds.includes(t.id));
-  const totalActivity = appliedInternships.length + rsvpEvents.length + savedNotes.length + requestedTeams.length;
+  const totalActivity = appliedInternships.length + rsvpEvents.length + savedNotes.length;
 
   const handleDeletePost = useCallback((id: string) => {
     deletePost(id);
@@ -167,26 +144,7 @@ export default function ProfileScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.actTitle, { color: colors.foreground }]}>{item.title}</Text>
-                <Text style={[styles.actSub, { color: colors.mutedForeground }]}>{item.subject} by @{item.author}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-      {requestedTeams.length > 0 && (
-        <View>
-          <Text style={[styles.actSection, { color: colors.foreground }]}>Team Requests</Text>
-          {requestedTeams.map((item) => (
-            <TouchableOpacity key={item.id} onPress={() => router.push("/teams")} style={[styles.actCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <View style={[styles.actIcon, { backgroundColor: "#00A86B20" }]}>
-                <Feather name="users" size={16} color="#00A86B" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.actTitle, { color: colors.foreground }]}>{item.title}</Text>
-                <Text style={[styles.actSub, { color: colors.mutedForeground }]}>{item.type} · {item.members} members</Text>
-              </View>
-              <View style={[styles.appliedPill, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "30" }]}>
-                <Text style={[styles.appliedText, { color: colors.primary }]}>Requested</Text>
+                <Text style={[styles.actSub, { color: colors.mutedForeground }]}>{item.subject} · @{item.uploader_username}</Text>
               </View>
             </TouchableOpacity>
           ))}

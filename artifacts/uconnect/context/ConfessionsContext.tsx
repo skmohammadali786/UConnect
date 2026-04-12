@@ -64,7 +64,7 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
 
         if (data && data.length > 0) {
           let voteMap = new Map<string, "up" | "down">();
-          if (user && user.id !== "demo_user_001") {
+          if (user) {
             const { data: votes } = await supabase
               .from("confession_votes")
               .select("confession_id, vote")
@@ -91,7 +91,7 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
   }, [user?.id]);
 
   const addConfession = useCallback(async (content: string, sensitive = false) => {
-    if (!user || user.id === "demo_user_001") {
+    if (!user) {
       const newC: Confession = { id: "local_" + Date.now(), content, upvotes: 0, commentCount: 0, userVote: null, hasSensitiveContent: sensitive, createdAt: new Date().toISOString(), comments: [] };
       setConfessions((prev) => [newC, ...prev]);
       return;
@@ -116,7 +116,7 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
       });
       return updated;
     });
-    if (user && user.id !== "demo_user_001") {
+    if (user) {
       supabase.rpc("vote_confession", { p_confession_id: id, p_user_id: user.id, p_vote: vote }).then(() => {});
     }
   }, [user]);
@@ -127,7 +127,7 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
       if (c.id !== confessionId) return c;
       return { ...c, commentCount: c.commentCount + 1, comments: [...c.comments, newComment] };
     }));
-    if (user && user.id !== "demo_user_001") {
+    if (user) {
       supabase.from("confession_comments").insert({
         confession_id: confessionId,
         author_id: user.id,

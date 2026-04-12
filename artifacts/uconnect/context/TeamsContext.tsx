@@ -79,7 +79,7 @@ export function TeamsProvider({ children }: { children: React.ReactNode }) {
 
         if (data && data.length > 0) {
           let reqMap = new Map<string, TeamRequest[]>();
-          if (user && user.id !== "demo_user_001") {
+          if (user) {
             const { data: reqData } = await supabase
               .from("team_requests")
               .select("*")
@@ -107,7 +107,7 @@ export function TeamsProvider({ children }: { children: React.ReactNode }) {
   }, [user?.id]);
 
   const createTeam = useCallback(async (data: Omit<Team, "id" | "members" | "requests" | "createdAt">): Promise<Team> => {
-    if (!user || user.id === "demo_user_001") {
+    if (!user) {
       const newTeam: Team = { ...data, id: "team_" + Date.now(), members: 1, requests: [], createdAt: new Date().toISOString() };
       setTeams((prev) => [newTeam, ...prev]);
       return newTeam;
@@ -135,7 +135,7 @@ export function TeamsProvider({ children }: { children: React.ReactNode }) {
       if (t.requests.find((r) => r.userId === request.userId)) return t;
       return { ...t, requests: [...t.requests, newReq] };
     }));
-    if (user && user.id !== "demo_user_001") {
+    if (user) {
       await supabase.from("team_requests").insert({
         team_id: teamId,
         user_id: request.userId,
@@ -149,7 +149,7 @@ export function TeamsProvider({ children }: { children: React.ReactNode }) {
 
   const cancelRequest = useCallback(async (teamId: string, userId: string) => {
     setTeams((prev) => prev.map((t) => t.id !== teamId ? t : { ...t, requests: t.requests.filter((r) => r.userId !== userId) }));
-    if (user && user.id !== "demo_user_001") {
+    if (user) {
       await supabase.from("team_requests").delete().eq("team_id", teamId).eq("user_id", userId);
     }
   }, [user]);
@@ -159,7 +159,7 @@ export function TeamsProvider({ children }: { children: React.ReactNode }) {
       if (t.id !== teamId) return t;
       return { ...t, members: t.members + 1, requests: t.requests.map((r) => r.userId === userId ? { ...r, status: "approved" as const } : r) };
     }));
-    if (user && user.id !== "demo_user_001") {
+    if (user) {
       await supabase.from("team_requests").update({ status: "approved" }).eq("team_id", teamId).eq("user_id", userId);
       await supabase.from("teams").update({ members: teams.find((t) => t.id === teamId)?.members ?? 1 + 1 }).eq("id", teamId);
     }
@@ -167,7 +167,7 @@ export function TeamsProvider({ children }: { children: React.ReactNode }) {
 
   const denyRequest = useCallback(async (teamId: string, userId: string) => {
     setTeams((prev) => prev.map((t) => t.id !== teamId ? t : { ...t, requests: t.requests.map((r) => r.userId === userId ? { ...r, status: "denied" as const } : r) }));
-    if (user && user.id !== "demo_user_001") {
+    if (user) {
       await supabase.from("team_requests").update({ status: "denied" }).eq("team_id", teamId).eq("user_id", userId);
     }
   }, [user]);

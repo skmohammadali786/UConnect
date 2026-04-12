@@ -13,11 +13,6 @@ import { supabase } from "@/lib/supabase";
 
 const ND = Platform.OS !== "web";
 
-const SAMPLE_PROFILES: Record<string, any> = {
-  "cs_nerd": { id: "user_cs_nerd", displayName: "CS Nerd", username: "cs_nerd", college: "IIT Bombay", branch: "Computer Science", year: "4th Year", bio: "Algorithms, Coffee, and Code. ICPC World Finalist.", interests: ["Competitive Programming", "Algorithms", "Open Source"], followers: 342, following: 89, isVerified: true },
-  "startup_girl": { id: "user_startup_girl", displayName: "Startup Girl", username: "startup_girl", college: "IIM Ahmedabad", branch: "MBA", year: "2nd Year", bio: "Building the next big thing. Failed 2x, learning forever.", interests: ["Startups", "Product", "Business"], followers: 891, following: 204, isVerified: true },
-  "shadow_coder": { id: "demo_user_001", displayName: "Shadow Coder", username: "shadow_coder", college: "IIT Delhi", branch: "Computer Science", year: "3rd Year", bio: "Building cool stuff. Coffee-fueled. Always learning.", interests: ["Coding", "ML", "Gaming"], followers: 128, following: 64, isVerified: true },
-};
 
 export default function UserProfileScreen() {
   const colors = useColors();
@@ -45,12 +40,6 @@ export default function UserProfileScreen() {
 
   useEffect(() => {
     if (!key) { setProfileLoading(false); return; }
-
-    if (SAMPLE_PROFILES[key]) {
-      setProfile(SAMPLE_PROFILES[key]);
-      setProfileLoading(false);
-      return;
-    }
 
     (async () => {
       try {

@@ -70,7 +70,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [conversations, setConversations] = useState<Conversation[]>(SAMPLE_CONVERSATIONS);
 
   useEffect(() => {
-    if (!user || user.id === "demo_user_001") {
+    if (!user) {
       setConversations(SAMPLE_CONVERSATIONS);
       return;
     }
@@ -148,7 +148,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         ? { ...c, messages: [...c.messages, newMessage], lastMessage: content, lastMessageAt: newMessage.createdAt }
         : c
     ));
-    if (user && user.id !== "demo_user_001") {
+    if (user) {
       supabase.from("messages").insert({
         conversation_id: conversationId,
         sender_id: senderId,
@@ -176,7 +176,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       messages: [],
     };
     setConversations((prev) => [newConv, ...prev]);
-    if (user && user.id !== "demo_user_001") {
+    if (user) {
       supabase.from("conversations").insert({
         user_a: user.id,
         user_b: participantId,
@@ -193,7 +193,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         ? { ...c, unreadCount: 0, messages: c.messages.map((m) => ({ ...m, isRead: true })) }
         : c
     ));
-    if (user && user.id !== "demo_user_001") {
+    if (user) {
       supabase.from("messages")
         .update({ is_read: true })
         .eq("conversation_id", conversationId)
@@ -206,7 +206,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setConversations((prev) => prev.map((c) =>
       c.id === conversationId ? { ...c, isRevealed: true } : c
     ));
-    if (user && user.id !== "demo_user_001") {
+    if (user) {
       supabase.from("conversations").update({ is_revealed: true }).eq("id", conversationId).then(() => {});
     }
   };
@@ -215,7 +215,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setConversations((prev) => prev.map((c) =>
       c.id === conversationId ? { ...c, isBlocked: !c.isBlocked } : c
     ));
-    if (user && user.id !== "demo_user_001") {
+    if (user) {
       const conv = conversations.find((c) => c.id === conversationId);
       supabase.from("conversations").update({ is_blocked: !conv?.isBlocked }).eq("id", conversationId).then(() => {});
     }
@@ -223,7 +223,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   const deleteConversation = (conversationId: string) => {
     setConversations((prev) => prev.filter((c) => c.id !== conversationId));
-    if (user && user.id !== "demo_user_001") {
+    if (user) {
       supabase.from("conversations").delete().eq("id", conversationId).then(() => {});
     }
   };

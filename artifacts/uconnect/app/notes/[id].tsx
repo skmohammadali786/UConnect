@@ -1,45 +1,13 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useRef, useState } from "react";
-import { Animated, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Animated, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useToast } from "@/components/Toast";
+import { supabase } from "@/lib/supabase";
 
 const ND = Platform.OS !== "web";
-
-const SAMPLE_NOTES_DATA: Record<string, any> = {
-  n1: {
-    id: "n1", subject: "Mathematics", title: "Laplace Transform Complete Notes", uploader: "priya_cs23",
-    college: "IIT Delhi", year: "3rd Year", fileSize: "2.4 MB", downloads: 234, pages: 48,
-    description: "Complete chapter-wise notes covering Laplace Transform, Z-Transform, and applications in engineering. Includes solved examples and PYQ solutions from 2019–2024.",
-    topics: ["Laplace Transform Basics", "Z-Transform", "Inverse Laplace", "Engineering Applications", "PYQ Solutions"],
-  },
-  n2: {
-    id: "n2", subject: "CS", title: "Data Structures and Algorithms - Full Course", uploader: "arjun_mech22",
-    college: "IIT Delhi", year: "2nd Year", fileSize: "8.1 MB", downloads: 891, pages: 124,
-    description: "Comprehensive DSA notes covering arrays, linked lists, trees, graphs, sorting, and dynamic programming. Each topic has complexity analysis and coding examples.",
-    topics: ["Arrays & Strings", "Linked Lists", "Trees & Graphs", "Dynamic Programming", "Sorting Algorithms"],
-  },
-  n3: {
-    id: "n3", subject: "Physics", title: "Quantum Mechanics Chapter 1-5 Notes", uploader: "anonymous",
-    college: "IIT Delhi", year: "3rd Year", fileSize: "1.8 MB", downloads: 156, pages: 60,
-    description: "Detailed notes on wave-particle duality, Schrödinger equation, and quantum states with illustrated diagrams.",
-    topics: ["Wave-Particle Duality", "Schrödinger Equation", "Quantum States", "Uncertainty Principle", "Operators"],
-  },
-  n4: {
-    id: "n4", subject: "Electrical", title: "Circuit Analysis Problem Sets with Solutions", uploader: "shreya_ee24",
-    college: "IIT Delhi", year: "2nd Year", fileSize: "3.2 MB", downloads: 432, pages: 80,
-    description: "100+ solved problems in circuit analysis including KVL, KCL, Thevenin and Norton theorems with step-by-step solutions.",
-    topics: ["KVL & KCL", "Thevenin Theorem", "Norton Theorem", "AC Circuits", "Transient Analysis"],
-  },
-  n5: {
-    id: "n5", subject: "Economics", title: "Microeconomics Exam Notes 2024", uploader: "anonymous",
-    college: "IIT Delhi", year: "1st Year", fileSize: "1.1 MB", downloads: 78, pages: 35,
-    description: "Concise microeconomics notes perfect for exams, covering demand-supply, market structures, and game theory basics.",
-    topics: ["Demand & Supply", "Market Structures", "Consumer Theory", "Game Theory", "Externalities"],
-  },
-};
 
 const SUBJECT_COLORS: Record<string, string> = {
   CS: "#3B82F6", Mathematics: "#8B5CF6", Physics: "#06B6D4",
@@ -56,12 +24,21 @@ export default function NoteDetailScreen() {
   const [downloading, setDownloading] = useState(false);
   const [progress, setProgress] = useState(0);
 
+  const [note, setNote] = useState<any>(null);
+  const [noteLoading, setNoteLoading] = useState(true);
   const backdropAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(300)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
 
-  const note = SAMPLE_NOTES_DATA[id] || SAMPLE_NOTES_DATA["n1"];
-  const subjectColor = SUBJECT_COLORS[note.subject] || "#6B7280";
+  useEffect(() => {
+    if (!id) { setNoteLoading(false); return; }
+    supabase.from("notes").select("*").eq("id", id).maybeSingle().then(({ data }) => {
+      if (data) setNote({ ...data, uploader: data.uploader_username });
+      setNoteLoading(false);
+    });
+  }, [id]);
+
+  const subjectColor = SUBJECT_COLORS[note?.subject] || "#6B7280";
 
   const openDownloadModal = () => {
     setDownloadModal(true);
@@ -97,6 +74,26 @@ export default function NoteDetailScreen() {
     }, 100);
   };
 
+  if (noteLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background, alignItems: "center", justifyContent: "center" }]}>
+        <ActivityIndicator size="large" color={subjectColor} />
+      </View>
+    );
+  }
+
+  if (!note) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background, alignItems: "center", justifyContent: "center", padding: 24 }]}>
+        <Feather name="file-x" size={40} color={colors.mutedForeground} />
+        <Text style={[{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 12, textAlign: "center" }]}>Note not found</Text>
+        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 16, paddingHorizontal: 20, paddingVertical: 10, backgroundColor: colors.primary, borderRadius: 10 }}>
+          <Text style={{ color: "#FFF", fontFamily: "Inter_600SemiBold" }}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, backgroundColor: colors.headerBg, borderBottomColor: colors.border }]}>
@@ -125,9 +122,9 @@ export default function NoteDetailScreen() {
 
         <View style={[styles.statsCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           {[
-            { label: "Pages", value: note.pages?.toString() || "N/A", icon: "book" },
-            { label: "Size", value: note.fileSize, icon: "hard-drive" },
-            { label: "Downloads", value: note.downloads.toString(), icon: "download" },
+            { label: "Type", value: (note.file_type || "pdf").toUpperCase(), icon: "file" },
+            { label: "Saves", value: (note.saves ?? 0).toString(), icon: "bookmark" },
+            { label: "Downloads", value: (note.downloads ?? 0).toString(), icon: "download" },
           ].map((s, i, arr) => (
             <React.Fragment key={s.label}>
               <View style={styles.statItem}>

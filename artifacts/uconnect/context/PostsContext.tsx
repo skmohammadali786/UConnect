@@ -134,10 +134,10 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
     try {
       const [postsRes, votesRes, bookmarksRes] = await Promise.all([
         supabase.from("posts").select("*").order("created_at", { ascending: false }).limit(100),
-        user && user.id !== "demo_user_001"
+        user
           ? supabase.from("post_votes").select("post_id, vote").eq("user_id", user.id)
           : Promise.resolve({ data: [] }),
-        user && user.id !== "demo_user_001"
+        user
           ? supabase.from("bookmarks").select("post_id").eq("user_id", user.id)
           : Promise.resolve({ data: [] }),
       ]);
@@ -156,7 +156,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Fetch drafts
-      if (user && user.id !== "demo_user_001") {
+      if (user) {
         const { data: draftRows } = await supabase
           .from("drafts")
           .select("*")
@@ -183,7 +183,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
   }, [user?.id]);
 
   const createPost = useCallback(async (postData: Omit<Post, "id" | "upvotes" | "downvotes" | "userVote" | "commentCount" | "isBookmarked" | "createdAt" | "comments">) => {
-    if (!user || user.id === "demo_user_001") {
+    if (!user) {
       // Demo mode: local only
       const newPost: Post = {
         ...postData,
@@ -222,7 +222,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
   }, [user, applyPosts]);
 
   const votePost = useCallback((postId: string, vote: "up" | "down") => {
-    if (!user || user.id === "demo_user_001") {
+    if (!user) {
       const updated = postsRef.current.map((p) => {
         if (p.id !== postId) return p;
         const wasVoted = p.userVote === vote;
@@ -259,7 +259,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
     const updated = postsRef.current.map((p) => p.id === postId ? { ...p, isBookmarked: !p.isBookmarked } : p);
     applyPosts(updated);
 
-    if (!user || user.id === "demo_user_001") return;
+    if (!user) return;
 
     if (post.isBookmarked) {
       supabase.from("bookmarks").delete().eq("user_id", user.id).eq("post_id", postId).then(() => {});
@@ -271,7 +271,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
   const deletePost = useCallback((postId: string) => {
     const updated = postsRef.current.filter((p) => p.id !== postId);
     applyPosts(updated);
-    if (user && user.id !== "demo_user_001") {
+    if (user) {
       supabase.from("posts").delete().eq("id", postId).then(() => {});
     }
   }, [user, applyPosts]);
@@ -301,7 +301,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
     });
     applyPosts(updated);
 
-    if (user && user.id !== "demo_user_001") {
+    if (user) {
       supabase.from("comments").insert({
         post_id: postId,
         parent_id: commentData.parentId ?? null,
@@ -333,12 +333,12 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
   }, [applyPosts]);
 
   const reportPost = useCallback((postId: string, reason: string) => {
-    if (!user || user.id === "demo_user_001") return;
+    if (!user) return;
     supabase.from("reports").insert({ reporter_id: user.id, post_id: postId, reason }).then(() => {});
   }, [user]);
 
   const saveDraft = useCallback(async (draftData: Omit<Draft, "id" | "savedAt">) => {
-    if (!user || user.id === "demo_user_001") {
+    if (!user) {
       const newDraft: Draft = { ...draftData, id: "draft_" + Date.now(), savedAt: new Date().toISOString() };
       setDrafts((prev) => [newDraft, ...prev]);
       return;
@@ -357,7 +357,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
 
   const deleteDraft = useCallback(async (draftId: string) => {
     setDrafts((prev) => prev.filter((d) => d.id !== draftId));
-    if (user && user.id !== "demo_user_001") {
+    if (user) {
       await supabase.from("drafts").delete().eq("id", draftId);
     }
   }, [user]);

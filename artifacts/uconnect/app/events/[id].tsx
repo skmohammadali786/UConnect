@@ -28,7 +28,7 @@ export default function EventDetailScreen() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!user || user.id === "demo_user_001" || !id) return;
+    if (!user || !id) return;
     (async () => {
       try {
         const { data } = await supabase
@@ -46,7 +46,7 @@ export default function EventDetailScreen() {
     if (loading) return;
     const newVal = !isAttending;
     setIsAttending(newVal);
-    if (user && user.id !== "demo_user_001") {
+    if (user) {
       setLoading(true);
       try {
         if (newVal) {

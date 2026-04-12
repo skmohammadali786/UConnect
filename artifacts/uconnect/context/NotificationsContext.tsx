@@ -45,7 +45,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   const [notifications, setNotifications] = useState<Notification[]>(SAMPLE_NOTIFICATIONS);
 
   useEffect(() => {
-    if (!user || user.id === "demo_user_001") {
+    if (!user) {
       setNotifications(SAMPLE_NOTIFICATIONS);
       return;
     }
@@ -79,21 +79,21 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
 
   const markRead = (id: string) => {
     setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, isRead: true } : n));
-    if (user && user.id !== "demo_user_001") {
+    if (user) {
       supabase.from("notifications").update({ is_read: true }).eq("id", id).then(() => {});
     }
   };
 
   const markAllRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-    if (user && user.id !== "demo_user_001") {
+    if (user) {
       supabase.from("notifications").update({ is_read: true }).eq("user_id", user.id).then(() => {});
     }
   };
 
   const deleteNotification = (id: string) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
-    if (user && user.id !== "demo_user_001") {
+    if (user) {
       supabase.from("notifications").delete().eq("id", id).then(() => {});
     }
   };
@@ -101,7 +101,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   const addNotification = (n: Omit<Notification, "id" | "createdAt" | "isRead">) => {
     const newN: Notification = { ...n, id: generateId(), createdAt: new Date().toISOString(), isRead: false };
     setNotifications((prev) => [newN, ...prev]);
-    if (user && user.id !== "demo_user_001") {
+    if (user) {
       supabase.from("notifications").insert({
         user_id: user.id,
         type: n.type,

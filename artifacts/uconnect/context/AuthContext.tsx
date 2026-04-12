@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 export interface User {
   id: string;
   email: string;
+  phone: string;
   username: string;
   displayName: string;
   college: string;
@@ -24,53 +25,34 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<{ error: string | null; isNewUser: boolean }>;
+  signUp: (email: string, password: string, phone?: string) => Promise<{ error: string | null }>;
   logout: () => Promise<void>;
   deleteAccount: () => Promise<void>;
   updateUser: (updates: Partial<User>) => Promise<void>;
   setUserData: (user: User) => Promise<void>;
-  loginAsDemo: () => Promise<void>;
-  sendOtp: (email: string) => Promise<{ error: string | null }>;
-  verifyOtp: (email: string, token: string) => Promise<{ error: string | null; isNewUser: boolean }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const DEMO_USER: User = {
-  id: "demo_user_001",
-  email: "student@iitd.ac.in",
-  username: "shadow_coder",
-  displayName: "Shadow Coder",
-  college: "IIT Delhi",
-  branch: "Computer Science",
-  year: "3rd Year",
-  bio: "Building cool stuff. Coffee-fueled. Always learning.",
-  avatar: null,
-  interests: ["Coding", "Machine Learning", "Startups", "Gaming", "Open Source"],
-  followers: 128,
-  following: 64,
-  postsCount: 12,
-  isVerified: true,
-  joinedAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
-};
-
 function rowToUser(row: any): User {
   return {
     id: row.id,
-    email: row.email,
-    username: row.username,
-    displayName: row.display_name,
-    college: row.college,
-    branch: row.branch,
-    year: row.year,
-    bio: row.bio,
-    avatar: row.avatar,
+    email: row.email ?? "",
+    phone: row.phone ?? "",
+    username: row.username ?? "",
+    displayName: row.display_name ?? "",
+    college: row.college ?? "",
+    branch: row.branch ?? "",
+    year: row.year ?? "",
+    bio: row.bio ?? "",
+    avatar: row.avatar ?? null,
     interests: row.interests ?? [],
     followers: row.followers ?? 0,
     following: row.following ?? 0,
     postsCount: row.posts_count ?? 0,
     isVerified: row.is_verified ?? false,
-    joinedAt: row.joined_at,
+    joinedAt: row.joined_at ?? new Date().toISOString(),
   };
 }
 
@@ -79,16 +61,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check existing Supabase session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
         await loadProfile(session.user.id);
-      } else {
-        // Fallback: check demo user in AsyncStorage
-        try {
-          const raw = await AsyncStorage.getItem("@uconnect_demo_user");
-          if (raw) setUser(JSON.parse(raw));
-        } catch {}
       }
       setIsLoading(false);
     });
@@ -110,74 +85,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .from("profiles")
         .select("*")
         .eq("id", userId)
-        .single();
+        .maybeSingle();
       if (data && !error) {
         setUser(rowToUser(data));
       }
     } catch {}
   };
 
-  const sendOtp = async (email: string): Promise<{ error: string | null }> => {
-    const { error } = await supabase.auth.signInWithOtp({
+  const signIn = async (email: string, password: string): Promise<{ error: string | null; isNewUser: boolean }> => {
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
-      options: {
-        shouldCreateUser: true,
-        emailRedirectTo: "uconnect://auth/callback",
-      },
-    });
-    return { error: error ? error.message : null };
-  };
-
-  const verifyOtp = async (email: string, token: string): Promise<{ error: string | null; isNewUser: boolean }> => {
-    const { data, error } = await supabase.auth.verifyOtp({
-      email: email.trim().toLowerCase(),
-      token,
-      type: "email",
+      password,
     });
     if (error) return { error: error.message, isNewUser: false };
 
     const userId = data.user?.id;
-    if (!userId) return { error: "Authentication failed", isNewUser: false };
+    if (!userId) return { error: "Sign in failed. Please try again.", isNewUser: false };
 
-    // Check if profile exists
     const { data: profile } = await supabase
       .from("profiles")
       .select("id")
       .eq("id", userId)
-      .single();
+      .maybeSingle();
 
     return { error: null, isNewUser: !profile };
   };
 
-  const login = async (_email: string) => {};
-
-  const loginAsDemo = async () => {
-    await AsyncStorage.setItem("@uconnect_demo_user", JSON.stringify(DEMO_USER));
-    setUser(DEMO_USER);
+  const signUp = async (email: string, password: string, phone?: string): Promise<{ error: string | null }> => {
+    const { error } = await supabase.auth.signUp({
+      email: email.trim().toLowerCase(),
+      password,
+      options: {
+        data: { phone: phone ?? "" },
+      },
+    });
+    if (error) return { error: error.message };
+    return { error: null };
   };
 
   const logout = async () => {
-    await AsyncStorage.removeItem("@uconnect_demo_user");
+    await AsyncStorage.removeItem("@uconnect_theme");
     await supabase.auth.signOut();
     setUser(null);
   };
 
   const deleteAccount = async () => {
-    if (user && user.id !== "demo_user_001") {
+    if (user) {
       try {
-        // RPC deletes profile (cascades all 24 tables) + removes auth.users record
         await supabase.rpc("delete_account");
       } catch {
-        // Fallback: delete profile directly (cascades all data, auth record stays)
         await supabase.from("profiles").delete().eq("id", user.id);
       }
     }
-    // Clear all local storage
-    await AsyncStorage.multiRemove([
-      "@uconnect_demo_user",
-      "@uconnect_theme",
-      "@uconnect_settings",
-    ]).catch(() => {});
+    await AsyncStorage.multiRemove(["@uconnect_theme", "@uconnect_settings"]).catch(() => {});
     await supabase.auth.signOut();
     setUser(null);
   };
@@ -186,12 +146,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
     const updated = { ...user, ...updates };
     setUser(updated);
-
-    if (user.id === "demo_user_001") {
-      await AsyncStorage.setItem("@uconnect_demo_user", JSON.stringify(updated));
-      return;
-    }
-
     await supabase.from("profiles").update({
       display_name: updated.displayName,
       username: updated.username,
@@ -201,19 +155,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       bio: updated.bio,
       avatar: updated.avatar,
       interests: updated.interests,
+      phone: updated.phone,
     }).eq("id", user.id);
   };
 
   const setUserData = async (newUser: User) => {
     setUser(newUser);
-    if (newUser.id === "demo_user_001") {
-      await AsyncStorage.setItem("@uconnect_demo_user", JSON.stringify(newUser));
-      return;
-    }
-    // Upsert profile
     await supabase.from("profiles").upsert({
       id: newUser.id,
       email: newUser.email,
+      phone: newUser.phone ?? "",
       username: newUser.username,
       display_name: newUser.displayName,
       college: newUser.college,
@@ -236,14 +187,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         isLoading,
         isAuthenticated: !!user,
-        login,
+        signIn,
+        signUp,
         logout,
         deleteAccount,
         updateUser,
         setUserData,
-        loginAsDemo,
-        sendOtp,
-        verifyOtp,
       }}
     >
       {children}

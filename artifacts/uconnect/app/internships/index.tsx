@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
-import { Animated, Easing, FlatList, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Animated, Easing, FlatList, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useToast } from "@/components/Toast";
@@ -21,15 +21,25 @@ interface Internship {
   deadline: string;
   postedBy: string;
   isVerified: boolean;
+  description: string;
 }
 
-const INTERNSHIPS: Internship[] = [
-  { id: "i1", company: "Google", role: "Software Engineering Intern", location: "Bangalore", duration: "3 months", stipend: "₹1,00,000/month", type: "Hybrid", skills: ["Python", "Algorithms", "System Design"], deadline: "Nov 30, 2025", postedBy: "placement_cell", isVerified: true },
-  { id: "i2", company: "Microsoft", role: "Product Management Intern", location: "Hyderabad", duration: "6 months", stipend: "₹80,000/month", type: "Onsite", skills: ["Product Thinking", "Excel", "SQL"], deadline: "Dec 10, 2025", postedBy: "arjun_mech22", isVerified: true },
-  { id: "i3", company: "Startupboost", role: "Full Stack Developer", location: "Remote", duration: "3 months", stipend: "₹20,000/month", type: "Remote", skills: ["React", "Node.js", "MongoDB"], deadline: "Nov 20, 2025", postedBy: "priya_cs23", isVerified: false },
-  { id: "i4", company: "Goldman Sachs", role: "Quantitative Analyst Intern", location: "Mumbai", duration: "2 months", stipend: "₹1,20,000/month", type: "Onsite", skills: ["Statistics", "Python", "Finance"], deadline: "Dec 5, 2025", postedBy: "placement_cell", isVerified: true },
-  { id: "i5", company: "Groww", role: "Android Developer Intern", location: "Bangalore", duration: "4 months", stipend: "₹60,000/month", type: "Hybrid", skills: ["Kotlin", "Jetpack Compose", "REST APIs"], deadline: "Nov 25, 2025", postedBy: "anonymous", isVerified: false },
-];
+function rowToInternship(r: any): Internship {
+  return {
+    id: r.id,
+    company: r.company,
+    role: r.role,
+    location: r.location,
+    duration: r.duration,
+    stipend: r.stipend,
+    type: r.type as any,
+    skills: r.skills ?? [],
+    deadline: r.deadline,
+    postedBy: r.poster_username,
+    isVerified: r.is_verified,
+    description: r.description ?? "",
+  };
+}
 
 const TYPE_COLORS: Record<string, string> = { Remote: "#00A86B", Hybrid: "#3B82F6", Onsite: "#8B5CF6" };
 
@@ -70,13 +80,15 @@ function InternshipCard({ item, index, appliedIds, onApply, colors }: any) {
           </View>
         </View>
         <Text style={[styles.stipend, { color: colors.primary }]}>{item.stipend}</Text>
-        <View style={styles.skills}>
-          {item.skills.map((s: string) => (
-            <View key={s} style={[styles.skillChip, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
-              <Text style={[styles.skillText, { color: colors.foreground }]}>{s}</Text>
-            </View>
-          ))}
-        </View>
+        {item.skills.length > 0 && (
+          <View style={styles.skills}>
+            {item.skills.slice(0, 4).map((s: string) => (
+              <View key={s} style={[styles.skillChip, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+                <Text style={[styles.skillText, { color: colors.foreground }]}>{s}</Text>
+              </View>
+            ))}
+          </View>
+        )}
         <View style={styles.cardBottom}>
           <Text style={[styles.deadline, { color: colors.mutedForeground }]}>Deadline: {item.deadline}</Text>
           <TouchableOpacity
@@ -97,8 +109,11 @@ export default function InternshipsScreen() {
   const insets = useSafeAreaInsets();
   const { showSuccess } = useToast();
   const { user } = useAuth();
+  const [internships, setInternships] = useState<Internship[]>([]);
   const [activeType, setActiveType] = useState<string>("All");
   const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const headerAnim = useRef(new Animated.Value(0)).current;
   const headerSlide = useRef(new Animated.Value(-14)).current;
 
@@ -109,36 +124,56 @@ export default function InternshipsScreen() {
     ]).start();
   }, []);
 
-  useEffect(() => {
-    if (!user || user.id === "demo_user_001") return;
-    (async () => {
-      try {
-        const { data } = await supabase
-          .from("internship_applications")
-          .select("internship_id")
-          .eq("user_id", user.id);
-        if (data) setAppliedIds(new Set(data.map((r: any) => r.internship_id)));
-      } catch {}
-    })();
+  const loadInternships = useCallback(async () => {
+    try {
+      const { data } = await supabase
+        .from("internships")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (data) setInternships(data.map(rowToInternship));
+    } catch {}
+    setLoading(false);
+    setRefreshing(false);
+  }, []);
+
+  const loadApplications = useCallback(async () => {
+    if (!user) return;
+    try {
+      const { data } = await supabase
+        .from("internship_applications")
+        .select("internship_id")
+        .eq("user_id", user.id);
+      if (data) setAppliedIds(new Set(data.map((r: any) => r.internship_id)));
+    } catch {}
   }, [user?.id]);
 
+  useEffect(() => { loadInternships(); }, []);
+  useEffect(() => { loadApplications(); }, [user?.id]);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    loadInternships();
+    loadApplications();
+  };
+
   const handleApply = async (id: string) => {
+    if (!user) return;
     const already = appliedIds.has(id);
     const updated = new Set(appliedIds);
     if (already) { updated.delete(id); } else { updated.add(id); }
     setAppliedIds(updated);
-    if (user && user.id !== "demo_user_001") {
-      if (already) {
-        await supabase.from("internship_applications").delete().eq("user_id", user.id).eq("internship_id", id);
-      } else {
-        await supabase.from("internship_applications").insert({ user_id: user.id, internship_id: id });
-      }
+
+    if (already) {
+      await supabase.from("internship_applications").delete().eq("user_id", user.id).eq("internship_id", id);
+    } else {
+      await supabase.from("internship_applications").insert({ user_id: user.id, internship_id: id });
+      const item = internships.find((i) => i.id === id);
+      showSuccess(`Applied to ${item?.company}!`, "Application tracked successfully.");
     }
-    const item = INTERNSHIPS.find((i) => i.id === id);
-    if (!already) showSuccess(`Applied to ${item?.company}!`, "Application tracked successfully.");
   };
 
-  const filtered = INTERNSHIPS.filter((i) => activeType === "All" || i.type === activeType);
+  const filtered = internships.filter((i) => activeType === "All" || i.type === activeType);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -147,12 +182,7 @@ export default function InternshipsScreen() {
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
         <View>
-          <TypewriterText
-            text="Internships"
-            style={[styles.title, { color: colors.foreground }]}
-            delay={300}
-            speed={55}
-          />
+          <TypewriterText text="Internships" style={[styles.title, { color: colors.foreground }]} delay={300} speed={55} />
           {appliedIds.size > 0 && <Text style={[styles.subtitle, { color: colors.primary }]}>{appliedIds.size} applied</Text>}
         </View>
         <TouchableOpacity onPress={() => router.push("/internships/post" as any)}>
@@ -160,25 +190,42 @@ export default function InternshipsScreen() {
         </TouchableOpacity>
       </Animated.View>
 
-      <FlatList
-        data={filtered}
-        keyExtractor={(item) => item.id}
-        ListHeaderComponent={
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12, gap: 8 }}>
-            {["All", "Remote", "Hybrid", "Onsite"].map((t) => (
-              <TouchableOpacity key={t} onPress={() => setActiveType(t)} style={[styles.filterChip, { backgroundColor: activeType === t ? colors.primary : colors.card, borderColor: activeType === t ? colors.primary : colors.border }]}>
-                <Text style={[styles.filterText, { color: activeType === t ? "#FFF" : colors.foreground }]}>{t}</Text>
+      {loading ? (
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={(item) => item.id}
+          ListHeaderComponent={
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12, gap: 8 }}>
+              {["All", "Remote", "Hybrid", "Onsite"].map((t) => (
+                <TouchableOpacity key={t} onPress={() => setActiveType(t)} style={[styles.filterChip, { backgroundColor: activeType === t ? colors.primary : colors.card, borderColor: activeType === t ? colors.primary : colors.border }]}>
+                  <Text style={[styles.filterText, { color: activeType === t ? "#FFF" : colors.foreground }]}>{t}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          }
+          renderItem={({ item, index }) => (
+            <InternshipCard item={item} index={index} appliedIds={appliedIds} onApply={handleApply} colors={colors} />
+          )}
+          ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 80 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Feather name="briefcase" size={40} color={colors.mutedForeground} style={{ marginBottom: 12 }} />
+              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No internships yet</Text>
+              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>Post the first internship opportunity for your college!</Text>
+              <TouchableOpacity onPress={() => router.push("/internships/post" as any)} style={[styles.emptyBtn, { backgroundColor: colors.primary }]}>
+                <Text style={styles.emptyBtnText}>Post Internship</Text>
               </TouchableOpacity>
-            ))}
-          </ScrollView>
-        }
-        renderItem={({ item, index }) => (
-          <InternshipCard item={item} index={index} appliedIds={appliedIds} onApply={handleApply} colors={colors} />
-        )}
-        ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 80 }}
-        showsVerticalScrollIndicator={false}
-      />
+            </View>
+          }
+        />
+      )}
     </View>
   );
 }
@@ -190,6 +237,7 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 11, fontFamily: "Inter_500Medium" },
   filterChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 16, borderWidth: 1 },
   filterText: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
   card: { borderRadius: 14, borderWidth: 1, padding: 16, gap: 10 },
   cardHeader: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
   companyIcon: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center", flexShrink: 0 },
@@ -210,4 +258,9 @@ const styles = StyleSheet.create({
   deadline: { fontSize: 12, fontFamily: "Inter_400Regular" },
   applyBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 },
   applyText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  empty: { alignItems: "center", paddingTop: 60, gap: 8 },
+  emptyTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  emptyText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", paddingHorizontal: 24 },
+  emptyBtn: { marginTop: 8, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
+  emptyBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#FFF" },
 });

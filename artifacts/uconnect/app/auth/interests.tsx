@@ -40,10 +40,13 @@ export default function InterestsScreen() {
         return;
       }
 
+      const phone = (authUser?.user_metadata?.phone as string) ?? "";
       const now = new Date().toISOString();
+
       const profile = {
         id: userId,
         email: email || authUser?.email || "",
+        phone,
         username: username || "",
         display_name: displayName || username || "",
         college: college || "",
@@ -61,7 +64,6 @@ export default function InterestsScreen() {
 
       await supabase.from("profiles").upsert(profile);
 
-      // Create default settings
       await supabase.from("user_settings").upsert({
         user_id: userId,
         push_notifications: true,
@@ -74,6 +76,7 @@ export default function InterestsScreen() {
       await setUserData({
         id: userId,
         email: profile.email,
+        phone,
         username: profile.username,
         displayName: profile.display_name,
         college: profile.college,

@@ -7,6 +7,8 @@ import { AppButton } from "@/components/AppButton";
 import { AppInput } from "@/components/AppInput";
 import { useColors } from "@/hooks/useColors";
 import { useToast } from "@/components/Toast";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabase";
 
 const SUBJECTS = ["Mathematics", "Physics", "Chemistry", "CS", "Electrical", "Mechanical", "Economics", "Other"];
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "Postgraduate"];
@@ -15,6 +17,7 @@ export default function UploadNotesScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { showSuccess, showError } = useToast();
+  const { user } = useAuth();
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState("");
   const [year, setYear] = useState("");
@@ -22,15 +25,38 @@ export default function UploadNotesScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleUpload = async () => {
-    if (!title || !subject || !year) {
+    if (!title.trim() || !subject || !year) {
       showError("Missing fields", "Please fill in the title, subject, and year.");
       return;
     }
+    if (!user) {
+      showError("Not logged in", "Please sign in to upload notes.");
+      return;
+    }
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    setLoading(false);
-    showSuccess("Notes uploaded!", "Your notes are now available for your college community.");
-    router.back();
+    try {
+      const { error } = await supabase.from("notes").insert({
+        title: title.trim(),
+        subject,
+        year,
+        college: user.college || "All Colleges",
+        uploader_id: user.id,
+        uploader_username: user.username,
+        description: description.trim(),
+        file_url: "",
+        file_type: "pdf",
+        downloads: 0,
+        saves: 0,
+      });
+
+      if (error) throw error;
+      showSuccess("Notes shared!", "Your notes are now available for your college community.");
+      router.back();
+    } catch (err: any) {
+      showError("Error", err?.message ?? "Failed to upload notes. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -40,18 +66,17 @@ export default function UploadNotesScreen() {
           <TouchableOpacity onPress={() => router.back()}>
             <Feather name="arrow-left" size={22} color={colors.foreground} />
           </TouchableOpacity>
-          <Text style={[styles.title, { color: colors.foreground }]}>Upload Notes</Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>Share Notes</Text>
           <View style={{ width: 30 }} />
         </View>
 
         <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <TouchableOpacity style={[styles.filePicker, { backgroundColor: colors.card, borderColor: colors.primary + "40" }]}>
-            <View style={[styles.fileIcon, { backgroundColor: colors.primary + "15" }]}>
-              <Feather name="upload-cloud" size={28} color={colors.primary} />
-            </View>
-            <Text style={[styles.filePickerTitle, { color: colors.foreground }]}>Tap to select file</Text>
-            <Text style={[styles.filePickerSub, { color: colors.mutedForeground }]}>PDF, DOCX, PPTX up to 20MB</Text>
-          </TouchableOpacity>
+          <View style={[styles.infoBanner, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "30" }]}>
+            <Feather name="info" size={15} color={colors.primary} />
+            <Text style={[styles.infoBannerText, { color: colors.primary }]}>
+              Share your notes with your college community. File upload coming soon.
+            </Text>
+          </View>
 
           <AppInput label="Title *" placeholder="e.g. Laplace Transform Chapter Notes" value={title} onChangeText={setTitle} />
 
@@ -102,13 +127,13 @@ export default function UploadNotesScreen() {
           />
 
           <View style={[styles.guideline, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Feather name="info" size={14} color={colors.primary} />
+            <Feather name="shield" size={14} color={colors.primary} />
             <Text style={[styles.guidelineText, { color: colors.mutedForeground }]}>
-              Only upload notes you own or have rights to share. Plagiarised content will be removed.
+              Only share notes you own or have rights to share. Plagiarised content will be removed.
             </Text>
           </View>
 
-          <AppButton title="Upload Notes" onPress={handleUpload} fullWidth size="lg" loading={loading} />
+          <AppButton title="Share Notes" onPress={handleUpload} fullWidth size="lg" loading={loading} />
         </ScrollView>
       </View>
     </KeyboardAvoidingView>
@@ -119,10 +144,8 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: 1 },
   title: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  filePicker: { borderRadius: 14, borderWidth: 1.5, borderStyle: "dashed", padding: 32, alignItems: "center", gap: 10 },
-  fileIcon: { width: 60, height: 60, borderRadius: 16, alignItems: "center", justifyContent: "center" },
-  filePickerTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
-  filePickerSub: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  infoBanner: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: 10, borderWidth: 1 },
+  infoBannerText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18 },
   field: { gap: 8 },
   label: { fontSize: 13, fontFamily: "Inter_500Medium" },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },

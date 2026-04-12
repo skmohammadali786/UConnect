@@ -35,7 +35,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       setIsLoading(true);
       try {
-        if (user && user.id !== "demo_user_001") {
+        if (user) {
           const { data } = await supabase
             .from("user_settings")
             .select("*")
@@ -65,7 +65,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setSettings(updated);
     // Always persist locally as backup
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated)).catch(() => {});
-    if (user && user.id !== "demo_user_001") {
+    if (user) {
       await supabase.from("user_settings").upsert({
         user_id: user.id,
         push_notifications: updated.pushNotifications,
