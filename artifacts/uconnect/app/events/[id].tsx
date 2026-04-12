@@ -79,7 +79,6 @@ export default function EventDetailScreen() {
 
   const handleRSVP = async () => {
     if (!event || !id || loading) return;
-    if (loading) return;
     const newVal = !isAttending;
     setIsAttending(newVal);
     if (user) {
