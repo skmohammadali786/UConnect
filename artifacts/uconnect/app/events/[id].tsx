@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppButton } from "@/components/AppButton";
 import { useColors } from "@/hooks/useColors";
@@ -9,13 +9,15 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/Toast";
 import { supabase } from "@/lib/supabase";
 
-const EVENT_DATA: Record<string, any> = {
-  e1: { id: "e1", title: "Rendezvous 2025 - Cultural Fest", category: "Cultural", location: "IIT Delhi Campus", date: "Nov 22-24, 2025", time: "10:00 AM", organizer: "IIT Delhi SAC", attendees: 2400, description: "Asia's largest cultural extravaganza returns with 3 days of music, dance, drama, and competitions. This year's lineup includes international headliners, celebrity performances, and a grand DJ night.", highlights: ["DJ Night with international DJs", "Celebrity performances", "10+ competitive events", "₹10L+ prize pool", "Food stalls and exhibitions"] },
-  e2: { id: "e2", title: "HackIIIT Hackathon", category: "Tech", location: "Online + IIIT Delhi", date: "Dec 1-2, 2025", time: "9:00 AM", organizer: "IIIT Delhi CSE", attendees: 180, description: "36-hour hackathon open to all college students. Build impactful projects, win prizes, and connect with top recruiters. Themes: FinTech, EdTech, HealthTech.", highlights: ["36-hour build sprint", "₹5L+ prize pool", "Mentors from top startups", "Recruiting opportunities"] },
-  e3: { id: "e3", title: "Finance & Markets Summit", category: "Finance", location: "LH3 Auditorium", date: "Nov 28, 2025", time: "2:00 PM", organizer: "Finance Club", attendees: 120, description: "Hear from industry leaders about markets, investing, and career paths in finance. Includes a live trading simulation.", highlights: ["Panel with fund managers", "Live trading sim", "Career opportunities Q&A"] },
-  e4: { id: "e4", title: "Open Mic Night", category: "Cultural", location: "SAC Lawns", date: "Nov 18, 2025", time: "7:00 PM", organizer: "Arts Council", attendees: 89, description: "Express yourself! Open to all genres — poetry, stand-up, music, spoken word. Sign up at the venue.", highlights: ["Open to all genres", "Audience voting", "Prizes for top performers"] },
-  e5: { id: "e5", title: "Machine Learning Workshop", category: "Tech", location: "Bharti 101", date: "Nov 20, 2025", time: "11:00 AM", organizer: "ML Club", attendees: 45, description: "Hands-on workshop covering neural networks, model training, and deployment. Bring your laptop.", highlights: ["Hands-on coding sessions", "PyTorch & HuggingFace", "Certificate of completion"] },
-};
+interface EventDetail {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  location: string;
+  organizer: string;
+  rsvpCount: number;
+}
 
 export default function EventDetailScreen() {
   const colors = useColors();
@@ -23,9 +25,42 @@ export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
   const { showSuccess } = useToast();
-  const event = EVENT_DATA[id] || EVENT_DATA["e1"];
+  const [event, setEvent] = useState<EventDetail | null>(null);
+  const [eventLoading, setEventLoading] = useState(true);
   const [isAttending, setIsAttending] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!id) {
+      setEventLoading(false);
+      return;
+    }
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from("events")
+          .select("*")
+          .eq("id", id)
+          .maybeSingle();
+        if (data) {
+          setEvent({
+            id: data.id,
+            title: data.title,
+            description: data.description,
+            date: data.date,
+            location: data.location,
+            organizer: data.organizer,
+            rsvpCount: data.rsvp_count ?? 0,
+          });
+        } else {
+          setEvent(null);
+        }
+      } catch {
+        setEvent(null);
+      }
+      setEventLoading(false);
+    })();
+  }, [id]);
 
   useEffect(() => {
     if (!user || !id) return;
@@ -43,6 +78,7 @@ export default function EventDetailScreen() {
   }, [user?.id, id]);
 
   const handleRSVP = async () => {
+    if (!event || !id || loading) return;
     if (loading) return;
     const newVal = !isAttending;
     setIsAttending(newVal);
@@ -62,6 +98,41 @@ export default function EventDetailScreen() {
       if (newVal) showSuccess("RSVP confirmed!", event?.title);
     }
   };
+
+  if (eventLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Feather name="arrow-left" size={22} color={colors.foreground} />
+          </TouchableOpacity>
+          <Text style={[styles.title, { color: colors.foreground }]}>Event Details</Text>
+          <View style={{ width: 20 }} />
+        </View>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </View>
+    );
+  }
+
+  if (!event) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Feather name="arrow-left" size={22} color={colors.foreground} />
+          </TouchableOpacity>
+          <Text style={[styles.title, { color: colors.foreground }]}>Event Details</Text>
+          <View style={{ width: 20 }} />
+        </View>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <Feather name="calendar" size={36} color={colors.mutedForeground} />
+          <Text style={[styles.desc, { color: colors.foreground, marginTop: 12, textAlign: "center" }]}>Event not found</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -89,13 +160,12 @@ export default function EventDetailScreen() {
           )}
         </View>
         <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          {[
-            { icon: "calendar", label: "Date", value: event.date },
-            { icon: "clock", label: "Time", value: event.time },
-            { icon: "map-pin", label: "Location", value: event.location },
-            { icon: "users", label: "Attendees", value: `${event.attendees + (isAttending ? 1 : 0)} going` },
-          ].map((item) => (
-            <View key={item.label} style={[styles.infoRow, { borderBottomColor: colors.border }]}>
+            {[
+              { icon: "calendar", label: "Date", value: event.date },
+              { icon: "map-pin", label: "Location", value: event.location },
+              { icon: "users", label: "Attendees", value: `${event.rsvpCount + (isAttending ? 1 : 0)} going` },
+            ].map((item) => (
+              <View key={item.label} style={[styles.infoRow, { borderBottomColor: colors.border }]}>
               <View style={[styles.infoIcon, { backgroundColor: colors.primary + "15" }]}>
                 <Feather name={item.icon as any} size={16} color={colors.primary} />
               </View>
@@ -110,17 +180,6 @@ export default function EventDetailScreen() {
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>About</Text>
           <Text style={[styles.desc, { color: colors.foreground }]}>{event.description}</Text>
         </View>
-        {event.highlights && (
-          <View>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Highlights</Text>
-            {(event.highlights as string[]).map((h, i) => (
-              <View key={i} style={styles.highlight}>
-                <Feather name="star" size={14} color={colors.primary} />
-                <Text style={[styles.highlightText, { color: colors.foreground }]}>{h}</Text>
-              </View>
-            ))}
-          </View>
-        )}
       </ScrollView>
       <View style={[styles.bottomBar, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 8 }]}>
         <AppButton

@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Animated, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useToast } from "@/components/Toast";
@@ -11,13 +11,20 @@ import { useAuth } from "@/context/AuthContext";
 
 const ND = Platform.OS !== "web";
 
-const INTERNSHIP_DATA: Record<string, any> = {
-  i1: { id: "i1", company: "Google", role: "Software Engineering Intern", location: "Bangalore", duration: "3 months", stipend: "₹1,00,000/month", type: "Hybrid", skills: ["Python", "Algorithms", "System Design", "Data Structures"], deadline: "Nov 30, 2025", postedBy: "placement_cell", isVerified: true, description: "Join Google's engineering team to work on real products used by millions. Interns work on meaningful projects with full software engineer mentorship.", requirements: ["Currently pursuing B.Tech/M.Tech in CS or related", "Strong DSA fundamentals", "Problem solving skills", "Competitive programming background preferred"] },
-  i2: { id: "i2", company: "Microsoft", role: "Product Management Intern", location: "Hyderabad", duration: "6 months", stipend: "₹80,000/month", type: "Onsite", skills: ["Product Thinking", "Excel", "SQL", "Communication"], deadline: "Dec 10, 2025", postedBy: "arjun_mech22", isVerified: true, description: "Work alongside Microsoft's product team to shape future products. You'll conduct user research, write PRDs, and collaborate with engineering.", requirements: ["Strong analytical mindset", "Excellent communication", "Exposure to product design tools", "Curiosity for technology"] },
-  i3: { id: "i3", company: "Startupboost", role: "Full Stack Developer", location: "Remote", duration: "3 months", stipend: "₹20,000/month", type: "Remote", skills: ["React", "Node.js", "MongoDB", "REST APIs"], deadline: "Nov 20, 2025", postedBy: "priya_cs23", isVerified: false, description: "Join a fast-growing startup to build and ship features used by thousands of users daily. You'll work across the entire stack.", requirements: ["React + Node.js experience", "Basic database knowledge", "Git proficiency", "Can commit 4+ hours/day"] },
-  i4: { id: "i4", company: "Goldman Sachs", role: "Quantitative Analyst Intern", location: "Mumbai", duration: "2 months", stipend: "₹1,20,000/month", type: "Onsite", skills: ["Statistics", "Python", "Finance", "Excel"], deadline: "Dec 5, 2025", postedBy: "placement_cell", isVerified: true, description: "Work with the trading and risk management teams on quantitative models that power billions of dollars in transactions.", requirements: ["Strong math/statistics foundation", "Python or R proficiency", "Finance knowledge preferred", "Excellent academics"] },
-  i5: { id: "i5", company: "Groww", role: "Android Developer Intern", location: "Bangalore", duration: "4 months", stipend: "₹60,000/month", type: "Hybrid", skills: ["Kotlin", "Jetpack Compose", "REST APIs", "Android Studio"], deadline: "Nov 25, 2025", postedBy: "anonymous", isVerified: false, description: "Build features for India's most popular investment app, used by 10M+ users. You'll own and ship real user-facing features.", requirements: ["Kotlin/Java experience", "Jetpack Compose knowledge", "Understanding of MVVM", "Self-motivated learner"] },
-};
+interface InternshipDetail {
+  id: string;
+  company: string;
+  role: string;
+  location: string;
+  duration: string;
+  stipend: string;
+  type: string;
+  skills: string[];
+  deadline: string;
+  postedBy: string;
+  isVerified: boolean;
+  description: string;
+}
 
 export default function InternshipDetailScreen() {
   const colors = useColors();
@@ -27,14 +34,54 @@ export default function InternshipDetailScreen() {
   const { user } = useAuth();
   const [applied, setApplied] = useState(false);
   const [applyConfirm, setApplyConfirm] = useState(false);
+  const [internship, setInternship] = useState<InternshipDetail | null>(null);
+  const [internshipLoading, setInternshipLoading] = useState(true);
   const applyAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  const internship = INTERNSHIP_DATA[id as string] || INTERNSHIP_DATA["i1"];
-
   useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 280, useNativeDriver: ND }).start();
-    if (user) {
+  }, []);
+
+  useEffect(() => {
+    if (!id) {
+      setInternshipLoading(false);
+      return;
+    }
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from("internships")
+          .select("*")
+          .eq("id", id)
+          .maybeSingle();
+        if (data) {
+          setInternship({
+            id: data.id,
+            company: data.company,
+            role: data.role,
+            location: data.location,
+            duration: data.duration,
+            stipend: data.stipend,
+            type: data.type,
+            skills: data.skills ?? [],
+            deadline: data.deadline,
+            postedBy: data.poster_username,
+            isVerified: data.is_verified,
+            description: data.description ?? "",
+          });
+        } else {
+          setInternship(null);
+        }
+      } catch {
+        setInternship(null);
+      }
+      setInternshipLoading(false);
+    })();
+  }, [id]);
+
+  useEffect(() => {
+    if (user && internship?.id) {
       supabase.from("internship_applications")
         .select("id")
         .eq("user_id", user.id)
@@ -42,23 +89,61 @@ export default function InternshipDetailScreen() {
         .single()
         .then(({ data }) => { if (data) setApplied(true); });
     }
-  }, [internship.id, user?.id]);
+  }, [internship?.id, user?.id]);
 
   const handleApply = async () => {
+    if (!internship) return;
+    if (!user) {
+      showInfo("Sign in required", "Please sign in to apply for internships.");
+      return;
+    }
     setApplyConfirm(false);
     setApplied(true);
-    if (user) {
-      await supabase.from("internship_applications").insert({
-        user_id: user.id,
-        internship_id: internship.id,
-      }).select();
-    }
+    await supabase.from("internship_applications").insert({
+      user_id: user.id,
+      internship_id: internship.id,
+    }).select();
     Animated.sequence([
       Animated.spring(applyAnim, { toValue: 1.08, tension: 200, friction: 5, useNativeDriver: ND }),
       Animated.spring(applyAnim, { toValue: 1, tension: 200, friction: 5, useNativeDriver: ND }),
     ]).start();
     showSuccess(`Applied to ${internship.company}!`, "Application sent. They'll contact your college email.");
   };
+
+  if (internshipLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, backgroundColor: colors.headerBg, borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Feather name="arrow-left" size={22} color={colors.foreground} />
+          </TouchableOpacity>
+          <Text style={[styles.title, { color: colors.foreground }]}>Internship</Text>
+          <View style={{ width: 30 }} />
+        </View>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </View>
+    );
+  }
+
+  if (!internship) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, backgroundColor: colors.headerBg, borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Feather name="arrow-left" size={22} color={colors.foreground} />
+          </TouchableOpacity>
+          <Text style={[styles.title, { color: colors.foreground }]}>Internship</Text>
+          <View style={{ width: 30 }} />
+        </View>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <Feather name="briefcase" size={36} color={colors.mutedForeground} />
+          <Text style={[styles.desc, { color: colors.foreground, marginTop: 12, textAlign: "center" }]}>Internship not found</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <Animated.View style={[{ flex: 1, backgroundColor: colors.background }, { opacity: fadeAnim }]}>
@@ -106,16 +191,11 @@ export default function InternshipDetailScreen() {
           <Text style={[styles.desc, { color: colors.foreground }]}>{internship.description}</Text>
         </View>
 
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Requirements</Text>
-          {(internship.requirements as string[]).map((r: string, i: number) => (
-            <View key={i} style={styles.reqItem}>
-              <View style={[styles.reqDot, { backgroundColor: colors.primary + "30" }]}>
-                <Feather name="check" size={10} color={colors.primary} />
-              </View>
-              <Text style={[styles.reqText, { color: colors.foreground }]}>{r}</Text>
-            </View>
-          ))}
+        <View style={[styles.deadlineRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Feather name="user" size={16} color={colors.primary} />
+          <Text style={[styles.deadlineText, { color: colors.foreground }]}>
+            Posted by <Text style={{ color: colors.primary, fontFamily: "Inter_700Bold" }}>@{internship.postedBy}</Text>
+          </Text>
         </View>
 
         <View style={styles.section}>
@@ -187,9 +267,6 @@ const styles = StyleSheet.create({
   section: { gap: 12 },
   sectionTitle: { fontSize: 16, fontFamily: "Inter_700Bold" },
   desc: { fontSize: 15, fontFamily: "Inter_400Regular", lineHeight: 23 },
-  reqItem: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
-  reqDot: { width: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center", marginTop: 1 },
-  reqText: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 21, flex: 1 },
   skills: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   skillChip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, borderWidth: 1 },
   skillText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
