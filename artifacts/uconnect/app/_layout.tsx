@@ -14,6 +14,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ToastProvider } from "@/components/Toast";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { useColors } from "@/hooks/useColors";
 import { PostsProvider } from "@/context/PostsContext";
 import { ChatProvider } from "@/context/ChatContext";
 import { NotificationsProvider } from "@/context/NotificationsContext";
@@ -41,15 +42,16 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 }
 
 function RootLayoutNav() {
+  const colors = useColors();
   return (
-    <Stack screenOptions={{ headerShown: false, animation: "fade" }}>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="create-post" options={{ headerShown: false, presentation: "modal", animation: "slide_from_bottom" }} />
-      <Stack.Screen name="edit-profile" options={{ headerShown: false, animation: "slide_from_right" }} />
-      <Stack.Screen name="invite" options={{ headerShown: false, animation: "slide_from_right" }} />
-      <Stack.Screen name="user" options={{ headerShown: false, animation: "slide_from_right" }} />
-      <Stack.Screen name="settings" options={{ headerShown: false, animation: "slide_from_right" }} />
-      <Stack.Screen name="+not-found" options={{ headerShown: false }} />
+    <Stack screenOptions={{ headerShown: false, animation: "fade", contentStyle: { backgroundColor: colors.background } }}>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }} />
+      <Stack.Screen name="create-post" options={{ headerShown: false, presentation: "modal", animation: "slide_from_bottom", contentStyle: { backgroundColor: colors.background } }} />
+      <Stack.Screen name="edit-profile" options={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: colors.background } }} />
+      <Stack.Screen name="invite" options={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: colors.background } }} />
+      <Stack.Screen name="user" options={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: colors.background } }} />
+      <Stack.Screen name="settings" options={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: colors.background } }} />
+      <Stack.Screen name="+not-found" options={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }} />
     </Stack>
   );
 }

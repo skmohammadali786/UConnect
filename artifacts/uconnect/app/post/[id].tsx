@@ -23,7 +23,23 @@ export default function PostDetailScreen() {
   const [isAnon, setIsAnon] = useState(false);
 
   const post = posts.find((p) => p.id === id);
-  if (!post) return null;
+
+  if (!post) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <View style={[{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colors.border, paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, backgroundColor: colors.headerBg }]}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Feather name="arrow-left" size={22} color={colors.foreground} />
+          </TouchableOpacity>
+          <Text style={{ fontSize: 17, fontFamily: "Inter_600SemiBold", color: colors.foreground, marginLeft: 16 }}>Post</Text>
+        </View>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12 }}>
+          <Feather name="alert-circle" size={44} color={colors.mutedForeground} />
+          <Text style={{ fontSize: 16, fontFamily: "Inter_500Medium", color: colors.mutedForeground }}>Post not found</Text>
+        </View>
+      </View>
+    );
+  }
 
   const handleSendComment = () => {
     if (!comment.trim() || !user) return;

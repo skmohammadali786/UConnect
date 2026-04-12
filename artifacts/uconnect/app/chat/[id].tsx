@@ -1,9 +1,10 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
-import { Alert, FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChatBubble } from "@/components/ChatBubble";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { useColors } from "@/hooks/useColors";
 import { useChat } from "@/context/ChatContext";
 import { useAuth } from "@/context/AuthContext";
@@ -15,6 +16,8 @@ export default function ChatScreen() {
   const { conversations, sendMessage, markRead, revealIdentity, blockUser } = useChat();
   const { user } = useAuth();
   const [message, setMessage] = useState("");
+  const [blockModalVisible, setBlockModalVisible] = useState(false);
+  const [revealModalVisible, setRevealModalVisible] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
   const conv = conversations.find((c) => c.id === id);
@@ -31,27 +34,8 @@ export default function ChatScreen() {
     setMessage("");
   };
 
-  const handleReveal = () => {
-    Alert.alert(
-      "Reveal Identity",
-      "This will reveal your username to this person. Continue?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Reveal", onPress: () => revealIdentity(conv.id) },
-      ]
-    );
-  };
-
-  const handleBlock = () => {
-    Alert.alert(
-      "Block User",
-      "You won't receive messages from this person. Continue?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Block", style: "destructive", onPress: () => { blockUser(conv.id); router.back(); } },
-      ]
-    );
-  };
+  const handleReveal = () => setRevealModalVisible(true);
+  const handleBlock = () => setBlockModalVisible(true);
 
   const displayName = conv.isAnonymous && !conv.isRevealed ? "Anonymous" : conv.participantUsername;
 
@@ -120,6 +104,28 @@ export default function ChatScreen() {
           <Text style={[styles.blockedText, { color: colors.mutedForeground }]}>User is blocked</Text>
         </View>
       )}
+
+      <ConfirmModal
+        visible={blockModalVisible}
+        title="Block User"
+        message="You won't receive messages from this person. This action cannot be undone."
+        confirmText="Block"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={() => { setBlockModalVisible(false); blockUser(conv.id); router.back(); }}
+        onCancel={() => setBlockModalVisible(false)}
+      />
+
+      <ConfirmModal
+        visible={revealModalVisible}
+        title="Reveal Identity"
+        message="This will reveal your username to this person. They will be able to see who you are."
+        confirmText="Reveal"
+        cancelText="Cancel"
+        variant="warning"
+        onConfirm={() => { setRevealModalVisible(false); revealIdentity(conv.id); }}
+        onCancel={() => setRevealModalVisible(false)}
+      />
     </KeyboardAvoidingView>
   );
 }

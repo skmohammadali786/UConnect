@@ -45,10 +45,13 @@ export default function NotificationsScreen() {
 
   const handlePress = (n: Notification) => {
     markRead(n.id);
-    if (n.actionType === "post" && n.actionId) {
+    if (!n.actionId || !n.actionType) return;
+    if (n.actionType === "post") {
       router.push({ pathname: "/post/[id]" as any, params: { id: n.actionId } });
-    } else if (n.actionType === "chat" && n.actionId) {
+    } else if (n.actionType === "chat") {
       router.push({ pathname: "/chat/[id]" as any, params: { id: n.actionId } });
+    } else if (n.actionType === "profile") {
+      router.push({ pathname: "/user/[username]" as any, params: { username: n.actionId } });
     }
   };
 

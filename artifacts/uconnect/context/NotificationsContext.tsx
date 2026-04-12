@@ -27,10 +27,10 @@ const NotificationsContext = createContext<NotificationsContextType | undefined>
 const STORAGE_KEY = "@uconnect_notifications";
 
 const SAMPLE_NOTIFICATIONS: Notification[] = [
-  { id: "n1", type: "upvote", title: "Your post is trending", body: "142 people upvoted your anonymous post", isRead: false, createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(), actionId: "1", actionType: "post" },
-  { id: "n2", type: "reply", title: "priya_cs23 replied", body: "\"Totally agree! The DSA sheet really helped me too\"", isRead: false, createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(), actionId: "2", actionType: "post" },
-  { id: "n3", type: "follow", title: "New follower", body: "arjun_mech22 started following you", isRead: false, createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), actionId: "u2", actionType: "profile" },
-  { id: "n4", type: "mention", title: "You were mentioned", body: "shreya_ee24 mentioned you in a comment", isRead: true, createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(), actionId: "6", actionType: "post" },
+  { id: "n1", type: "upvote", title: "Your post is trending", body: "142 people upvoted your anonymous post", isRead: false, createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(), actionId: "sp1", actionType: "post" },
+  { id: "n2", type: "reply", title: "priya_cs23 replied", body: "\"Totally agree! The DSA sheet really helped me too\"", isRead: false, createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(), actionId: "sp2", actionType: "post" },
+  { id: "n3", type: "follow", title: "New follower", body: "arjun_mech22 started following you", isRead: false, createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), actionId: "arjun_mech22", actionType: "profile" },
+  { id: "n4", type: "mention", title: "You were mentioned", body: "shreya_ee24 mentioned you in a comment", isRead: true, createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(), actionId: "sp6", actionType: "post" },
   { id: "n5", type: "message", title: "New message", body: "Someone wants to connect anonymously", isRead: true, createdAt: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), actionId: "c1", actionType: "chat" },
   { id: "n6", type: "event", title: "Rendezvous 2025", body: "Registration closing in 2 days. Don't miss out!", isRead: true, createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString() },
   { id: "n7", type: "system", title: "Welcome to UConnect", body: "You're now part of the IIT Delhi community on UConnect", isRead: true, createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() },
