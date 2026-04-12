@@ -79,6 +79,8 @@ pnpm workspace monorepo with UConnect — a React Native Expo mobile app for pri
 ### Env Vars
 - `EXPO_PUBLIC_SUPABASE_URL` — Supabase project URL
 - `EXPO_PUBLIC_SUPABASE_ANON_KEY` — Supabase anon key (secret)
+- Local setup: copy `artifacts/uconnect/.env.example` to `artifacts/uconnect/.env` and set `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+- Do not commit `.env` files (gitignored)
 
 ### Android APK Build (E2E testing)
 - `artifacts/uconnect/app.json` now includes Android package metadata required for builds.
@@ -90,7 +92,10 @@ pnpm workspace monorepo with UConnect — a React Native Expo mobile app for pri
   - `cd artifacts/uconnect && pnpm run build:aab` (generates production AAB)
 - First-time setup:
   - Sign in to Expo before building: `pnpm dlx eas-cli@latest login`
-  - Ensure `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` are set for runtime API access during E2E testing.
+  - Create protected EAS env vars (not committed in git):
+    - `pnpm dlx eas-cli@latest env:create --environment preview --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value "<YOUR_SUPABASE_ANON_KEY>"`
+    - `pnpm dlx eas-cli@latest env:create --environment production --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value "<YOUR_SUPABASE_ANON_KEY>"`
+  - `EXPO_PUBLIC_SUPABASE_URL` is preconfigured in `artifacts/uconnect/eas.json`.
 
 ### Animation Pattern
 - **Always** use `const ND = Platform.OS !== "web"` for `useNativeDriver`
