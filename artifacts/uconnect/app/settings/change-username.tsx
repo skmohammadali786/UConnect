@@ -8,6 +8,7 @@ import { AppInput } from "@/components/AppInput";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/Toast";
+import { supabase } from "@/lib/supabase";
 
 export default function ChangeUsernameScreen() {
   const colors = useColors();
@@ -27,15 +28,32 @@ export default function ChangeUsernameScreen() {
   };
 
   const handleSave = async () => {
-    const err = validate(username.toLowerCase().trim());
+    const clean = username.toLowerCase().trim();
+    const err = validate(clean);
     if (err) { setError(err); return; }
+    if (clean === user?.username) { router.back(); return; }
     setError("");
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 600));
-    await updateUser({ username: username.toLowerCase().trim() });
+    try {
+      if (user && user.id !== "demo_user_001") {
+        const { data: existing } = await supabase
+          .from("profiles")
+          .select("username")
+          .eq("username", clean)
+          .maybeSingle();
+        if (existing) {
+          setError("Username is already taken. Try another.");
+          setLoading(false);
+          return;
+        }
+      }
+      await updateUser({ username: clean });
+      showSuccess("Username updated!", `You're now @${clean}`);
+      router.back();
+    } catch {
+      showError("Failed", "Could not update username. Try again.");
+    }
     setLoading(false);
-    showSuccess("Username updated!", `You're now @${username.toLowerCase().trim()}`);
-    router.back();
   };
 
   return (

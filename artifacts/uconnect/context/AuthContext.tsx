@@ -161,9 +161,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const deleteAccount = async () => {
     if (user && user.id !== "demo_user_001") {
-      await supabase.from("profiles").delete().eq("id", user.id);
+      try {
+        // RPC deletes profile (cascades all 24 tables) + removes auth.users record
+        await supabase.rpc("delete_account");
+      } catch {
+        // Fallback: delete profile directly (cascades all data, auth record stays)
+        await supabase.from("profiles").delete().eq("id", user.id);
+      }
     }
-    await AsyncStorage.removeItem("@uconnect_demo_user");
+    // Clear all local storage
+    await AsyncStorage.multiRemove([
+      "@uconnect_demo_user",
+      "@uconnect_theme",
+      "@uconnect_settings",
+    ]).catch(() => {});
     await supabase.auth.signOut();
     setUser(null);
   };
