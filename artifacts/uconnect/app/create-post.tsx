@@ -13,6 +13,7 @@ import { usePosts } from "@/context/PostsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useToast } from "@/components/Toast";
+import { recordAttempt, formatLockTime } from "@/utils/rateLimit";
 import type { PostTag, Draft } from "@/context/PostsContext";
 
 const ND = Platform.OS !== "web";
@@ -125,6 +126,13 @@ export default function CreatePostScreen() {
 
   const handlePost = async () => {
     if (!content.trim() || !user) return;
+
+    const rl = await recordAttempt(`post_create_${user.id}`, 10, 60 * 60 * 1000, 0);
+    if (!rl.allowed) {
+      showError("Posting too fast", `You've reached the limit. Try again in ${formatLockTime(rl.secondsLeft || 3600)}.`);
+      return;
+    }
+
     setLoading(true);
     Animated.sequence([
       Animated.spring(publishAnim, { toValue: 0.92, tension: 300, friction: 6, useNativeDriver: ND }),
