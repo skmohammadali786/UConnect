@@ -28,7 +28,7 @@ export default function SplashScreen() {
       <View style={styles.logoContainer}>
         <View style={[styles.logoWrap, isDark ? styles.logoWrapDark : styles.logoWrapLight]}>
           <Image
-            source={require("@/assets/images/logo.png")}
+            source={isDark ? require("@/assets/images/logo-dark.png") : require("@/assets/images/logo.png")}
             style={styles.logoImg}
             resizeMode="contain"
           />

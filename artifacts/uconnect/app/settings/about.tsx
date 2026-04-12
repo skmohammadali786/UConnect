@@ -36,7 +36,7 @@ export default function AboutScreen() {
       <ScrollView contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
         <View style={[styles.hero, { backgroundColor: colors.primary + "10" }]}>
           <View style={[styles.logoCircle, colors.background === "#0A0A0A" ? { backgroundColor: "#FFFFFF", borderColor: "rgba(255,255,255,0.15)" } : { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" }]}>
-            <Image source={require("@/assets/images/logo.png")} style={styles.logoImg} resizeMode="contain" />
+            <Image source={colors.background === "#0A0A0A" ? require("@/assets/images/logo-dark.png") : require("@/assets/images/logo.png")} style={styles.logoImg} resizeMode="contain" />
           </View>
           <Text style={[styles.appName, { color: colors.foreground }]}>UConnect</Text>
           <Text style={[styles.tagline, { color: colors.primary }]}>Your college. Your voice.</Text>

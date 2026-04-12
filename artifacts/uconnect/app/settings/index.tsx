@@ -109,14 +109,16 @@ export default function SettingsScreen() {
 
   const handleLogout = async () => {
     setLogoutConfirm(false);
-    await logout();
-    router.replace("/auth/welcome");
+    try {
+      await logout();
+    } catch {}
   };
 
   const handleDeleteAccount = async () => {
     setDeleteConfirm(false);
-    if (deleteAccount) await deleteAccount();
-    router.replace("/auth/welcome");
+    try {
+      if (deleteAccount) await deleteAccount();
+    } catch {}
   };
 
   return (
@@ -221,7 +223,9 @@ export default function SettingsScreen() {
           <SettingRow icon="user-plus" label="Invite Friends" onPress={() => router.push("/invite")} colors={colors} />
           <SettingRow icon="star" label="Rate UConnect" onPress={() => router.push("/settings/rate")} colors={colors} />
           <SettingRow icon="help-circle" label="Help & Support" onPress={() => router.push("/settings/help")} colors={colors} />
-          <SettingRow icon="info" label="About UConnect" onPress={() => router.push("/settings/about")} colors={colors} last />
+          <SettingRow icon="info" label="About UConnect" onPress={() => router.push("/settings/about")} colors={colors} />
+          <SettingRow icon="shield" label="Privacy Policy" onPress={() => router.push("/settings/privacy-policy" as any)} colors={colors} />
+          <SettingRow icon="file-text" label="Terms & Conditions" onPress={() => router.push("/settings/terms" as any)} colors={colors} last />
         </SectionCard>
 
         <View style={{ height: 20 }} />

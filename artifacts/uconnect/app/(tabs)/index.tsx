@@ -14,6 +14,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useToast } from "@/components/Toast";
 import { TypewriterText } from "@/components/TypewriterText";
+import { useSocial } from "@/context/SocialContext";
 
 const FILTERS = ["Latest", "Trending", "Following"];
 
@@ -103,14 +104,16 @@ export default function HomeScreen() {
     });
   }, []);
 
+  const { followingIds } = useSocial();
+
   const filteredPosts = posts.filter((p) => {
     if (!settings.showSensitiveContent && p.tag === "Confession" && p.isAnonymous) return false;
+    if (activeFilter === "Following") return followingIds.has(p.authorId);
     return true;
   });
 
   const sortedPosts = [...filteredPosts].sort((a, b) => {
     if (activeFilter === "Trending") return (b.upvotes + b.commentCount) - (a.upvotes + a.commentCount);
-    if (activeFilter === "Following") return b.upvotes - a.upvotes;
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
@@ -141,7 +144,7 @@ export default function HomeScreen() {
       >
         <View style={styles.headerLeft}>
           <View style={[styles.logoSmall, colors.background === "#0A0A0A" ? { backgroundColor: "#FFFFFF", borderColor: "rgba(255,255,255,0.15)" } : { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" }]}>
-            <Image source={require("@/assets/images/logo.png")} style={styles.logoImg} resizeMode="contain" />
+            <Image source={colors.background === "#0A0A0A" ? require("@/assets/images/logo-dark.png") : require("@/assets/images/logo.png")} style={styles.logoImg} resizeMode="contain" />
           </View>
           <View>
             <TypewriterText
@@ -226,17 +229,27 @@ export default function HomeScreen() {
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <View style={[styles.emptyIconWrap, { backgroundColor: colors.card }]}>
-              <Feather name="wind" size={36} color={colors.mutedForeground} />
+              <Feather name={activeFilter === "Following" ? "user-plus" : "wind"} size={36} color={colors.mutedForeground} />
             </View>
-            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No posts yet</Text>
-            <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>Be the first to post something!</Text>
-            <TouchableOpacity
-              onPress={() => router.push("/create-post")}
-              style={[styles.createBtn, { backgroundColor: colors.primary }]}
-            >
-              <Feather name="plus" size={16} color="#FFF" />
-              <Text style={styles.createBtnText}>Create Post</Text>
-            </TouchableOpacity>
+            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
+              {activeFilter === "Following" ? "No posts yet" : "No posts yet"}
+            </Text>
+            <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>
+              {activeFilter === "Following"
+                ? followingIds.size === 0
+                  ? "Follow people to see their posts here"
+                  : "People you follow haven't posted yet"
+                : "Be the first to post something!"}
+            </Text>
+            {activeFilter !== "Following" && (
+              <TouchableOpacity
+                onPress={() => router.push("/create-post")}
+                style={[styles.createBtn, { backgroundColor: colors.primary }]}
+              >
+                <Feather name="plus" size={16} color="#FFF" />
+                <Text style={styles.createBtnText}>Create Post</Text>
+              </TouchableOpacity>
+            )}
           </View>
         }
       />

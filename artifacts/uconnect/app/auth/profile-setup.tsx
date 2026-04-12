@@ -77,6 +77,7 @@ export default function ProfileSetupScreen() {
         <AppButton
           title="Continue"
           onPress={() => router.push({ pathname: "/auth/interests", params: { email, college, username, displayName, branch, year, bio } })}
+          disabled={!displayName.trim() || !branch || !year}
           fullWidth
           size="lg"
         />

@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -9,6 +9,8 @@ import { useColors } from "@/hooks/useColors";
 export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { flow } = useLocalSearchParams<{ flow: string }>();
+  const isSignIn = flow === "signin";
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -30,7 +32,7 @@ export default function LoginScreen() {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      router.push({ pathname: "/auth/otp", params: { email: email.trim() } });
+      router.push({ pathname: "/auth/otp", params: { email: email.trim(), flow: flow || "signup" } });
     }, 800);
   };
 
@@ -45,9 +47,11 @@ export default function LoginScreen() {
           <Text style={[styles.backText, { color: colors.mutedForeground }]}>← Back</Text>
         </Pressable>
         <View style={styles.content}>
-          <Text style={[styles.title, { color: colors.foreground }]}>Enter your{"\n"}email address</Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>{isSignIn ? "Welcome\nback" : "Enter your\nemail address"}</Text>
           <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-            We'll send a verification code. You can use any email — you'll select your college in the next step.
+            {isSignIn
+              ? "Enter your registered email. We'll send a verification code to confirm it's you."
+              : "We'll send a verification code. You can use any email — you'll select your college in the next step."}
           </Text>
           <AppInput
             label="Email Address"

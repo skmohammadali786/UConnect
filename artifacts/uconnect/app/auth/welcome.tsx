@@ -155,7 +155,7 @@ export default function WelcomeScreen() {
         >
           <View style={[styles.logoWrap, colors.background === "#0A0A0A" ? styles.logoWrapDark : styles.logoWrapLight]}>
             <Image
-              source={require("@/assets/images/logo.png")}
+              source={colors.background === "#0A0A0A" ? require("@/assets/images/logo-dark.png") : require("@/assets/images/logo.png")}
               style={styles.logoImg}
               resizeMode="contain"
             />
@@ -212,7 +212,7 @@ export default function WelcomeScreen() {
         ]}
       >
         <SpringButton
-          onPress={() => router.push("/auth/login")}
+          onPress={() => router.push({ pathname: "/auth/login", params: { flow: "signup" } })}
           style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
         >
           <Feather name="mail" size={17} color="#FFF" />
@@ -220,7 +220,7 @@ export default function WelcomeScreen() {
         </SpringButton>
 
         <SpringButton
-          onPress={() => router.push("/auth/login")}
+          onPress={() => router.push({ pathname: "/auth/login", params: { flow: "signin" } })}
           style={[styles.outlineBtn, { borderColor: colors.primary }]}
         >
           <Text style={[styles.outlineBtnText, { color: colors.primary }]}>Sign In</Text>

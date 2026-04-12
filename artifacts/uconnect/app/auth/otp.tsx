@@ -1,14 +1,20 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppButton } from "@/components/AppButton";
 import { useColors } from "@/hooks/useColors";
+import { useAuth } from "@/context/AuthContext";
+
+const USER_KEY = "@uconnect_user";
 
 export default function OTPScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { email } = useLocalSearchParams<{ email: string }>();
+  const { email, flow } = useLocalSearchParams<{ email: string; flow: string }>();
+  const { setUserData } = useAuth();
+  const isSignIn = flow === "signin";
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
   const [timer, setTimer] = useState(30);
@@ -35,7 +41,7 @@ export default function OTPScreen() {
     }
   };
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     const code = otp.join("");
     if (code.length < 6) {
       setError("Please enter the 6-digit code");
@@ -43,10 +49,31 @@ export default function OTPScreen() {
     }
     setError("");
     setLoading(true);
-    setTimeout(() => {
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    if (isSignIn) {
+      try {
+        const stored = await AsyncStorage.getItem(USER_KEY);
+        if (stored) {
+          const existingUser = JSON.parse(stored);
+          if (existingUser.email === email) {
+            await setUserData(existingUser);
+            setLoading(false);
+            router.replace("/(tabs)/");
+            return;
+          }
+        }
+        setLoading(false);
+        setError("No account found with this email. Please sign up first.");
+      } catch {
+        setLoading(false);
+        setError("Something went wrong. Please try again.");
+      }
+    } else {
       setLoading(false);
       router.push({ pathname: "/auth/college-select", params: { email } });
-    }, 1000);
+    }
   };
 
   const handleResend = () => {
