@@ -8,6 +8,7 @@ import {
 import { Stack, router, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
+import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -20,7 +21,7 @@ import { ChatProvider } from "@/context/ChatContext";
 import { NotificationsProvider } from "@/context/NotificationsContext";
 import { SettingsProvider } from "@/context/SettingsContext";
 import { ConfessionsProvider } from "@/context/ConfessionsContext";
-import { ThemeProvider } from "@/context/ThemeContext";
+import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { SocialProvider } from "@/context/SocialContext";
 import { TeamsProvider } from "@/context/TeamsContext";
 
@@ -43,6 +44,12 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
 function RootLayoutNav() {
   const colors = useColors();
+  const { themeLoaded } = useTheme();
+
+  if (!themeLoaded) {
+    return <View style={{ flex: 1, backgroundColor: colors.background }} />;
+  }
+
   return (
     <Stack screenOptions={{ headerShown: false, animation: "fade", contentStyle: { backgroundColor: colors.background } }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }} />

@@ -1,10 +1,13 @@
 import { Feather } from "@expo/vector-icons";
+import * as Clipboard from "expo-clipboard";
 import { router } from "expo-router";
 import React from "react";
-import { Alert, Platform, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Platform, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppButton } from "@/components/AppButton";
 import { useColors } from "@/hooks/useColors";
+import { useToast } from "@/components/Toast";
+import { useAuth } from "@/context/AuthContext";
 
 const STEPS = [
   { icon: "user-plus", title: "Invite your batchmates", desc: "Share your unique invite link with college friends." },
@@ -15,14 +18,30 @@ const STEPS = [
 export default function InviteScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { showSuccess } = useToast();
+  const { user } = useAuth();
+
   const inviteCode = "UCON-IITD-3X9K";
-  const inviteLink = `https://uconnect.app/invite/${inviteCode}`;
+  const inviteLink = `https://uconnect.app/join?ref=${inviteCode}`;
+
+  const handleCopyCode = async () => {
+    await Clipboard.setStringAsync(inviteCode);
+    showSuccess("Invite code copied!", inviteCode);
+  };
+
+  const handleCopyLink = async () => {
+    await Clipboard.setStringAsync(inviteLink);
+    showSuccess("Link copied to clipboard", "Share it with your batchmates");
+  };
 
   const handleShare = async () => {
+    const message = `Hey! Join me on UConnect — the private social network for college students.\n\nUse my invite link: ${inviteLink}`;
     try {
-      await Share.share({ message: `Join me on UConnect — the private social network for college students! Use my invite: ${inviteLink}`, url: inviteLink });
+      const result = await Share.share({ message, url: inviteLink, title: "Join UConnect" });
+      if (result.action === Share.dismissedAction) return;
     } catch {
-      Alert.alert("Copied!", "Invite link copied to clipboard.");
+      await Clipboard.setStringAsync(inviteLink);
+      showSuccess("Link copied to clipboard", "Sharing not supported on this device");
     }
   };
 
@@ -35,23 +54,30 @@ export default function InviteScreen() {
         <Text style={[styles.title, { color: colors.foreground }]}>Invite Friends</Text>
         <View style={{ width: 30 }} />
       </View>
+
       <ScrollView contentContainerStyle={{ padding: 24, gap: 28, paddingBottom: 40 }}>
         <View style={styles.heroSection}>
           <View style={[styles.heroIcon, { backgroundColor: colors.primary + "15" }]}>
             <Feather name="gift" size={44} color={colors.primary} />
           </View>
           <Text style={[styles.heroTitle, { color: colors.foreground }]}>Grow your college community</Text>
-          <Text style={[styles.heroSubtitle, { color: colors.mutedForeground }]}>Invite batchmates and make UConnect even better. Only verified college students can join.</Text>
+          <Text style={[styles.heroSubtitle, { color: colors.mutedForeground }]}>
+            Invite batchmates and make UConnect even better. Only verified college students can join.
+          </Text>
         </View>
 
-        <View style={[styles.inviteBox, { backgroundColor: colors.card, borderColor: colors.primary + "40" }]}>
-          <Text style={[styles.codeLabel, { color: colors.mutedForeground }]}>Your invite code</Text>
+        <TouchableOpacity
+          onPress={handleCopyCode}
+          activeOpacity={0.8}
+          style={[styles.inviteBox, { backgroundColor: colors.card, borderColor: colors.primary + "40" }]}
+        >
+          <Text style={[styles.codeLabel, { color: colors.mutedForeground }]}>Your invite code · tap to copy</Text>
           <Text style={[styles.code, { color: colors.primary }]}>{inviteCode}</Text>
-          <TouchableOpacity onPress={() => Alert.alert("Copied!", "Invite code copied.")} style={[styles.copyBtn, { borderColor: colors.border }]}>
-            <Feather name="copy" size={14} color={colors.mutedForeground} />
-            <Text style={[styles.copyText, { color: colors.mutedForeground }]}>Tap to copy</Text>
-          </TouchableOpacity>
-        </View>
+          <View style={[styles.copyBadge, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "25" }]}>
+            <Feather name="copy" size={13} color={colors.primary} />
+            <Text style={[styles.copyBadgeText, { color: colors.primary }]}>Copy Code</Text>
+          </View>
+        </TouchableOpacity>
 
         <View style={{ gap: 14 }}>
           {STEPS.map((s, i) => (
@@ -69,7 +95,7 @@ export default function InviteScreen() {
 
         <View style={{ gap: 12 }}>
           <AppButton title="Share Invite Link" onPress={handleShare} fullWidth size="lg" icon="share-2" />
-          <AppButton title="Copy Invite Code" onPress={() => Alert.alert("Copied!", "Invite code copied.")} variant="outline" fullWidth icon="copy" />
+          <AppButton title="Copy Invite Link" onPress={handleCopyLink} variant="outline" fullWidth icon="link" />
         </View>
 
         <View style={[styles.statsRow, { borderTopColor: colors.border }]}>
@@ -96,11 +122,11 @@ const styles = StyleSheet.create({
   heroIcon: { width: 88, height: 88, borderRadius: 24, alignItems: "center", justifyContent: "center" },
   heroTitle: { fontSize: 22, fontFamily: "Inter_700Bold", textAlign: "center" },
   heroSubtitle: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
-  inviteBox: { alignItems: "center", borderRadius: 16, borderWidth: 1.5, borderStyle: "dashed", padding: 20, gap: 8 },
+  inviteBox: { alignItems: "center", borderRadius: 16, borderWidth: 1.5, borderStyle: "dashed", padding: 20, gap: 10 },
   codeLabel: { fontSize: 12, fontFamily: "Inter_500Medium" },
   code: { fontSize: 28, fontFamily: "Inter_700Bold", letterSpacing: 4 },
-  copyBtn: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 },
-  copyText: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  copyBadge: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6 },
+  copyBadgeText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   step: { flexDirection: "row", gap: 14, alignItems: "flex-start" },
   stepIcon: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center", flexShrink: 0 },
   stepTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold" },

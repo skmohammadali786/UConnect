@@ -109,6 +109,7 @@ export default function SettingsScreen() {
 
   const handleLogout = async () => {
     setLogoutConfirm(false);
+    await new Promise((r) => setTimeout(r, 200));
     try {
       await logout();
     } catch {}
@@ -116,6 +117,7 @@ export default function SettingsScreen() {
 
   const handleDeleteAccount = async () => {
     setDeleteConfirm(false);
+    await new Promise((r) => setTimeout(r, 200));
     try {
       if (deleteAccount) await deleteAccount();
     } catch {}

@@ -94,7 +94,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       "@uconnect_drafts",
       "@uconnect_following",
       "@uconnect_reports",
-      "@uconnect_theme",
       "@uconnect_teams",
     ]);
     setUser(null);
@@ -113,7 +112,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       "@uconnect_drafts",
       "@uconnect_following",
       "@uconnect_reports",
-      "@uconnect_theme",
       "@uconnect_teams",
     ]);
     setUser(null);

@@ -5,11 +5,13 @@ export type ThemeMode = "dark" | "light" | "system";
 
 interface ThemeContextType {
   themeMode: ThemeMode;
+  themeLoaded: boolean;
   setThemeMode: (mode: ThemeMode) => Promise<void>;
 }
 
 const ThemeContext = createContext<ThemeContextType>({
   themeMode: "light",
+  themeLoaded: false,
   setThemeMode: async () => {},
 });
 
@@ -17,13 +19,15 @@ const STORAGE_KEY = "@uconnect_theme";
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [themeMode, setThemeModeState] = useState<ThemeMode>("light");
+  const [themeLoaded, setThemeLoaded] = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then((v) => {
       if (v === "light" || v === "dark" || v === "system") {
         setThemeModeState(v);
       }
-    });
+      setThemeLoaded(true);
+    }).catch(() => setThemeLoaded(true));
   }, []);
 
   const setThemeMode = async (mode: ThemeMode) => {
@@ -32,7 +36,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <ThemeContext.Provider value={{ themeMode, setThemeMode }}>
+    <ThemeContext.Provider value={{ themeMode, themeLoaded, setThemeMode }}>
       {children}
     </ThemeContext.Provider>
   );
