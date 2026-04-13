@@ -97,24 +97,36 @@ export default function PostDetailScreen() {
       }));
       setLoadedComments((prev) => {
         const prevTopLevelLocal = prev.filter((c) => c.id.startsWith(LOCAL_ID_PREFIX) && !c.parentId);
-        const prevReplyLocal = prev.flatMap((c) => c.replies.filter((r) => r.id.startsWith(LOCAL_ID_PREFIX)));
+        const prevReplyLocalByParent = new Map<string, Comment[]>();
+        prev.forEach((c) => {
+          c.replies.forEach((r) => {
+            if (!r.id.startsWith(LOCAL_ID_PREFIX)) return;
+            const parentId = r.parentId ?? c.id;
+            const current = prevReplyLocalByParent.get(parentId) ?? [];
+            prevReplyLocalByParent.set(parentId, [...current, r]);
+          });
+        });
         const remoteReplies = withReplies.flatMap((c) => c.replies);
         const merged = [...withReplies];
+        const mergedById = new Map(merged.map((c) => [c.id, c]));
 
         prevTopLevelLocal
           .filter((local) => !hasMatchingRemoteComment(local, withReplies))
           .forEach((local) => {
-            if (!merged.some((c) => c.id === local.id)) merged.push(local);
+            if (mergedById.has(local.id)) return;
+            merged.push(local);
+            mergedById.set(local.id, local);
           });
 
-        prevReplyLocal
-          .filter((local) => !hasMatchingRemoteComment(local, remoteReplies))
-          .forEach((local) => {
-            const parentIndex = merged.findIndex((c) => c.id === local.parentId);
-            if (parentIndex < 0) return;
-            const parent = merged[parentIndex];
-            if (parent.replies.some((r) => r.id === local.id)) return;
-            merged[parentIndex] = { ...parent, replies: [...parent.replies, local] };
+        prevReplyLocalByParent.forEach((locals, parentId) => {
+          const parent = mergedById.get(parentId);
+          if (!parent) return;
+          const pendingReplies = locals.filter((local) => !hasMatchingRemoteComment(local, remoteReplies) && !parent.replies.some((r) => r.id === local.id));
+          if (pendingReplies.length === 0) return;
+          const updatedParent = { ...parent, replies: [...parent.replies, ...pendingReplies] };
+          mergedById.set(parentId, updatedParent);
+          const parentIndex = merged.findIndex((c) => c.id === parentId);
+          if (parentIndex >= 0) merged[parentIndex] = updatedParent;
           });
 
         return merged;
