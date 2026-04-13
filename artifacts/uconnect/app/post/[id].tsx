@@ -121,7 +121,8 @@ export default function PostDetailScreen() {
         prevReplyLocalByParent.forEach((locals, parentId) => {
           const parent = mergedById.get(parentId);
           if (!parent) return;
-          const pendingReplies = locals.filter((local) => !hasMatchingRemoteComment(local, remoteReplies) && !parent.replies.some((r) => r.id === local.id));
+          const existingReplyIds = new Set(parent.replies.map((r) => r.id));
+          const pendingReplies = locals.filter((local) => !hasMatchingRemoteComment(local, remoteReplies) && !existingReplyIds.has(local.id));
           if (pendingReplies.length === 0) return;
           const updatedParent = { ...parent, replies: [...parent.replies, ...pendingReplies] };
           mergedById.set(parentId, updatedParent);
