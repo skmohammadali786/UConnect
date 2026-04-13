@@ -16,6 +16,10 @@ function isUUID(s: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
 }
 
+function isServerGeneratedId(postId: string) {
+  return isUUID(postId);
+}
+
 const LOCAL_ID_PREFIX = "local_";
 
 function rowToComment(row: any): Comment {
@@ -51,7 +55,7 @@ export default function PostDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { posts, addComment, voteComment, deletePost } = usePosts();
   const { user } = useAuth();
-  const { showSuccess } = useToast();
+  const { showError, showSuccess } = useToast();
   const [comment, setComment] = useState("");
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
   const [isAnon, setIsAnon] = useState(false);
@@ -173,43 +177,62 @@ export default function PostDetailScreen() {
     );
   }
 
-  const handleSendComment = () => {
+  const handleSendComment = async () => {
     if (!comment.trim() || !user) return;
+    const message = comment.trim();
+    const replyingTo = replyTo;
     const tempId = LOCAL_ID_PREFIX + Date.now();
     newLocalIds.current.add(tempId);
     const newComment: Comment = {
       id: tempId,
       postId: post.id,
-      parentId: replyTo?.id ?? null,
+      parentId: replyingTo?.id ?? null,
       authorId: user.id,
       authorUsername: isAnon ? "anonymous" : user.username,
       authorAvatar: isAnon ? null : (user.avatar ?? null),
       isAnonymous: isAnon,
-      content: comment.trim(),
+      content: message,
       upvotes: 0,
       downvotes: 0,
       userVote: null,
       createdAt: new Date().toISOString(),
       replies: [],
     };
-    if (replyTo) {
+    if (replyingTo) {
       setLoadedComments((prev) =>
-        prev.map((c) => c.id === replyTo.id ? { ...c, replies: [...c.replies, newComment] } : c)
+        prev.map((c) => c.id === replyingTo.id ? { ...c, replies: [...c.replies, newComment] } : c)
       );
     } else {
       setLoadedComments((prev) => [...prev, newComment]);
     }
-    addComment(post.id, {
+    setComment("");
+    setReplyTo(null);
+
+    const ok = await addComment(post.id, {
       postId: post.id,
-      parentId: replyTo?.id || null,
+      parentId: replyingTo?.id || null,
       authorId: user.id,
       authorUsername: user.username,
       authorAvatar: isAnon ? null : (user.avatar || null),
       isAnonymous: isAnon,
-      content: comment.trim(),
+      content: message,
     });
-    setComment("");
-    setReplyTo(null);
+
+    if (!ok) {
+      if (replyingTo) {
+        setLoadedComments((prev) =>
+          prev.map((c) => c.id === replyingTo.id ? { ...c, replies: c.replies.filter((r) => r.id !== tempId) } : c)
+        );
+      } else {
+        setLoadedComments((prev) => prev.filter((c) => c.id !== tempId));
+      }
+      showError("Failed to post comment", "Please try again");
+      return;
+    }
+
+    if (isServerGeneratedId(post.id)) {
+      loadComments();
+    }
   };
 
   const handleDelete = (postId: string) => {

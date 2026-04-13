@@ -43,15 +43,16 @@ function generateId() {
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  const userId = user?.id;
   const [conversations, setConversations] = useState<Conversation[]>([]);
 
   const loadConversations = useCallback(async () => {
-    if (!user) return;
+    if (!userId) return;
     try {
       const { data: convRows } = await supabase
         .from("conversations")
         .select("*, user_a_profile:profiles!conversations_user_a_fkey(username, avatar), user_b_profile:profiles!conversations_user_b_fkey(username, avatar)")
-        .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
+        .or(`user_a.eq.${userId},user_b.eq.${userId}`)
         .order("last_message_at", { ascending: false });
 
       if (!convRows || convRows.length === 0) {
@@ -60,7 +61,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       }
 
       const convs: Conversation[] = await Promise.all(convRows.map(async (row: any) => {
-        const isUserA = row.user_a === user.id;
+        const isUserA = row.user_a === userId;
         const participantId = isUserA ? row.user_b : row.user_a;
         const participantProfile = isUserA ? row.user_b_profile : row.user_a_profile;
         const participantUsername = row.is_anonymous && !row.is_revealed ? "anonymous" : (participantProfile?.username ?? "unknown");
@@ -80,7 +81,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           isRevealed: m.is_revealed,
         }));
 
-        const unreadCount = messages.filter((m) => m.senderId !== user.id && !m.isRead).length;
+        const unreadCount = messages.filter((m) => m.senderId !== userId && !m.isRead).length;
 
         return {
           id: row.id,
@@ -100,20 +101,20 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     } catch {
       setConversations([]);
     }
-  }, [user?.id]);
+  }, [userId]);
 
   useEffect(() => {
-    if (!user) {
+    if (!userId) {
       setConversations([]);
       return;
     }
     loadConversations();
-  }, [user?.id, loadConversations]);
+  }, [userId, loadConversations]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
     const channel = supabase
-      .channel(`chat-sync-${user.id}`)
+      .channel(`chat-sync-${userId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => {
         loadConversations();
       })
@@ -124,7 +125,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id, loadConversations]);
+  }, [userId, loadConversations]);
 
   const sendMessage = (conversationId: string, content: string, senderId: string) => {
     const newMessage: Message = {
@@ -218,29 +219,29 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     return data.id;
   };
 
-  const markRead = (conversationId: string) => {
+  const markRead = useCallback((conversationId: string) => {
     setConversations((prev) => prev.map((c) =>
       c.id === conversationId
         ? { ...c, unreadCount: 0, messages: c.messages.map((m) => ({ ...m, isRead: true })) }
         : c
     ));
-    if (user) {
-      supabase.rpc("mark_conversation_read", { p_conversation_id: conversationId }).then(({ error }) => {
+    if (userId) {
+      (async () => {
+        const { error } = await supabase.rpc("mark_conversation_read", { p_conversation_id: conversationId });
         if (error) {
-          console.error("mark_conversation_read failed, falling back to direct update:", error.message);
-          supabase.from("messages")
+          const { error: fallbackError } = await supabase
+            .from("messages")
             .update({ is_read: true })
             .eq("conversation_id", conversationId)
-            .neq("sender_id", user.id)
-            .then(({ error: fallbackError }) => {
-              if (fallbackError) {
-                console.error("Fallback mark-read update failed:", fallbackError.message);
-              }
-            });
+            .neq("sender_id", userId);
+          if (fallbackError) {
+            console.error(`Fallback mark-read update failed for conversation ${conversationId}:`, fallbackError.message);
+          }
         }
-      });
+        await loadConversations();
+      })();
     }
-  };
+  }, [userId, loadConversations]);
 
   const revealIdentity = (conversationId: string) => {
     setConversations((prev) => prev.map((c) =>

@@ -109,10 +109,8 @@ export default function SettingsScreen() {
 
   const handleLogout = async () => {
     setLogoutConfirm(false);
-    await new Promise((r) => setTimeout(r, 200));
     try {
       await logout();
-      router.replace("/auth/welcome");
     } catch {}
   };
 

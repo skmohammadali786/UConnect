@@ -124,7 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
-    await AsyncStorage.multiRemove(["@uconnect_theme", "@uconnect_settings"]).catch(() => {});
+    await AsyncStorage.multiRemove(["@uconnect_settings"]).catch(() => {});
     try {
       await supabase.auth.signOut();
     } catch {}
@@ -139,7 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await supabase.from("profiles").delete().eq("id", user.id);
       }
     }
-    await AsyncStorage.multiRemove(["@uconnect_theme", "@uconnect_settings"]).catch(() => {});
+    await AsyncStorage.multiRemove(["@uconnect_settings"]).catch(() => {});
     await supabase.auth.signOut();
     setUser(null);
   };
