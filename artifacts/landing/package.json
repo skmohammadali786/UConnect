@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",
-    "@react-three/fiber": "^9.6.0",
+    "@react-three/fiber": "^9.5.0",
     "framer-motion": "catalog:",
     "lenis": "^1.3.21",
     "lucide-react": "catalog:",
@@ -27,6 +27,7 @@
     "@vitejs/plugin-react": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "~5.9.2",
-    "vite": "catalog:"
+    "vite": "catalog:",
+    "@types/three": "^0.183.1"
   }
 }
