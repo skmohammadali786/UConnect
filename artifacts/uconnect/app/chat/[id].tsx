@@ -36,7 +36,7 @@ export default function ChatScreen() {
   useEffect(() => {
     if (!conv) return;
     markRead(conv.id);
-  }, [conv?.id, conv?.messages.length]);
+  }, [conv?.id, markRead]);
 
   if (!user) return null;
 

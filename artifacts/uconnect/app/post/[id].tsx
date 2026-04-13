@@ -16,6 +16,10 @@ function isUUID(s: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
 }
 
+function isServerGeneratedId(postId: string) {
+  return isUUID(postId);
+}
+
 const LOCAL_ID_PREFIX = "local_";
 
 function rowToComment(row: any): Comment {
@@ -226,7 +230,7 @@ export default function PostDetailScreen() {
       return;
     }
 
-    if (isUUID(post.id)) {
+    if (isServerGeneratedId(post.id)) {
       loadComments();
     }
   };
@@ -301,7 +305,7 @@ export default function PostDetailScreen() {
             style={[styles.input, { color: colors.foreground, backgroundColor: colors.input, borderColor: colors.border }]}
             multiline
           />
-          <TouchableOpacity onPress={() => { void handleSendComment(); }} disabled={!comment.trim()} style={[styles.sendBtn, { backgroundColor: comment.trim() ? colors.primary : colors.muted }]}>
+          <TouchableOpacity onPress={handleSendComment} disabled={!comment.trim()} style={[styles.sendBtn, { backgroundColor: comment.trim() ? colors.primary : colors.muted }]}>
             <Feather name="send" size={16} color={comment.trim() ? "#FFFFFF" : colors.mutedForeground} />
           </TouchableOpacity>
         </View>

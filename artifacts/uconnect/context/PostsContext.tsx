@@ -309,7 +309,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
     });
     applyPosts(updated);
 
-    if (!user) return true;
+    if (!user) return false;
 
     const { data, error } = await supabase.from("comments").insert({
         post_id: postId,
