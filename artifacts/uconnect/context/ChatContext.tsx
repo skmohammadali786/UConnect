@@ -227,6 +227,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     if (user) {
       supabase.rpc("mark_conversation_read", { p_conversation_id: conversationId }).then(({ error }) => {
         if (error) {
+          console.error("mark_conversation_read failed, falling back to direct update:", error.message);
           supabase.from("messages")
             .update({ is_read: true })
             .eq("conversation_id", conversationId)

@@ -107,10 +107,11 @@ export default function PostDetailScreen() {
         prevReplyLocal
           .filter((local) => !hasMatchingRemoteComment(local, withReplies.flatMap((c) => c.replies)))
           .forEach((local) => {
-            const parent = merged.find((c) => c.id === local.parentId);
-            if (!parent) return;
+            const parentIndex = merged.findIndex((c) => c.id === local.parentId);
+            if (parentIndex < 0) return;
+            const parent = merged[parentIndex];
             if (parent.replies.some((r) => r.id === local.id)) return;
-            parent.replies = [...parent.replies, local];
+            merged[parentIndex] = { ...parent, replies: [...parent.replies, local] };
           });
 
         return merged;
