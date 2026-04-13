@@ -112,6 +112,7 @@ export default function SettingsScreen() {
     await new Promise((r) => setTimeout(r, 200));
     try {
       await logout();
+      router.replace("/auth/welcome");
     } catch {}
   };
 

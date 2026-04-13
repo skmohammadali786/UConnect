@@ -15,6 +15,7 @@ import { useSettings } from "@/context/SettingsContext";
 import { useToast } from "@/components/Toast";
 import { TypewriterText } from "@/components/TypewriterText";
 import { useSocial } from "@/context/SocialContext";
+import { useChat } from "@/context/ChatContext";
 
 const FILTERS = ["Latest", "Trending", "Following"];
 
@@ -67,9 +68,11 @@ export default function HomeScreen() {
   const { posts, refreshPosts, deletePost } = usePosts();
   const { user } = useAuth();
   const { settings } = useSettings();
+  const { conversations } = useChat();
   const { showSuccess } = useToast();
   const [activeFilter, setActiveFilter] = useState("Latest");
   const [refreshing, setRefreshing] = useState(false);
+  const totalUnreadMessages = conversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
 
   const headerSlide = useRef(new Animated.Value(-60)).current;
   const headerFade = useRef(new Animated.Value(0)).current;
@@ -181,6 +184,11 @@ export default function HomeScreen() {
             <TouchableOpacity key={s.label} onPress={() => router.push(s.route as any)} style={styles.shortcut} activeOpacity={0.7}>
               <View style={[styles.shortcutIcon, { backgroundColor: s.color + "18" }]}>
                 <Feather name={s.icon as any} size={20} color={s.color} />
+                {s.label === "Chat" && totalUnreadMessages > 0 && (
+                  <View style={[styles.chatBadge, { backgroundColor: colors.primary }]}>
+                    <Text style={styles.chatBadgeText}>{totalUnreadMessages > 99 ? "99+" : totalUnreadMessages}</Text>
+                  </View>
+                )}
               </View>
               <Text style={[styles.shortcutLabel, { color: colors.mutedForeground }]}>{s.label}</Text>
             </TouchableOpacity>
@@ -278,6 +286,18 @@ const styles = StyleSheet.create({
   shortcuts: { paddingHorizontal: 12, paddingVertical: 14, gap: 6, borderBottomWidth: 1 },
   shortcut: { alignItems: "center", gap: 6, marginHorizontal: 6 },
   shortcutIcon: { width: 52, height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  chatBadge: {
+    position: "absolute",
+    right: -4,
+    top: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+  },
+  chatBadgeText: { color: "#FFF", fontSize: 10, fontFamily: "Inter_700Bold" },
   shortcutLabel: { fontSize: 11, fontFamily: "Inter_500Medium" },
   filterRow: { flexDirection: "row", borderBottomWidth: 1 },
   filterTab: { flex: 1, alignItems: "center", paddingVertical: 12 },

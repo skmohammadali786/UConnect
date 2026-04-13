@@ -105,7 +105,7 @@ export default function TermsScreen() {
         ))}
 
         <Text style={[styles.footer, { color: colors.mutedForeground }]}>
-          © 2025 UConnect · All rights reserved
+          © 2026 UConnect. All rights reserved
         </Text>
       </ScrollView>
     </View>

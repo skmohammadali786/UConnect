@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 
@@ -34,34 +34,50 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
+  const loadNotifications = useCallback(async () => {
+    if (!user) return;
+    try {
+      const { data } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      setNotifications((data ?? []).map((row: any) => ({
+        id: row.id,
+        type: row.type as NotificationType,
+        title: row.title,
+        body: row.body,
+        isRead: row.is_read,
+        createdAt: row.created_at,
+        actionId: row.action_id ?? undefined,
+        actionType: row.action_type ?? undefined,
+      })));
+    } catch {
+      setNotifications([]);
+    }
+  }, [user?.id]);
+
   useEffect(() => {
     if (!user) {
       setNotifications([]);
       return;
     }
-    (async () => {
-      try {
-        const { data } = await supabase
-          .from("notifications")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(50);
-        setNotifications((data ?? []).map((row: any) => ({
-          id: row.id,
-          type: row.type as NotificationType,
-          title: row.title,
-          body: row.body,
-          isRead: row.is_read,
-          createdAt: row.created_at,
-          actionId: row.action_id ?? undefined,
-          actionType: row.action_type ?? undefined,
-        })));
-      } catch {
-        setNotifications([]);
-      }
-    })();
-  }, [user?.id]);
+    loadNotifications();
+  }, [user?.id, loadNotifications]);
+
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`notifications-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` }, () => {
+        loadNotifications();
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, loadNotifications]);
 
   const markRead = (id: string) => {
     setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, isRead: true } : n));

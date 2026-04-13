@@ -386,6 +386,7 @@ create table if not exists notes (
   saves int not null default 0,
   created_at timestamptz not null default now()
 );
+alter table notes add column if not exists image_urls text[] not null default '{}';
 alter table notes enable row level security;
 create policy "Notes are viewable" on notes for select using (true);
 create policy "Authenticated users can upload notes" on notes for insert with check (auth.uid() = uploader_id);
@@ -402,6 +403,31 @@ create table if not exists note_saves (
 );
 alter table note_saves enable row level security;
 create policy "Users can manage own saves" on note_saves for all using (auth.uid() = user_id);
+
+-- ─── APP RATINGS ───────────────────────────────────────────────────────────────
+create table if not exists app_ratings (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid not null references profiles(id) on delete cascade,
+  rating int not null check (rating >= 1 and rating <= 5),
+  feedback text,
+  created_at timestamptz not null default now()
+);
+alter table app_ratings enable row level security;
+create policy "Users can add own ratings" on app_ratings for insert with check (auth.uid() = user_id);
+create policy "Users can view own ratings" on app_ratings for select using (auth.uid() = user_id);
+
+-- ─── INVITE CODES ──────────────────────────────────────────────────────────────
+create table if not exists invite_codes (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid not null unique references profiles(id) on delete cascade,
+  code text not null unique,
+  total_shares int not null default 0,
+  total_joins int not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table invite_codes enable row level security;
+create policy "Users can manage own invite code" on invite_codes for all using (auth.uid() = user_id);
 
 -- ─── FUNCTIONS ───────────────────────────────────────────────────────────────
 

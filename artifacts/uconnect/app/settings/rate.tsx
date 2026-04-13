@@ -5,11 +5,14 @@ import { Animated, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableO
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useToast } from "@/components/Toast";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabase";
 
 export default function RateScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { showSuccess } = useToast();
+  const { user } = useAuth();
   const [rating, setRating] = useState(0);
   const [hovered, setHovered] = useState(0);
   const [feedback, setFeedback] = useState("");
@@ -24,8 +27,17 @@ export default function RateScreen() {
     ]).start();
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (rating === 0) return;
+    if (user) {
+      try {
+        await supabase.from("app_ratings").insert({
+          user_id: user.id,
+          rating,
+          feedback: feedback.trim() || null,
+        });
+      } catch {}
+    }
     setSubmitted(true);
     showSuccess("Thank you!", "Your review helps us grow.");
   };

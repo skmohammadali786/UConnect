@@ -1,13 +1,14 @@
 import { Feather } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import { router } from "expo-router";
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Platform, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppButton } from "@/components/AppButton";
 import { useColors } from "@/hooks/useColors";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabase";
 
 const STEPS = [
   { icon: "user-plus", title: "Invite your batchmates", desc: "Share your unique invite link with college friends." },
@@ -21,16 +22,53 @@ export default function InviteScreen() {
   const { showSuccess } = useToast();
   const { user } = useAuth();
 
-  const inviteCode = "UCON-IITD-3X9K";
-  const inviteLink = `https://uconnect.app/join?ref=${inviteCode}`;
+  const [inviteCode, setInviteCode] = useState("");
+  const [invitedCount, setInvitedCount] = useState(0);
+  const [joinedCount, setJoinedCount] = useState(0);
+
+  const fallbackCode = useMemo(() => {
+    const seed = `${user?.id ?? "guest"}-${user?.username ?? "uconnect"}`.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+    return `UCON-${seed.slice(0, 6).padEnd(6, "X")}-${(Date.now().toString(36).slice(-4)).toUpperCase()}`;
+  }, [user?.id, user?.username]);
+
+  const inviteLink = `https://uconnect.app/join?ref=${inviteCode || fallbackCode}`;
+
+  useEffect(() => {
+    if (!user) {
+      setInviteCode(fallbackCode);
+      return;
+    }
+    (async () => {
+      const { data } = await supabase.from("invite_codes").select("*").eq("user_id", user.id).maybeSingle();
+      if (data?.code) {
+        setInviteCode(data.code);
+        setInvitedCount(data.total_shares ?? 0);
+        setJoinedCount(data.total_joins ?? 0);
+        return;
+      }
+      const code = fallbackCode;
+      setInviteCode(code);
+      await supabase.from("invite_codes").upsert({ user_id: user.id, code, total_shares: 0, total_joins: 0, updated_at: new Date().toISOString() }).then(() => {});
+    })();
+  }, [user?.id, fallbackCode]);
+
+  const trackShare = async () => {
+    if (!user || !inviteCode) return;
+    const next = invitedCount + 1;
+    setInvitedCount(next);
+    await supabase.from("invite_codes").update({ total_shares: next, updated_at: new Date().toISOString() }).eq("user_id", user.id).then(() => {});
+  };
 
   const handleCopyCode = async () => {
-    await Clipboard.setStringAsync(inviteCode);
-    showSuccess("Invite code copied!", inviteCode);
+    const code = inviteCode || fallbackCode;
+    await Clipboard.setStringAsync(code);
+    await trackShare();
+    showSuccess("Invite code copied!", code);
   };
 
   const handleCopyLink = async () => {
     await Clipboard.setStringAsync(inviteLink);
+    await trackShare();
     showSuccess("Link copied to clipboard", "Share it with your batchmates");
   };
 
@@ -39,6 +77,7 @@ export default function InviteScreen() {
     try {
       const result = await Share.share({ message, url: inviteLink, title: "Join UConnect" });
       if (result.action === Share.dismissedAction) return;
+      await trackShare();
     } catch {
       await Clipboard.setStringAsync(inviteLink);
       showSuccess("Link copied to clipboard", "Sharing not supported on this device");
@@ -72,7 +111,7 @@ export default function InviteScreen() {
           style={[styles.inviteBox, { backgroundColor: colors.card, borderColor: colors.primary + "40" }]}
         >
           <Text style={[styles.codeLabel, { color: colors.mutedForeground }]}>Your invite code · tap to copy</Text>
-          <Text style={[styles.code, { color: colors.primary }]}>{inviteCode}</Text>
+          <Text style={[styles.code, { color: colors.primary }]}>{inviteCode || fallbackCode}</Text>
           <View style={[styles.copyBadge, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "25" }]}>
             <Feather name="copy" size={13} color={colors.primary} />
             <Text style={[styles.copyBadgeText, { color: colors.primary }]}>Copy Code</Text>
@@ -100,12 +139,12 @@ export default function InviteScreen() {
 
         <View style={[styles.statsRow, { borderTopColor: colors.border }]}>
           <View style={styles.statItem}>
-            <Text style={[styles.statNum, { color: colors.foreground }]}>0</Text>
+            <Text style={[styles.statNum, { color: colors.foreground }]}>{invitedCount}</Text>
             <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Invited</Text>
           </View>
           <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
           <View style={styles.statItem}>
-            <Text style={[styles.statNum, { color: colors.foreground }]}>0</Text>
+            <Text style={[styles.statNum, { color: colors.foreground }]}>{joinedCount}</Text>
             <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Joined</Text>
           </View>
         </View>

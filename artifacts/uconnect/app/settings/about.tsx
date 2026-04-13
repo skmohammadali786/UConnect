@@ -13,10 +13,8 @@ const FEATURES = [
 ];
 
 const TEAM = [
-  { name: "Aryan Kapoor", role: "Founder & CEO", letter: "A" },
-  { name: "Priya Sharma", role: "Head of Design", letter: "P" },
-  { name: "Rahul Mehra", role: "Lead Engineer", letter: "R" },
-  { name: "Sneha Joshi", role: "Community Lead", letter: "S" },
+  { name: "Sk Mohammad Ali", role: "Founder & CEO", letter: "S" },
+  { name: "Zayen Mallik", role: "Co Founder", letter: "Z" },
 ];
 
 export default function AboutScreen() {
@@ -81,16 +79,24 @@ export default function AboutScreen() {
 
           <View style={[styles.legalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.legalTitle, { color: colors.foreground }]}>Legal</Text>
-            {["Privacy Policy", "Terms of Service", "Cookie Policy"].map((item) => (
-              <TouchableOpacity key={item} style={[styles.legalRow, { borderTopColor: colors.border }]}>
-                <Text style={[styles.legalText, { color: colors.mutedForeground }]}>{item}</Text>
+            {[
+              { label: "Privacy Policy", route: "/settings/privacy-policy" },
+              { label: "Terms of Service", route: "/settings/terms" },
+              { label: "Cookie Policy", route: null },
+            ].map((item) => (
+              <TouchableOpacity
+                key={item.label}
+                style={[styles.legalRow, { borderTopColor: colors.border }]}
+                onPress={() => item.route ? router.push(item.route as any) : undefined}
+              >
+                <Text style={[styles.legalText, { color: colors.mutedForeground }]}>{item.label}</Text>
                 <Feather name="external-link" size={14} color={colors.mutedForeground} />
               </TouchableOpacity>
             ))}
           </View>
 
           <Text style={[styles.footer, { color: colors.mutedForeground }]}>
-            Made for students, by students{"\n"}© 2025 UConnect. All rights reserved.
+            Made for students, by students{"\n"}© 2026 UConnect. All rights reserved.
           </Text>
         </View>
       </ScrollView>

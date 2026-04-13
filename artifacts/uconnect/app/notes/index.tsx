@@ -35,7 +35,7 @@ function rowToNote(r: any): Note {
   };
 }
 
-const SUBJECTS = ["All", "Mathematics", "Physics", "Chemistry", "CS", "Electrical", "Mechanical", "Economics"];
+const SUBJECTS = ["All", "Mathematics", "Physics", "Chemistry", "Computer Science", "Electrical", "Mechanical", "Civil", "Economics", "MBA", "Biology", "Statistics", "Law", "Other"];
 const SUBJECT_COLORS: Record<string, string> = {
   CS: "#3B82F6", Mathematics: "#8B5CF6", Physics: "#06B6D4",
   Chemistry: "#EF4444", Electrical: "#F59E0B", Mechanical: "#F97316",

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 
@@ -45,15 +45,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
 
-  useEffect(() => {
-    if (!user) {
-      setConversations([]);
-      return;
-    }
-    loadConversations();
-  }, [user?.id]);
-
-  const loadConversations = async () => {
+  const loadConversations = useCallback(async () => {
     if (!user) return;
     try {
       const { data: convRows } = await supabase
@@ -108,7 +100,31 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     } catch {
       setConversations([]);
     }
-  };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user) {
+      setConversations([]);
+      return;
+    }
+    loadConversations();
+  }, [user?.id, loadConversations]);
+
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`chat-sync-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => {
+        loadConversations();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "conversations" }, () => {
+        loadConversations();
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, loadConversations]);
 
   const sendMessage = (conversationId: string, content: string, senderId: string) => {
     const newMessage: Message = {
@@ -125,12 +141,23 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         : c
     ));
     if (user) {
+      const conv = conversations.find((c) => c.id === conversationId);
       supabase.from("messages").insert({
         conversation_id: conversationId,
         sender_id: senderId,
         content,
       }).then(() => {});
       supabase.from("conversations").update({ last_message: content, last_message_at: newMessage.createdAt }).eq("id", conversationId).then(() => {});
+      if (conv?.participantId) {
+        supabase.from("notifications").insert({
+          user_id: conv.participantId,
+          type: "message",
+          title: `New message from @${user.username}`,
+          body: content.length > 80 ? `${content.slice(0, 80)}...` : content,
+          action_id: conversationId,
+          action_type: "chat",
+        }).then(() => {});
+      }
     }
   };
 
