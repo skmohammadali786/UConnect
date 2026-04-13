@@ -218,29 +218,29 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     return data.id;
   };
 
-  const markRead = (conversationId: string) => {
+  const markRead = useCallback((conversationId: string) => {
     setConversations((prev) => prev.map((c) =>
       c.id === conversationId
         ? { ...c, unreadCount: 0, messages: c.messages.map((m) => ({ ...m, isRead: true })) }
         : c
     ));
     if (user) {
-      supabase.rpc("mark_conversation_read", { p_conversation_id: conversationId }).then(({ error }) => {
+      (async () => {
+        const { error } = await supabase.rpc("mark_conversation_read", { p_conversation_id: conversationId });
         if (error) {
-          console.error("mark_conversation_read failed, falling back to direct update:", error.message);
-          supabase.from("messages")
+          const { error: fallbackError } = await supabase
+            .from("messages")
             .update({ is_read: true })
             .eq("conversation_id", conversationId)
-            .neq("sender_id", user.id)
-            .then(({ error: fallbackError }) => {
-              if (fallbackError) {
-                console.error("Fallback mark-read update failed:", fallbackError.message);
-              }
-            });
+            .neq("sender_id", user.id);
+          if (fallbackError) {
+            console.error("mark read failed:", fallbackError.message);
+          }
         }
-      });
+        await loadConversations();
+      })();
     }
-  };
+  }, [user?.id, loadConversations]);
 
   const revealIdentity = (conversationId: string) => {
     setConversations((prev) => prev.map((c) =>

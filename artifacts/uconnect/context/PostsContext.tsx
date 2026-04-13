@@ -60,7 +60,7 @@ interface PostsContextType {
   votePost: (postId: string, vote: "up" | "down") => void;
   bookmarkPost: (postId: string) => void;
   deletePost: (postId: string) => void;
-  addComment: (postId: string, comment: Omit<Comment, "id" | "createdAt" | "upvotes" | "downvotes" | "userVote" | "replies">) => void;
+  addComment: (postId: string, comment: Omit<Comment, "id" | "createdAt" | "upvotes" | "downvotes" | "userVote" | "replies">) => Promise<boolean>;
   voteComment: (postId: string, commentId: string, vote: "up" | "down") => void;
   reportPost: (postId: string, reason: string) => void;
   saveDraft: (draft: Omit<Draft, "id" | "savedAt">) => Promise<void>;
@@ -284,7 +284,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, applyPosts]);
 
-  const addComment = useCallback((postId: string, commentData: Omit<Comment, "id" | "createdAt" | "upvotes" | "downvotes" | "userVote" | "replies">) => {
+  const addComment = useCallback(async (postId: string, commentData: Omit<Comment, "id" | "createdAt" | "upvotes" | "downvotes" | "userVote" | "replies">) => {
     const newComment: Comment = {
       ...commentData,
       id: "local_" + Date.now(),
@@ -309,8 +309,9 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
     });
     applyPosts(updated);
 
-    if (user) {
-      supabase.from("comments").insert({
+    if (!user) return true;
+
+    const { data, error } = await supabase.from("comments").insert({
         post_id: postId,
         parent_id: commentData.parentId ?? null,
         author_id: user.id,
@@ -318,9 +319,55 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
         author_avatar: user.avatar,
         is_anonymous: commentData.isAnonymous,
         content: commentData.content,
-      }).then(() => {});
-      supabase.rpc("increment_comment_count", { p_post_id: postId }).then(() => {});
+      }).select("*").single();
+
+    if (error || !data) {
+      applyPosts(postsRef.current.map((p) => {
+        if (p.id !== postId) return p;
+        if (commentData.parentId) {
+          return {
+            ...p,
+            commentCount: Math.max(0, p.commentCount - 1),
+            comments: p.comments.map((c) =>
+              c.id === commentData.parentId
+                ? { ...c, replies: c.replies.filter((r) => r.id !== newComment.id) }
+                : c
+            ),
+          };
+        }
+        return {
+          ...p,
+          commentCount: Math.max(0, p.commentCount - 1),
+          comments: p.comments.filter((c) => c.id !== newComment.id),
+        };
+      }));
+      return false;
     }
+
+    const persistedComment = rowToComment(data);
+    applyPosts(postsRef.current.map((p) => {
+      if (p.id !== postId) return p;
+      if (commentData.parentId) {
+        return {
+          ...p,
+          comments: p.comments.map((c) =>
+            c.id === commentData.parentId
+              ? {
+                ...c,
+                replies: c.replies.map((r) => (r.id === newComment.id ? persistedComment : r)),
+              }
+              : c
+          ),
+        };
+      }
+      return {
+        ...p,
+        comments: p.comments.map((c) => (c.id === newComment.id ? persistedComment : c)),
+      };
+    }));
+
+    supabase.rpc("increment_comment_count", { p_post_id: postId }).then(() => {});
+    return true;
   }, [user, applyPosts]);
 
   const voteComment = useCallback((postId: string, commentId: string, vote: "up" | "down") => {
