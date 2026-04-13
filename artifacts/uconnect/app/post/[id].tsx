@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CommentItem } from "@/components/CommentItem";
@@ -50,48 +50,64 @@ export default function PostDetailScreen() {
 
   const post = posts.find((p) => p.id === id);
 
-  useEffect(() => {
+  const loadComments = useCallback(async () => {
     if (!post) { setCommentsLoading(false); return; }
     if (!isUUID(post.id)) {
       setLoadedComments(post.comments);
       setCommentsLoading(false);
       return;
     }
-    (async () => {
-      try {
-        const { data } = await supabase
-          .from("comments")
-          .select("*")
-          .eq("post_id", post.id)
-          .is("parent_id", null)
-          .order("created_at", { ascending: true });
+    try {
+      const { data } = await supabase
+        .from("comments")
+        .select("*")
+        .eq("post_id", post.id)
+        .is("parent_id", null)
+        .order("created_at", { ascending: true });
 
-        if (data) {
-          const topLevel = data.map(rowToComment);
-          const { data: replyRows } = await supabase
-            .from("comments")
-            .select("*")
-            .eq("post_id", post.id)
-            .not("parent_id", "is", null)
-            .order("created_at", { ascending: true });
+      const topLevel = (data ?? []).map(rowToComment);
+      const { data: replyRows } = await supabase
+        .from("comments")
+        .select("*")
+        .eq("post_id", post.id)
+        .not("parent_id", "is", null)
+        .order("created_at", { ascending: true });
 
-          const replyMap = new Map<string, Comment[]>();
-          (replyRows ?? []).forEach((r: any) => {
-            const c = rowToComment(r);
-            if (!replyMap.has(r.parent_id)) replyMap.set(r.parent_id, []);
-            replyMap.get(r.parent_id)!.push(c);
-          });
+      const replyMap = new Map<string, Comment[]>();
+      (replyRows ?? []).forEach((r: any) => {
+        const c = rowToComment(r);
+        if (!replyMap.has(r.parent_id)) replyMap.set(r.parent_id, []);
+        replyMap.get(r.parent_id)!.push(c);
+      });
 
-          const withReplies = topLevel.map((c) => ({
-            ...c,
-            replies: replyMap.get(c.id) ?? [],
-          }));
-          setLoadedComments(withReplies);
-        }
-      } catch {}
-      setCommentsLoading(false);
-    })();
+      const withReplies = topLevel.map((c) => ({
+        ...c,
+        replies: replyMap.get(c.id) ?? [],
+      }));
+      setLoadedComments(withReplies);
+    } catch {}
+    setCommentsLoading(false);
   }, [post?.id]);
+
+  useEffect(() => {
+    setCommentsLoading(true);
+    loadComments();
+  }, [loadComments]);
+
+  useEffect(() => {
+    if (!post || !isUUID(post.id)) return;
+    const channel = supabase
+      .channel(`post-comments-${post.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "comments", filter: `post_id=eq.${post.id}` },
+        () => { loadComments(); },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [post?.id, loadComments]);
 
   if (!post) {
     return (

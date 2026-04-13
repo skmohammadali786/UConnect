@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Animated, FlatList, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Animated, FlatList, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PostCard } from "@/components/PostCard";
 import { useColors } from "@/hooks/useColors";
@@ -169,9 +169,13 @@ export default function UserProfileScreen() {
               <View style={[styles.cover, { backgroundColor: colors.primary + "15" }]} />
 
               <View style={styles.avatarRow}>
-                <View style={[styles.avatar, { backgroundColor: colors.primary + "20", borderColor: colors.card, borderWidth: 4 }]}>
-                  <Text style={[styles.avatarText, { color: colors.primary }]}>{initials}</Text>
-                </View>
+                {profile.avatar ? (
+                  <Image source={{ uri: profile.avatar }} style={[styles.avatarImg, { borderColor: colors.card }]} />
+                ) : (
+                  <View style={[styles.avatar, { backgroundColor: colors.primary + "20", borderColor: colors.card, borderWidth: 4 }]}>
+                    <Text style={[styles.avatarText, { color: colors.primary }]}>{initials}</Text>
+                  </View>
+                )}
                 <View style={styles.actionRow}>
                   {!isMe && (
                     <>
@@ -290,6 +294,7 @@ const styles = StyleSheet.create({
   cover: { height: 80 },
   avatarRow: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", paddingHorizontal: 16, marginTop: -32, marginBottom: 10 },
   avatar: { width: 76, height: 76, borderRadius: 38, alignItems: "center", justifyContent: "center" },
+  avatarImg: { width: 76, height: 76, borderRadius: 38, borderWidth: 4 },
   avatarText: { fontSize: 32, fontFamily: "Inter_700Bold" },
   actionRow: { flexDirection: "row", gap: 8, paddingBottom: 4, alignItems: "center" },
   messageBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1 },

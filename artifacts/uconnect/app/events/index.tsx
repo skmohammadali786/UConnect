@@ -18,6 +18,7 @@ interface Event {
   organizer: string;
   college: string;
   rsvpCount: number;
+  requiresApproval: boolean;
   createdAt: string;
 }
 
@@ -36,6 +37,7 @@ function rowToEvent(r: any): Event {
     organizer: r.organizer,
     college: r.college,
     rsvpCount: r.rsvp_count ?? 0,
+    requiresApproval: !!r.requires_approval,
     createdAt: r.created_at,
   };
 }
@@ -179,8 +181,8 @@ export default function EventsScreen() {
     } else {
       await supabase.rpc("rsvp_event", { p_user_id: user.id, p_event_id: id, p_request_note: "" });
       const event = events.find((e) => e.id === id);
-      showSuccess("RSVP confirmed!", event?.title);
-      updated[id] = { status: "pending", reason: null };
+      showSuccess(event?.requiresApproval ? "Request sent!" : "RSVP confirmed!", event?.title);
+      updated[id] = { status: event?.requiresApproval ? "pending" : "approved", reason: null };
     }
     setRsvpStates(updated);
   };

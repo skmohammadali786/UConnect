@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator, Animated, KeyboardAvoidingView, Platform, ScrollView,
   StyleSheet, Switch, Text, TextInput, TouchableOpacity, View,
@@ -40,41 +40,57 @@ export default function ConfessionDetailScreen() {
     Animated.timing(fadeAnim, { toValue: 1, duration: 280, useNativeDriver: ND }).start();
   }, []);
 
-  useEffect(() => {
+  const loadComments = useCallback(async () => {
     if (!confession) { setCommentsLoading(false); return; }
-
     if (!isUUID(confession.id)) {
       setLoadedComments(confession.comments);
       setCommentsLoading(false);
       return;
     }
+    try {
+      const { data } = await supabase
+        .from("confession_comments")
+        .select("*")
+        .eq("confession_id", confession.id)
+        .order("created_at", { ascending: true });
 
-    (async () => {
-      try {
-        const { data } = await supabase
-          .from("confession_comments")
-          .select("*")
-          .eq("confession_id", confession.id)
-          .order("created_at", { ascending: true });
-
-        if (data) {
-          setLoadedComments(data.map((row: any) => ({
-            id: row.id,
-            authorId: row.is_anonymous ? "anon" : row.author_id,
-            isAnonymous: row.is_anonymous,
-            content: row.content,
-            upvotes: row.upvotes ?? 0,
-            createdAt: row.created_at,
-          })));
-        } else {
-          setLoadedComments(confession.comments);
-        }
-      } catch {
+      if (data) {
+        setLoadedComments(data.map((row: any) => ({
+          id: row.id,
+          authorId: row.is_anonymous ? "anon" : row.author_id,
+          isAnonymous: row.is_anonymous,
+          content: row.content,
+          upvotes: row.upvotes ?? 0,
+          createdAt: row.created_at,
+        })));
+      } else {
         setLoadedComments(confession.comments);
       }
-      setCommentsLoading(false);
-    })();
+    } catch {
+      setLoadedComments(confession.comments);
+    }
+    setCommentsLoading(false);
   }, [confession?.id]);
+
+  useEffect(() => {
+    setCommentsLoading(true);
+    loadComments();
+  }, [loadComments]);
+
+  useEffect(() => {
+    if (!confession || !isUUID(confession.id)) return;
+    const channel = supabase
+      .channel(`confession-comments-${confession.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "confession_comments", filter: `confession_id=eq.${confession.id}` },
+        () => { loadComments(); },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [confession?.id, loadComments]);
 
   if (!confession) {
     return (

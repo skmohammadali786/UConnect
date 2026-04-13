@@ -95,9 +95,12 @@ export default function CreatePostScreen() {
         allowsMultipleSelection: true,
         selectionLimit: 3 - mediaUris.length,
         quality: 0.8,
+        base64: true,
       });
       if (!result.canceled && result.assets.length > 0) {
-        const uris = result.assets.map((a) => a.uri).slice(0, 3 - mediaUris.length);
+        const uris = result.assets
+          .map((a) => (a.base64 ? `data:${a.mimeType || "image/jpeg"};base64,${a.base64}` : a.uri))
+          .slice(0, 3 - mediaUris.length);
         setMediaUris((prev) => [...prev, ...uris].slice(0, 3));
         showSuccess(`${uris.length} photo${uris.length > 1 ? "s" : ""} added`);
       }
@@ -114,11 +117,12 @@ export default function CreatePostScreen() {
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
         videoMaxDuration: 30,
         quality: 0.7,
+        base64: true,
       });
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0];
         if (asset.duration && asset.duration > 30000) { showError("Video too long", "Videos must be 30 seconds or less."); return; }
-        setVideoUri(asset.uri);
+        setVideoUri(asset.base64 ? `data:${asset.mimeType || "video/mp4"};base64,${asset.base64}` : asset.uri);
         showSuccess("Video added", "Up to 30 seconds.");
       }
     } catch { showError("Failed", "Could not pick video. Try again."); }

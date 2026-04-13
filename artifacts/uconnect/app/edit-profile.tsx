@@ -63,9 +63,11 @@ export default function EditProfileScreen() {
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
+        base64: true,
       });
       if (!result.canceled && result.assets[0]) {
-        setAvatarUri(result.assets[0].uri);
+        const asset = result.assets[0];
+        setAvatarUri(asset.base64 ? `data:${asset.mimeType || "image/jpeg"};base64,${asset.base64}` : asset.uri);
         showSuccess("Photo selected!", "Save your profile to apply the change.");
       }
     } catch {
