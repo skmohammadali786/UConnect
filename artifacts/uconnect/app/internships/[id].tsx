@@ -193,10 +193,10 @@ export default function InternshipDetailScreen() {
       setHostApplications((prev) =>
         prev.map((a) => (a.id === app.id ? { ...a, status, reviewReason: reason } : a)),
       );
-      await supabase.from("notifications").insert({
+      const { error: notifyError } = await supabase.from("notifications").insert({
         user_id: app.userId,
         type: "system",
-        title: `Internship application ${status}`,
+        title: `Internship Application ${status}`,
         body: status === "approved"
           ? `Your application for ${internship.role} at ${internship.company} was approved.`
           : `Your application for ${internship.role} at ${internship.company} was rejected.`,
@@ -208,7 +208,10 @@ export default function InternshipDetailScreen() {
         secondary_entity_type: "reviewer",
         secondary_entity_id: user.id,
         metadata: { decision: status, reason: reason ?? null, applicationId: app.id },
-      }).then(() => {});
+      });
+      if (notifyError) {
+        showInfo("Application updated", "Status saved, but notification could not be sent.");
+      }
       if (status === "approved") {
         showSuccess(`Approved ${app.applicantName}`, internship.company);
       } else {

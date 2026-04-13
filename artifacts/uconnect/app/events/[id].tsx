@@ -174,7 +174,7 @@ export default function EventDetailScreen() {
           a.userId === targetUserId ? { ...a, status: decision, decisionReason: reason } : a,
         ),
       );
-      await supabase.from("notifications").insert({
+      const { error: notifyError } = await supabase.from("notifications").insert({
         user_id: targetUserId,
         type: "event",
         title: `Event request ${decision}`,
@@ -189,7 +189,10 @@ export default function EventDetailScreen() {
         secondary_entity_type: "reviewer",
         secondary_entity_id: user.id,
         metadata: { decision, reason: reason ?? null },
-      }).then(() => {});
+      });
+      if (notifyError) {
+        showInfo("Request updated", "Status saved, but notification could not be sent.");
+      }
       if (decision === "approved") {
         showSuccess(`Approved ${target?.name ?? "request"}`, event.title);
       } else {
