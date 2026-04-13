@@ -64,7 +64,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       } catch {}
       setIsLoading(false);
     })();
-  }, [user?.id, storageKey]);
+  }, [user?.id]);
 
   const updateSetting = async <K extends keyof Settings>(key: K, value: Settings[K]) => {
     const updated = { ...settings, [key]: value };

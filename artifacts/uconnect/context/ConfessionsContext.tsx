@@ -104,12 +104,13 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
   }, [user]);
 
   const addConfessionComment = useCallback(async (confessionId: string, comment: Omit<ConfessionComment, "id" | "createdAt" | "upvotes">) => {
+    if (!user) return false;
+
     const newComment: ConfessionComment = { ...comment, id: "local_" + Date.now(), upvotes: 0, createdAt: new Date().toISOString() };
     setConfessions((prev) => prev.map((c) => {
       if (c.id !== confessionId) return c;
       return { ...c, commentCount: c.commentCount + 1, comments: [...c.comments, newComment] };
     }));
-    if (!user) return false;
 
     const { data, error } = await supabase.from("confession_comments").insert({
       confession_id: confessionId,
