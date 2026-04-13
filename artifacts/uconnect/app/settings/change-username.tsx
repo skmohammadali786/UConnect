@@ -77,9 +77,6 @@ export default function ChangeUsernameScreen() {
           </View>
 
           <View style={styles.inputWrapper}>
-            <View style={[styles.prefixBadge, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Text style={[styles.prefixText, { color: colors.mutedForeground }]}>@</Text>
-            </View>
             <View style={{ flex: 1 }}>
               <AppInput
                 label="New Username"
@@ -115,7 +112,5 @@ const styles = StyleSheet.create({
   infoTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   infoBody: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 2, lineHeight: 18 },
   inputWrapper: { gap: 4 },
-  prefixBadge: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10, alignSelf: "flex-start", marginBottom: 8 },
-  prefixText: { fontSize: 18, fontFamily: "Inter_700Bold" },
   current: { fontSize: 13, fontFamily: "Inter_400Regular" },
 });

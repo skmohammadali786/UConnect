@@ -36,7 +36,7 @@ export default function EventDetailScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
-  const { showSuccess } = useToast();
+  const { showSuccess, showError, showInfo } = useToast();
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [eventLoading, setEventLoading] = useState(true);
   const [rsvpStatus, setRsvpStatus] = useState<string | null>(null);
@@ -158,20 +158,46 @@ export default function EventDetailScreen() {
   };
 
   const handleHostDecision = async (targetUserId: string, decision: "approved" | "rejected") => {
-    if (!id) return;
+    if (!id || !user || !event) return;
     setActioningUserId(targetUserId);
     const reason = reasonDrafts[targetUserId]?.trim() || null;
-    await supabase.rpc("review_event_attendee", {
-      p_event_id: id,
-      p_user_id: targetUserId,
-      p_decision: decision,
-      p_reason: reason,
-    });
-    setAttendees((prev) =>
-      prev.map((a) =>
-        a.userId === targetUserId ? { ...a, status: decision, decisionReason: reason } : a,
-      ),
-    );
+    const target = attendees.find((a) => a.userId === targetUserId);
+    try {
+      await supabase.rpc("review_event_attendee", {
+        p_event_id: id,
+        p_user_id: targetUserId,
+        p_decision: decision,
+        p_reason: reason,
+      });
+      setAttendees((prev) =>
+        prev.map((a) =>
+          a.userId === targetUserId ? { ...a, status: decision, decisionReason: reason } : a,
+        ),
+      );
+      await supabase.from("notifications").insert({
+        user_id: targetUserId,
+        type: "event",
+        title: `Event request ${decision}`,
+        body: decision === "approved"
+          ? `Your request for ${event.title} was approved.`
+          : `Your request for ${event.title} was rejected.`,
+        action_id: id,
+        action_type: "event_attendee_status",
+        redirect_path: `/events/${id}`,
+        entity_type: "event",
+        entity_id: id,
+        secondary_entity_type: "reviewer",
+        secondary_entity_id: user.id,
+        metadata: { decision, reason: reason ?? null },
+      }).then(() => {});
+      if (decision === "approved") {
+        showSuccess(`Approved ${target?.name ?? "request"}`, event.title);
+      } else {
+        showInfo(`Rejected ${target?.name ?? "request"}`, reason ?? "Request updated");
+      }
+    } catch {
+      showError("Could not update request", "Please try again.");
+    }
     setActioningUserId(null);
   };
 

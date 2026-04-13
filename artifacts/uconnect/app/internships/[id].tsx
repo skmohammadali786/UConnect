@@ -43,7 +43,7 @@ export default function InternshipDetailScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { showSuccess, showInfo } = useToast();
+  const { showSuccess, showInfo, showError } = useToast();
   const { user } = useAuth();
   const [application, setApplication] = useState<{ id: string; status: string; reason: string | null } | null>(null);
   const [applyConfirm, setApplyConfirm] = useState(false);
@@ -181,17 +181,42 @@ export default function InternshipDetailScreen() {
   };
 
   const handleReview = async (app: InternshipApplication, status: "approved" | "rejected") => {
-    if (!internship) return;
+    if (!internship || !user) return;
     setActioningId(app.id);
     const reason = reasonDrafts[app.id]?.trim() || null;
-    await supabase.rpc("review_internship_application", {
-      p_application_id: app.id,
-      p_new_status: status,
-      p_reason: reason,
-    });
-    setHostApplications((prev) =>
-      prev.map((a) => (a.id === app.id ? { ...a, status, reviewReason: reason } : a)),
-    );
+    try {
+      await supabase.rpc("review_internship_application", {
+        p_application_id: app.id,
+        p_new_status: status,
+        p_reason: reason,
+      });
+      setHostApplications((prev) =>
+        prev.map((a) => (a.id === app.id ? { ...a, status, reviewReason: reason } : a)),
+      );
+      await supabase.from("notifications").insert({
+        user_id: app.userId,
+        type: "system",
+        title: `Internship application ${status}`,
+        body: status === "approved"
+          ? `Your application for ${internship.role} at ${internship.company} was approved.`
+          : `Your application for ${internship.role} at ${internship.company} was rejected.`,
+        action_id: internship.id,
+        action_type: "internship_application_status",
+        redirect_path: `/internships/${internship.id}`,
+        entity_type: "internship",
+        entity_id: internship.id,
+        secondary_entity_type: "reviewer",
+        secondary_entity_id: user.id,
+        metadata: { decision: status, reason: reason ?? null, applicationId: app.id },
+      }).then(() => {});
+      if (status === "approved") {
+        showSuccess(`Approved ${app.applicantName}`, internship.company);
+      } else {
+        showInfo(`Rejected ${app.applicantName}`, reason ?? "Application updated");
+      }
+    } catch {
+      showError("Could not update application", "Please try again.");
+    }
     setActioningId(null);
   };
 

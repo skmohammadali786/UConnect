@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import React, { createContext, useCallback, useContext, useRef, useState } from "react";
 import { Animated, Platform, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useColors } from "@/hooks/useColors";
 
 export type ToastType = "success" | "error" | "info" | "warning";
 
@@ -38,6 +39,7 @@ const COLORS: Record<ToastType, string> = {
 function ToastBanner({ item }: { item: ToastItem }) {
   const anim = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
+  const colors = useColors();
 
   React.useEffect(() => {
     Animated.spring(anim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
@@ -57,13 +59,13 @@ function ToastBanner({ item }: { item: ToastItem }) {
         },
       ]}
     >
-      <View style={[styles.inner, { borderColor: color + "40", backgroundColor: "#1A1A1A" }]}>
+      <View style={[styles.inner, { borderColor: color + "40", backgroundColor: colors.card }]}>
         <View style={[styles.iconWrap, { backgroundColor: color + "20" }]}>
           <Feather name={ICONS[item.type]} size={18} color={color} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.message}>{item.message}</Text>
-          {item.subtitle ? <Text style={styles.subtitle}>{item.subtitle}</Text> : null}
+          <Text style={[styles.message, { color: colors.foreground }]}>{item.message}</Text>
+          {item.subtitle ? <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>{item.subtitle}</Text> : null}
         </View>
         <View style={[styles.bar, { backgroundColor: color }]} />
       </View>
@@ -132,7 +134,7 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   iconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center", flexShrink: 0 },
-  message: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#FFFFFF" },
-  subtitle: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#9CA3AF", marginTop: 2 },
+  message: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  subtitle: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
   bar: { position: "absolute", left: 0, top: 0, bottom: 0, width: 3, borderRadius: 3 },
 });

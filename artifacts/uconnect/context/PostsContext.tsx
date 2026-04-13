@@ -140,10 +140,24 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
         const voteMap = new Map<string, "up" | "down">();
         (votesRes.data ?? []).forEach((v: any) => voteMap.set(v.post_id, v.vote));
         const bookmarkSet = new Set<string>((bookmarksRes.data ?? []).map((b: any) => b.post_id));
+        const authorIds = Array.from(new Set(postsRes.data.filter((row: any) => !row.is_anonymous).map((row: any) => row.author_id)));
+        const { data: authorProfiles } = authorIds.length > 0
+          ? await supabase.from("profiles").select("id,username,avatar").in("id", authorIds)
+          : { data: [] as any[] };
+        const authorMap = new Map((authorProfiles ?? []).map((p: any) => [p.id, p]));
 
-        const mapped = postsRes.data.map((row: any) =>
-          rowToPost(row, voteMap.get(row.id) ?? null, bookmarkSet.has(row.id))
-        );
+        const mapped = postsRes.data.map((row: any) => {
+          const profile = authorMap.get(row.author_id);
+          return rowToPost(
+            {
+              ...row,
+              author_username: row.is_anonymous ? row.author_username : (profile?.username ?? row.author_username),
+              author_avatar: row.is_anonymous ? null : (profile?.avatar ?? row.author_avatar),
+            },
+            voteMap.get(row.id) ?? null,
+            bookmarkSet.has(row.id),
+          );
+        });
         applyPosts(mapped);
       } else {
         applyPosts([]);

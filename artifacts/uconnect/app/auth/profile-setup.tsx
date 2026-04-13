@@ -111,11 +111,13 @@ export default function ProfileSetupScreen() {
           </TouchableOpacity>
           {showBranchPicker && (
             <View style={[styles.dropdown, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              {BRANCHES.map((b) => (
-                <TouchableOpacity key={b} onPress={() => { setBranch(b); setShowBranchPicker(false); }} style={[styles.dropdownItem, { borderBottomColor: colors.border }]}>
-                  <Text style={[styles.dropdownText, { color: branch === b ? colors.primary : colors.foreground }]}>{b}</Text>
-                </TouchableOpacity>
-              ))}
+              <ScrollView nestedScrollEnabled style={styles.dropdownScroll}>
+                {BRANCHES.map((b) => (
+                  <TouchableOpacity key={b} onPress={() => { setBranch(b); setShowBranchPicker(false); }} style={[styles.dropdownItem, { borderBottomColor: colors.border }]}>
+                    <Text style={[styles.dropdownText, { color: branch === b ? colors.primary : colors.foreground }]}>{b}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             </View>
           )}
         </View>
@@ -128,11 +130,13 @@ export default function ProfileSetupScreen() {
           </TouchableOpacity>
           {showYearPicker && (
             <View style={[styles.dropdown, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              {YEARS.map((y) => (
-                <TouchableOpacity key={y} onPress={() => { setYear(y); setShowYearPicker(false); }} style={[styles.dropdownItem, { borderBottomColor: colors.border }]}>
-                  <Text style={[styles.dropdownText, { color: year === y ? colors.primary : colors.foreground }]}>{y}</Text>
-                </TouchableOpacity>
-              ))}
+              <ScrollView nestedScrollEnabled style={styles.dropdownScroll}>
+                {YEARS.map((y) => (
+                  <TouchableOpacity key={y} onPress={() => { setYear(y); setShowYearPicker(false); }} style={[styles.dropdownItem, { borderBottomColor: colors.border }]}>
+                    <Text style={[styles.dropdownText, { color: year === y ? colors.primary : colors.foreground }]}>{y}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             </View>
           )}
         </View>
@@ -173,6 +177,7 @@ const styles = StyleSheet.create({
   picker: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderWidth: 1.5, borderRadius: 10, height: 48, paddingHorizontal: 12 },
   pickerText: { fontSize: 15, fontFamily: "Inter_400Regular" },
   dropdown: { borderRadius: 10, borderWidth: 1, overflow: "hidden", maxHeight: 200 },
+  dropdownScroll: { maxHeight: 200 },
   dropdownItem: { padding: 12, borderBottomWidth: 1 },
   dropdownText: { fontSize: 14, fontFamily: "Inter_400Regular" },
 });

@@ -40,7 +40,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
             .from("user_settings")
             .select("*")
             .eq("user_id", user.id)
-            .single();
+            .maybeSingle();
           if (data) {
             setSettings({
               pushNotifications: data.push_notifications,
