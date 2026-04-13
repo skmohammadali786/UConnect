@@ -243,6 +243,35 @@ create policy "Conversation participants can view messages" on messages for sele
 create policy "Senders can insert messages" on messages for insert with check (auth.uid() = sender_id);
 create policy "Senders can update messages" on messages for update using (auth.uid() = sender_id);
 
+create or replace function mark_conversation_read(p_conversation_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  if not exists (
+    select 1 from conversations c
+    where c.id = p_conversation_id
+      and (c.user_a = auth.uid() or c.user_b = auth.uid())
+  ) then
+    raise exception 'Not allowed';
+  end if;
+
+  update messages
+  set is_read = true
+  where conversation_id = p_conversation_id
+    and sender_id <> auth.uid()
+    and is_read = false;
+end;
+$$;
+
+grant execute on function mark_conversation_read(uuid) to authenticated;
+
 -- ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
 create table if not exists notifications (
   id uuid primary key default uuid_generate_v4(),

@@ -55,14 +55,25 @@ export default function ConfessionDetailScreen() {
         .order("created_at", { ascending: true });
 
       if (data) {
-        setLoadedComments(data.map((row: any) => ({
+        const remoteComments = data.map((row: any) => ({
           id: row.id,
           authorId: row.is_anonymous ? "anon" : row.author_id,
           isAnonymous: row.is_anonymous,
           content: row.content,
           upvotes: row.upvotes ?? 0,
           createdAt: row.created_at,
-        })));
+        }));
+        setLoadedComments((prev) => {
+          const pendingLocal = prev.filter((c) =>
+            c.id.startsWith("local_")
+            && !remoteComments.some((r) =>
+              r.authorId === c.authorId
+              && r.isAnonymous === c.isAnonymous
+              && r.content === c.content
+            )
+          );
+          return [...remoteComments, ...pendingLocal];
+        });
       } else {
         setLoadedComments(confession.comments);
       }

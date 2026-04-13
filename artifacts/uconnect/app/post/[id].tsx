@@ -34,6 +34,15 @@ function rowToComment(row: any): Comment {
   };
 }
 
+function hasMatchingRemoteComment(local: Comment, remote: Comment[]): boolean {
+  return remote.some((c) =>
+    c.parentId === local.parentId
+    && c.authorId === local.authorId
+    && c.isAnonymous === local.isAnonymous
+    && c.content === local.content
+  );
+}
+
 export default function PostDetailScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -84,7 +93,28 @@ export default function PostDetailScreen() {
         ...c,
         replies: replyMap.get(c.id) ?? [],
       }));
-      setLoadedComments(withReplies);
+      setLoadedComments((prev) => {
+        const prevTopLevelLocal = prev.filter((c) => c.id.startsWith("local_") && !c.parentId);
+        const prevReplyLocal = prev.flatMap((c) => c.replies.filter((r) => r.id.startsWith("local_")));
+        const merged = [...withReplies];
+
+        prevTopLevelLocal
+          .filter((local) => !hasMatchingRemoteComment(local, withReplies))
+          .forEach((local) => {
+            if (!merged.some((c) => c.id === local.id)) merged.push(local);
+          });
+
+        prevReplyLocal
+          .filter((local) => !hasMatchingRemoteComment(local, withReplies.flatMap((c) => c.replies)))
+          .forEach((local) => {
+            const parent = merged.find((c) => c.id === local.parentId);
+            if (!parent) return;
+            if (parent.replies.some((r) => r.id === local.id)) return;
+            parent.replies = [...parent.replies, local];
+          });
+
+        return merged;
+      });
     } catch {}
     setCommentsLoading(false);
   }, [post?.id]);

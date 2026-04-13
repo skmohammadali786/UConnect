@@ -225,11 +225,15 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         : c
     ));
     if (user) {
-      supabase.from("messages")
-        .update({ is_read: true })
-        .eq("conversation_id", conversationId)
-        .neq("sender_id", user.id)
-        .then(() => {});
+      supabase.rpc("mark_conversation_read", { p_conversation_id: conversationId }).then(({ error }) => {
+        if (error) {
+          supabase.from("messages")
+            .update({ is_read: true })
+            .eq("conversation_id", conversationId)
+            .neq("sender_id", user.id)
+            .then(() => {});
+        }
+      });
     }
   };
 
