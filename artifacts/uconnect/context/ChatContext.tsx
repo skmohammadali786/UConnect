@@ -232,7 +232,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             .update({ is_read: true })
             .eq("conversation_id", conversationId)
             .neq("sender_id", user.id)
-            .then(() => {});
+            .then(({ error: fallbackError }) => {
+              if (fallbackError) {
+                console.error("Fallback mark-read update failed:", fallbackError.message);
+              }
+            });
         }
       });
     }

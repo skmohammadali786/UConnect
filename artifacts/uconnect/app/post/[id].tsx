@@ -96,6 +96,7 @@ export default function PostDetailScreen() {
       setLoadedComments((prev) => {
         const prevTopLevelLocal = prev.filter((c) => c.id.startsWith("local_") && !c.parentId);
         const prevReplyLocal = prev.flatMap((c) => c.replies.filter((r) => r.id.startsWith("local_")));
+        const remoteReplies = withReplies.flatMap((c) => c.replies);
         const merged = [...withReplies];
 
         prevTopLevelLocal
@@ -105,7 +106,7 @@ export default function PostDetailScreen() {
           });
 
         prevReplyLocal
-          .filter((local) => !hasMatchingRemoteComment(local, withReplies.flatMap((c) => c.replies)))
+          .filter((local) => !hasMatchingRemoteComment(local, remoteReplies))
           .forEach((local) => {
             const parentIndex = merged.findIndex((c) => c.id === local.parentId);
             if (parentIndex < 0) return;
