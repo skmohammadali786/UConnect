@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Animated, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Animated, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useToast } from "@/components/Toast";
@@ -24,6 +24,19 @@ interface InternshipDetail {
   postedBy: string;
   isVerified: boolean;
   description: string;
+  posterId: string;
+}
+
+interface InternshipApplication {
+  id: string;
+  userId: string;
+  status: string;
+  applyMessage: string;
+  reviewReason: string | null;
+  createdAt: string;
+  applicantName: string;
+  applicantUsername: string;
+  applicantCollege: string;
 }
 
 export default function InternshipDetailScreen() {
@@ -32,10 +45,13 @@ export default function InternshipDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { showSuccess, showInfo } = useToast();
   const { user } = useAuth();
-  const [applied, setApplied] = useState(false);
+  const [application, setApplication] = useState<{ id: string; status: string; reason: string | null } | null>(null);
   const [applyConfirm, setApplyConfirm] = useState(false);
   const [internship, setInternship] = useState<InternshipDetail | null>(null);
   const [internshipLoading, setInternshipLoading] = useState(true);
+  const [hostApplications, setHostApplications] = useState<InternshipApplication[]>([]);
+  const [reasonDrafts, setReasonDrafts] = useState<Record<string, string>>({});
+  const [actioningId, setActioningId] = useState<string | null>(null);
   const applyAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -69,6 +85,7 @@ export default function InternshipDetailScreen() {
             postedBy: data.poster_username,
             isVerified: data.is_verified,
             description: data.description ?? "",
+            posterId: data.poster_id,
           });
         } else {
           setInternship(null);
@@ -80,16 +97,72 @@ export default function InternshipDetailScreen() {
     })();
   }, [id]);
 
+  const isHost = !!user && internship?.posterId === user.id;
+
   useEffect(() => {
-    if (user && internship?.id) {
-      supabase.from("internship_applications")
-        .select("id")
+    if (!user || !internship?.id) {
+      setApplication(null);
+      return;
+    }
+    (async () => {
+      const { data } = await supabase
+        .from("internship_applications")
+        .select("id,status,review_reason")
         .eq("user_id", user.id)
         .eq("internship_id", internship.id)
-        .single()
-        .then(({ data }) => { if (data) setApplied(true); });
-    }
+        .maybeSingle();
+      if (!data) {
+        setApplication(null);
+        return;
+      }
+      setApplication({
+        id: data.id,
+        status: data.status ?? "pending",
+        reason: data.review_reason ?? null,
+      });
+    })();
   }, [internship?.id, user?.id]);
+
+  const loadHostApplications = async () => {
+    if (!internship?.id || !isHost) {
+      setHostApplications([]);
+      return;
+    }
+    const { data } = await supabase
+      .from("internship_applications")
+      .select("id,user_id,status,apply_message,review_reason,created_at")
+      .eq("internship_id", internship.id)
+      .order("created_at", { ascending: false });
+    const rows = (data ?? []) as any[];
+    if (rows.length === 0) {
+      setHostApplications([]);
+      return;
+    }
+    const userIds = Array.from(new Set(rows.map((r) => r.user_id)));
+    const { data: profileRows } = await supabase
+      .from("profiles")
+      .select("id,username,display_name,college")
+      .in("id", userIds);
+    const byId = new Map((profileRows ?? []).map((p: any) => [p.id, p]));
+    setHostApplications(rows.map((r) => {
+      const p = byId.get(r.user_id);
+      return {
+        id: r.id,
+        userId: r.user_id,
+        status: r.status ?? "pending",
+        applyMessage: r.apply_message ?? "",
+        reviewReason: r.review_reason ?? null,
+        createdAt: r.created_at,
+        applicantName: p?.display_name || p?.username || "Student",
+        applicantUsername: p?.username || "student",
+        applicantCollege: p?.college || "",
+      };
+    }));
+  };
+
+  useEffect(() => {
+    loadHostApplications();
+  }, [internship?.id, isHost]);
 
   const handleApply = async () => {
     if (!internship) return;
@@ -98,16 +171,28 @@ export default function InternshipDetailScreen() {
       return;
     }
     setApplyConfirm(false);
-    setApplied(true);
-    await supabase.from("internship_applications").insert({
-      user_id: user.id,
-      internship_id: internship.id,
-    }).select();
+    await supabase.rpc("apply_internship", { p_internship_id: internship.id, p_message: "" });
+    setApplication({ id: `${Date.now()}`, status: "pending", reason: null });
     Animated.sequence([
       Animated.spring(applyAnim, { toValue: 1.08, tension: 200, friction: 5, useNativeDriver: ND }),
       Animated.spring(applyAnim, { toValue: 1, tension: 200, friction: 5, useNativeDriver: ND }),
     ]).start();
     showSuccess(`Applied to ${internship.company}!`, "Application sent. They'll contact your college email.");
+  };
+
+  const handleReview = async (app: InternshipApplication, status: "approved" | "rejected") => {
+    if (!internship) return;
+    setActioningId(app.id);
+    const reason = reasonDrafts[app.id]?.trim() || null;
+    await supabase.rpc("review_internship_application", {
+      p_application_id: app.id,
+      p_new_status: status,
+      p_reason: reason,
+    });
+    setHostApplications((prev) =>
+      prev.map((a) => (a.id === app.id ? { ...a, status, reviewReason: reason } : a)),
+    );
+    setActioningId(null);
   };
 
   if (internshipLoading) {
@@ -156,7 +241,7 @@ export default function InternshipDetailScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 20, gap: 20, paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
-        <View style={[styles.heroCard, { backgroundColor: colors.card, borderColor: applied ? colors.primary + "60" : colors.border }]}>
+          <View style={[styles.heroCard, { backgroundColor: colors.card, borderColor: application ? colors.primary + "60" : colors.border }]}>
           <View style={[styles.companyIcon, { backgroundColor: colors.primary + "15" }]}>
             <Feather name="briefcase" size={32} color={colors.primary} />
           </View>
@@ -178,12 +263,15 @@ export default function InternshipDetailScreen() {
             ))}
           </View>
           <Text style={[styles.stipend, { color: colors.primary }]}>{internship.stipend}</Text>
-          {applied && (
-            <View style={[styles.appliedBanner, { backgroundColor: "#00A86B12", borderColor: "#00A86B30" }]}>
-              <Feather name="check-circle" size={15} color="#00A86B" />
-              <Text style={[styles.appliedBannerText, { color: "#00A86B" }]}>You applied for this internship</Text>
+          {application && (
+            <View style={[styles.appliedBanner, { backgroundColor: application.status === "rejected" ? "#EF444412" : "#00A86B12", borderColor: application.status === "rejected" ? "#EF444430" : "#00A86B30" }]}>
+              <Feather name={application.status === "rejected" ? "x-circle" : application.status === "approved" ? "check-circle" : "clock"} size={15} color={application.status === "rejected" ? "#EF4444" : application.status === "approved" ? "#00A86B" : colors.primary} />
+              <Text style={[styles.appliedBannerText, { color: application.status === "rejected" ? "#EF4444" : application.status === "approved" ? "#00A86B" : colors.primary }]}>
+                Application status: {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
+              </Text>
             </View>
           )}
+          {application?.reason ? <Text style={[styles.reasonText, { color: colors.mutedForeground }]}>Reason: {application.reason}</Text> : null}
         </View>
 
         <View style={styles.section}>
@@ -215,23 +303,61 @@ export default function InternshipDetailScreen() {
             Apply before <Text style={{ color: "#F59E0B", fontFamily: "Inter_700Bold" }}>{internship.deadline}</Text>
           </Text>
         </View>
+        {isHost ? (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Applications</Text>
+            {hostApplications.length === 0 ? (
+              <Text style={[styles.desc, { color: colors.mutedForeground }]}>No applications yet.</Text>
+            ) : hostApplications.map((app) => (
+              <View key={app.id} style={[styles.hostCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View style={styles.hostRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.hostName, { color: colors.foreground }]}>{app.applicantName}</Text>
+                    <Text style={[styles.hostMeta, { color: colors.mutedForeground }]}>@{app.applicantUsername} {app.applicantCollege ? `• ${app.applicantCollege}` : ""}</Text>
+                  </View>
+                  <View style={[styles.hostStatus, { backgroundColor: app.status === "rejected" ? "#EF444414" : app.status === "approved" ? "#00A86B14" : colors.primary + "14" }]}>
+                    <Text style={[styles.hostStatusText, { color: app.status === "rejected" ? "#EF4444" : app.status === "approved" ? "#00A86B" : colors.primary }]}>{app.status}</Text>
+                  </View>
+                </View>
+                {app.applyMessage ? <Text style={[styles.hostMessage, { color: colors.foreground }]}>{app.applyMessage}</Text> : null}
+                {app.reviewReason ? <Text style={[styles.hostReason, { color: colors.mutedForeground }]}>Reason: {app.reviewReason}</Text> : null}
+                <TextInput
+                  placeholder="Optional decision reason"
+                  placeholderTextColor={colors.placeholder}
+                  value={reasonDrafts[app.id] ?? ""}
+                  onChangeText={(t) => setReasonDrafts((prev) => ({ ...prev, [app.id]: t }))}
+                  style={[styles.reasonInput, { color: colors.foreground, backgroundColor: colors.input, borderColor: colors.border }]}
+                />
+                <View style={styles.hostActions}>
+                  <TouchableOpacity disabled={actioningId === app.id} onPress={() => handleReview(app, "approved")} style={[styles.hostApprove, { backgroundColor: "#00A86B18", borderColor: "#00A86B55" }]}>
+                    <Text style={[styles.hostActionText, { color: "#00A86B" }]}>Approve</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity disabled={actioningId === app.id} onPress={() => handleReview(app, "rejected")} style={[styles.hostReject, { backgroundColor: "#EF444418", borderColor: "#EF444455" }]}>
+                    <Text style={[styles.hostActionText, { color: "#EF4444" }]}>Reject</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
       </ScrollView>
 
       <View style={[styles.applyBar, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 8 }]}>
-        {applied ? (
+        {application ? (
           <Animated.View style={[styles.appliedBtn, { backgroundColor: "#00A86B12", borderColor: "#00A86B40", transform: [{ scale: applyAnim }] }]}>
             <Feather name="check-circle" size={20} color="#00A86B" />
             <View>
-              <Text style={[styles.appliedBtnTitle, { color: "#00A86B" }]}>Application Submitted</Text>
+              <Text style={[styles.appliedBtnTitle, { color: "#00A86B" }]}>Application {application.status}</Text>
               <Text style={[styles.appliedBtnSub, { color: "#00A86B" + "90" }]}>Watch your college email for updates</Text>
             </View>
           </Animated.View>
-        ) : (
+        ) : !isHost ? (
           <TouchableOpacity onPress={() => setApplyConfirm(true)} style={[styles.applyBtn, { backgroundColor: colors.primary }]} activeOpacity={0.85}>
             <Feather name="send" size={18} color="#FFF" />
             <Text style={styles.applyBtnText}>Apply Now</Text>
           </TouchableOpacity>
-        )}
+        ) : null}
       </View>
 
       <ConfirmModal
@@ -278,4 +404,18 @@ const styles = StyleSheet.create({
   appliedBtn: { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 14, paddingHorizontal: 20, borderRadius: 14, borderWidth: 1.5 },
   appliedBtnTitle: { fontSize: 15, fontFamily: "Inter_700Bold" },
   appliedBtnSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
+  reasonText: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 2 },
+  hostCard: { borderRadius: 12, borderWidth: 1, padding: 12, gap: 10 },
+  hostRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  hostName: { fontSize: 14, fontFamily: "Inter_700Bold" },
+  hostMeta: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
+  hostStatus: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  hostStatusText: { fontSize: 11, textTransform: "capitalize", fontFamily: "Inter_600SemiBold" },
+  hostMessage: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  hostReason: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  reasonInput: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, fontFamily: "Inter_400Regular" },
+  hostActions: { flexDirection: "row", gap: 8 },
+  hostApprove: { flex: 1, borderWidth: 1, borderRadius: 10, paddingVertical: 10, alignItems: "center", justifyContent: "center" },
+  hostReject: { flex: 1, borderWidth: 1, borderRadius: 10, paddingVertical: 10, alignItems: "center", justifyContent: "center" },
+  hostActionText: { fontSize: 13, fontFamily: "Inter_700Bold" },
 });

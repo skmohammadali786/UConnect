@@ -24,6 +24,7 @@ export default function CreateEventScreen() {
   const [time, setTime] = useState("");
   const [description, setDescription] = useState("");
   const [maxAttendees, setMaxAttendees] = useState("");
+  const [requiresApproval, setRequiresApproval] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleCreate = async () => {
@@ -45,6 +46,7 @@ export default function CreateEventScreen() {
         college: user.college || "All Colleges",
         organizer: user.displayName || user.username,
         organizer_id: user.id,
+        requires_approval: requiresApproval,
         rsvp_count: 0,
       });
 
@@ -91,6 +93,23 @@ export default function CreateEventScreen() {
                   <Text style={[styles.chipText, { color: category === c ? "#FFF" : colors.foreground }]}>{c}</Text>
                 </TouchableOpacity>
               ))}
+            </View>
+          </View>
+          <View style={styles.categorySection}>
+            <Text style={[styles.label, { color: colors.mutedForeground }]}>Attendee approval</Text>
+            <View style={styles.chips}>
+              <TouchableOpacity
+                onPress={() => setRequiresApproval(false)}
+                style={[styles.chip, { backgroundColor: !requiresApproval ? colors.primary : colors.card, borderColor: !requiresApproval ? colors.primary : colors.border }]}
+              >
+                <Text style={[styles.chipText, { color: !requiresApproval ? "#FFF" : colors.foreground }]}>Auto approve RSVP</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setRequiresApproval(true)}
+                style={[styles.chip, { backgroundColor: requiresApproval ? colors.primary : colors.card, borderColor: requiresApproval ? colors.primary : colors.border }]}
+              >
+                <Text style={[styles.chipText, { color: requiresApproval ? "#FFF" : colors.foreground }]}>Host approval required</Text>
+              </TouchableOpacity>
             </View>
           </View>
           <AppButton title="Create Event" onPress={handleCreate} fullWidth size="lg" loading={loading} />

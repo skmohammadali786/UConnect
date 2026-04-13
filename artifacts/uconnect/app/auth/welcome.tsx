@@ -12,9 +12,9 @@ const { width: W, height: H } = Dimensions.get("window");
 const LOGO_SECTION_H = Math.max(H * 0.30, 180);
 
 const FEATURES = [
-  { icon: "shield", text: "Post anonymously, no judgment" },
+  { icon: "shield", text: "Post anonymously, no judgement" },
   { icon: "lock", text: "Verified college students only" },
-  { icon: "briefcase", text: "Internships & opportunities" },
+  { icon: "briefcase", text: "Internships and opportunities" },
   { icon: "users", text: "Find your hackathon team" },
 ];
 
@@ -215,8 +215,7 @@ export default function WelcomeScreen() {
           onPress={() => router.push({ pathname: "/auth/login", params: { flow: "signup" } })}
           style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
         >
-          <Feather name="mail" size={17} color="#FFF" />
-          <Text style={styles.primaryBtnText}>Get Started with College Email</Text>
+          <Text style={styles.primaryBtnText}>Get Started to Email</Text>
         </SpringButton>
 
         <SpringButton
@@ -226,9 +225,6 @@ export default function WelcomeScreen() {
           <Text style={[styles.outlineBtnText, { color: colors.primary }]}>Sign In</Text>
         </SpringButton>
 
-        <Text style={[styles.disclaimer, { color: colors.mutedForeground }]}>
-          Only students with a valid college email can join
-        </Text>
       </Animated.View>
     </ScrollView>
   );
@@ -303,18 +299,18 @@ const styles = StyleSheet.create({
   },
   featuresSection: { paddingHorizontal: 24, paddingTop: 24, gap: 0 },
   featureRow: {
-    flexDirection: "row", alignItems: "center", gap: 14,
+    flexDirection: "column", alignItems: "center", gap: 8,
     paddingVertical: 13, borderBottomWidth: StyleSheet.hairlineWidth,
   },
   featureIcon: {
     width: 36, height: 36, borderRadius: 10, borderWidth: 1,
     alignItems: "center", justifyContent: "center",
   },
-  featureText: { flex: 1, fontSize: 14, fontFamily: "Inter_500Medium" },
+  featureText: { fontSize: 14, fontFamily: "Inter_500Medium", textAlign: "center" },
   buttonsSection: { paddingHorizontal: 24, paddingTop: 28, gap: 12 },
   primaryBtn: {
     height: 54, borderRadius: 16,
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10,
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
   },
   primaryBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#FFF" },
   outlineBtn: {
@@ -322,5 +318,4 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
   outlineBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  disclaimer: { fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "center", opacity: 0.6 },
 });

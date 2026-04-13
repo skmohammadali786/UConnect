@@ -10,7 +10,15 @@ import { useToast } from "@/components/Toast";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 
-const SUBJECTS = ["Mathematics", "Physics", "Chemistry", "CS", "Electrical", "Mechanical", "Economics", "Other"];
+const SUBJECTS = [
+  "Mathematics", "Physics", "Chemistry", "Computer Science", "Data Structures", "Algorithms", "DBMS", "Operating Systems",
+  "Computer Networks", "Machine Learning", "AI", "Cloud Computing", "Cybersecurity", "Software Engineering", "Web Development",
+  "Mobile Development", "Electrical", "Electronics", "Digital Electronics", "Signal Processing", "Control Systems", "Mechanical",
+  "Thermodynamics", "Fluid Mechanics", "Manufacturing", "Civil", "Structural Engineering", "Transportation", "Environmental Science",
+  "Economics", "Statistics", "Linear Algebra", "Discrete Mathematics", "Probability", "Business Studies", "Finance", "Marketing",
+  "MBA", "BSc Physics", "BSc Chemistry", "BSc Mathematics", "BSc Computer Science", "Biology", "Biotechnology", "Microbiology",
+  "Psychology", "Sociology", "English", "History", "Geography", "Law", "Other",
+];
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "Postgraduate"];
 
 export default function UploadNotesScreen() {
@@ -22,6 +30,7 @@ export default function UploadNotesScreen() {
   const [subject, setSubject] = useState("");
   const [year, setYear] = useState("");
   const [description, setDescription] = useState("");
+  const [imageUrlsRaw, setImageUrlsRaw] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleUpload = async () => {
@@ -35,7 +44,12 @@ export default function UploadNotesScreen() {
     }
     setLoading(true);
     try {
-      const { error } = await supabase.from("notes").insert({
+      const imageUrls = imageUrlsRaw
+        .split(/[\n,]/)
+        .map((x) => x.trim())
+        .filter(Boolean)
+        .slice(0, 10);
+      const payload = {
         title: title.trim(),
         subject,
         year,
@@ -44,10 +58,17 @@ export default function UploadNotesScreen() {
         uploader_username: user.username,
         description: description.trim(),
         file_url: "",
-        file_type: "pdf",
+        file_type: imageUrls.length > 0 ? "images" : "pdf",
+        image_urls: imageUrls,
         downloads: 0,
         saves: 0,
-      });
+      };
+      let { error } = await supabase.from("notes").insert(payload as any);
+      if (error && String(error.message || "").toLowerCase().includes("image_urls")) {
+        const fallbackPayload: any = { ...payload };
+        delete fallbackPayload.image_urls;
+        ({ error } = await supabase.from("notes").insert(fallbackPayload));
+      }
 
       if (error) throw error;
       showSuccess("Notes shared!", "Your notes are now available for your college community.");
@@ -124,6 +145,16 @@ export default function UploadNotesScreen() {
             multiline
             numberOfLines={3}
             style={{ height: 80, textAlignVertical: "top", paddingTop: 10 }}
+          />
+
+          <AppInput
+            label="Image URLs (optional, up to 10)"
+            placeholder="Paste image links separated by comma or new line"
+            value={imageUrlsRaw}
+            onChangeText={setImageUrlsRaw}
+            multiline
+            numberOfLines={4}
+            style={{ height: 100, textAlignVertical: "top", paddingTop: 10 }}
           />
 
           <View style={[styles.guideline, { backgroundColor: colors.card, borderColor: colors.border }]}>

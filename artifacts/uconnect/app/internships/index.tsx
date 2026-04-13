@@ -24,6 +24,11 @@ interface Internship {
   description: string;
 }
 
+interface ApplicationState {
+  status: string;
+  reviewReason: string | null;
+}
+
 function rowToInternship(r: any): Internship {
   return {
     id: r.id,
@@ -43,9 +48,13 @@ function rowToInternship(r: any): Internship {
 
 const TYPE_COLORS: Record<string, string> = { Remote: "#00A86B", Hybrid: "#3B82F6", Onsite: "#8B5CF6" };
 
-function InternshipCard({ item, index, appliedIds, onApply, colors }: any) {
+function InternshipCard({ item, index, applications, onApply, colors }: any) {
   const anim = useRef(new Animated.Value(0)).current;
-  const applied = appliedIds.has(item.id);
+  const application = applications[item.id] as ApplicationState | undefined;
+  const applied = !!application;
+  const statusLabel = application?.status ?? "pending";
+  const isApproved = statusLabel === "approved" || statusLabel === "hired";
+  const isRejected = statusLabel === "rejected";
 
   useEffect(() => {
     Animated.timing(anim, { toValue: 1, duration: 300, delay: index * 70, useNativeDriver: true }).start();
@@ -95,10 +104,19 @@ function InternshipCard({ item, index, appliedIds, onApply, colors }: any) {
             onPress={(e) => { e.stopPropagation?.(); onApply(item.id); }}
             style={[styles.applyBtn, { backgroundColor: applied ? colors.primary + "20" : colors.primary, borderColor: applied ? colors.primary : "transparent", borderWidth: applied ? 1 : 0 }]}
           >
-            <Feather name={applied ? "check" : "external-link"} size={13} color={applied ? colors.primary : "#FFF"} />
-            <Text style={[styles.applyText, { color: applied ? colors.primary : "#FFF" }]}>{applied ? "Applied" : "Apply"}</Text>
+            <Feather name={applied ? "x" : "external-link"} size={13} color={applied ? colors.primary : "#FFF"} />
+            <Text style={[styles.applyText, { color: applied ? colors.primary : "#FFF" }]}>{applied ? "Withdraw" : "Apply"}</Text>
           </TouchableOpacity>
         </View>
+        {applied ? (
+          <View style={[styles.statusBadge, { backgroundColor: isRejected ? "#EF444414" : isApproved ? "#00A86B14" : colors.primary + "14", borderColor: isRejected ? "#EF444440" : isApproved ? "#00A86B40" : colors.primary + "40" }]}>
+            <Feather name={isRejected ? "x-circle" : isApproved ? "check-circle" : "clock"} size={13} color={isRejected ? "#EF4444" : isApproved ? "#00A86B" : colors.primary} />
+            <Text style={[styles.statusText, { color: isRejected ? "#EF4444" : isApproved ? "#00A86B" : colors.primary }]}>
+              {statusLabel.charAt(0).toUpperCase() + statusLabel.slice(1)}
+            </Text>
+          </View>
+        ) : null}
+        {application?.reviewReason ? <Text style={[styles.statusReason, { color: colors.mutedForeground }]}>Reason: {application.reviewReason}</Text> : null}
       </TouchableOpacity>
     </Animated.View>
   );
@@ -111,7 +129,7 @@ export default function InternshipsScreen() {
   const { user } = useAuth();
   const [internships, setInternships] = useState<Internship[]>([]);
   const [activeType, setActiveType] = useState<string>("All");
-  const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set());
+  const [applications, setApplications] = useState<Record<string, ApplicationState>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const headerAnim = useRef(new Animated.Value(0)).current;
@@ -142,9 +160,18 @@ export default function InternshipsScreen() {
     try {
       const { data } = await supabase
         .from("internship_applications")
-        .select("internship_id")
+        .select("internship_id,status,review_reason")
         .eq("user_id", user.id);
-      if (data) setAppliedIds(new Set(data.map((r: any) => r.internship_id)));
+      if (data) {
+        const next: Record<string, ApplicationState> = {};
+        for (const row of data as any[]) {
+          next[row.internship_id] = {
+            status: row.status ?? "pending",
+            reviewReason: row.review_reason ?? null,
+          };
+        }
+        setApplications(next);
+      }
     } catch {}
   }, [user?.id]);
 
@@ -159,18 +186,19 @@ export default function InternshipsScreen() {
 
   const handleApply = async (id: string) => {
     if (!user) return;
-    const already = appliedIds.has(id);
-    const updated = new Set(appliedIds);
-    if (already) { updated.delete(id); } else { updated.add(id); }
-    setAppliedIds(updated);
+    const already = !!applications[id];
+    const updated = { ...applications };
 
     if (already) {
       await supabase.from("internship_applications").delete().eq("user_id", user.id).eq("internship_id", id);
+      delete updated[id];
     } else {
-      await supabase.from("internship_applications").insert({ user_id: user.id, internship_id: id });
+      await supabase.rpc("apply_internship", { p_internship_id: id, p_message: "" });
       const item = internships.find((i) => i.id === id);
       showSuccess(`Applied to ${item?.company}!`, "Application tracked successfully.");
+      updated[id] = { status: "pending", reviewReason: null };
     }
+    setApplications(updated);
   };
 
   const filtered = internships.filter((i) => activeType === "All" || i.type === activeType);
@@ -183,7 +211,7 @@ export default function InternshipsScreen() {
         </TouchableOpacity>
         <View>
           <TypewriterText text="Internships" style={[styles.title, { color: colors.foreground }]} delay={300} speed={55} />
-          {appliedIds.size > 0 && <Text style={[styles.subtitle, { color: colors.primary }]}>{appliedIds.size} applied</Text>}
+          {Object.keys(applications).length > 0 && <Text style={[styles.subtitle, { color: colors.primary }]}>{Object.keys(applications).length} applications</Text>}
         </View>
         <TouchableOpacity onPress={() => router.push("/internships/post" as any)}>
           <Feather name="plus" size={22} color={colors.primary} />
@@ -208,7 +236,7 @@ export default function InternshipsScreen() {
             </ScrollView>
           }
           renderItem={({ item, index }) => (
-            <InternshipCard item={item} index={index} appliedIds={appliedIds} onApply={handleApply} colors={colors} />
+            <InternshipCard item={item} index={index} applications={applications} onApply={handleApply} colors={colors} />
           )}
           ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 80 }}
@@ -258,6 +286,9 @@ const styles = StyleSheet.create({
   deadline: { fontSize: 12, fontFamily: "Inter_400Regular" },
   applyBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 },
   applyText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  statusBadge: { marginTop: 8, flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  statusText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  statusReason: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 6 },
   empty: { alignItems: "center", paddingTop: 60, gap: 8 },
   emptyTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
   emptyText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", paddingHorizontal: 24 },

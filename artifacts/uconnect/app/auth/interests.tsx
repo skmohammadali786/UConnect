@@ -13,12 +13,20 @@ const INTERESTS = [
   "Music", "Sports", "Gaming", "Anime", "Movies",
   "Writing", "Research", "Robotics", "Cybersecurity", "Cloud Computing",
   "Blockchain", "AR/VR", "Data Science", "Quant Finance", "Product Management",
+  "UI/UX", "Graphic Design", "Public Speaking", "Debating", "Drama",
+  "Singing", "Dancing", "Fitness", "Cricket", "Football",
+  "Basketball", "Badminton", "Chess", "Travel", "Cooking",
+  "Entrepreneurship", "Hackathons", "Case Competitions", "Consulting", "Marketing",
+  "Stock Market", "Economics", "Psychology", "Biology", "Chemistry",
+  "Physics", "Mathematics", "Electrical Engineering", "Mechanical Engineering", "Civil Engineering",
+  "Electronics", "MBA", "BSc Research", "AI Ethics", "Content Creation",
+  "Video Editing", "Community Building", "Event Management", "Volunteering", "Social Impact",
 ];
 
 export default function InterestsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { email, college, username, displayName, branch, year, bio } = useLocalSearchParams<Record<string, string>>();
+  const { email, college, username, displayName, branch, year, bio, referralCode } = useLocalSearchParams<Record<string, string>>();
   const [selected, setSelected] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const { setUserData } = useAuth();
@@ -72,6 +80,14 @@ export default function InterestsScreen() {
         compact_mode: false,
         updated_at: now,
       });
+
+      const code = (referralCode || "").trim().toUpperCase();
+      if (code) {
+        await supabase.rpc("claim_referral", {
+          p_invite_code: code,
+          p_referred_user_id: userId,
+        }).then(() => {});
+      }
 
       await setUserData({
         id: userId,

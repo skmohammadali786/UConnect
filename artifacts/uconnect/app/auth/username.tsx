@@ -25,7 +25,7 @@ function generateSuggestions(email: string): string[] {
 export default function UsernameScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { email, college } = useLocalSearchParams<{ email: string; college: string }>();
+  const { email, college, referralCode } = useLocalSearchParams<{ email: string; college: string; referralCode?: string }>();
   const [username, setUsername] = useState("");
   const [suggestions] = useState(() => generateSuggestions(email || "user"));
   const [error, setError] = useState("");
@@ -58,7 +58,7 @@ export default function UsernameScreen() {
     } catch {
     }
     setChecking(false);
-    router.push({ pathname: "/auth/profile-setup", params: { email, college, username } });
+    router.push({ pathname: "/auth/profile-setup", params: { email, college, username, referralCode: referralCode || "" } });
   };
 
   return (

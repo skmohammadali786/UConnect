@@ -8,6 +8,7 @@ import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { usePosts } from "@/context/PostsContext";
 import { useSocial } from "@/context/SocialContext";
+import { useChat } from "@/context/ChatContext";
 import { useToast } from "@/components/Toast";
 import { supabase } from "@/lib/supabase";
 
@@ -21,6 +22,7 @@ export default function UserProfileScreen() {
   const { user: me } = useAuth();
   const { posts } = usePosts();
   const { toggleFollow, isFollowing } = useSocial();
+  const { startConversation } = useChat();
   const { showSuccess } = useToast();
   const followAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -115,9 +117,12 @@ export default function UserProfileScreen() {
     showSuccess(following ? `Unfollowed @${key}` : `Now following @${key}!`);
   };
 
-  const handleMessage = () => {
+  const handleMessage = async () => {
     if (!profile) return;
-    router.push({ pathname: "/chat/[id]" as any, params: { id: profile.id, username: profile.username } });
+    try {
+      const convId = await startConversation(profile.id, profile.username, false);
+      router.push({ pathname: "/chat/[id]" as any, params: { id: convId, username: profile.username } });
+    } catch {}
   };
 
   if (profileLoading) {

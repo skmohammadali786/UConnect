@@ -12,8 +12,8 @@ import { useAuth } from "@/context/AuthContext";
 export default function ChatScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const { conversations, sendMessage, markRead, revealIdentity, blockUser } = useChat();
+  const { id, username } = useLocalSearchParams<{ id: string; username?: string }>();
+  const { conversations, sendMessage, markRead, revealIdentity, blockUser, startConversation } = useChat();
   const { user } = useAuth();
   const [message, setMessage] = useState("");
   const [blockModalVisible, setBlockModalVisible] = useState(false);
@@ -23,10 +23,41 @@ export default function ChatScreen() {
   const conv = conversations.find((c) => c.id === id);
 
   useEffect(() => {
+    if (!user || !id || conv) return;
+    startConversation(id, username ?? "user", false)
+      .then((convId) => {
+        if (convId !== id) {
+          router.replace({ pathname: "/chat/[id]" as any, params: { id: convId } });
+        }
+      })
+      .catch(() => {});
+  }, [id, username, user?.id, conv?.id]);
+
+  useEffect(() => {
     if (conv) markRead(id);
   }, [id]);
 
-  if (!conv || !user) return null;
+  if (!user) return null;
+
+  if (!conv) {
+    return (
+      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, backgroundColor: colors.headerBg, borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Feather name="arrow-left" size={22} color={colors.foreground} />
+          </TouchableOpacity>
+          <View style={styles.headerCenter}>
+            <Text style={[styles.headerName, { color: colors.foreground }]}>Message</Text>
+          </View>
+          <View style={styles.headerActions} />
+        </View>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 10, padding: 24 }}>
+          <Feather name="message-circle" size={36} color={colors.mutedForeground} />
+          <Text style={[styles.blockedText, { color: colors.mutedForeground, textAlign: "center" }]}>Loading conversation…</Text>
+        </View>
+      </KeyboardAvoidingView>
+    );
+  }
 
   const handleSend = () => {
     if (!message.trim()) return;

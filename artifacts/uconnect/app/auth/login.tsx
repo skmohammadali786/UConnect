@@ -11,9 +11,10 @@ import { useAuth } from "@/context/AuthContext";
 export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { flow } = useLocalSearchParams<{ flow: string }>();
+  const { flow, ref, referralCode } = useLocalSearchParams<{ flow: string; ref?: string; referralCode?: string }>();
   const { signIn, signUp } = useAuth();
   const isSignIn = flow === "signin";
+  const incomingReferralCode = (referralCode || ref || "").trim().toUpperCase();
 
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -58,7 +59,7 @@ export default function LoginScreen() {
     }
 
     if (isNewUser) {
-      router.replace({ pathname: "/auth/college-select", params: { email: email.trim() } });
+      router.replace({ pathname: "/auth/college-select", params: { email: email.trim(), referralCode: incomingReferralCode } });
     } else {
       router.replace("/(tabs)/");
     }
@@ -85,7 +86,7 @@ export default function LoginScreen() {
       return;
     }
 
-    router.replace({ pathname: "/auth/college-select", params: { email: email.trim() } });
+    router.replace({ pathname: "/auth/college-select", params: { email: email.trim(), referralCode: incomingReferralCode } });
   };
 
   return (
@@ -209,9 +210,9 @@ const styles = StyleSheet.create({
   backBtn: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 32 },
   backText: { fontSize: 14, fontFamily: "Inter_500Medium" },
   content: { gap: 24 },
-  headingArea: { gap: 8 },
-  title: { fontSize: 30, fontFamily: "Inter_700Bold", lineHeight: 38, letterSpacing: -0.5 },
-  subtitle: { fontSize: 15, fontFamily: "Inter_400Regular", lineHeight: 22 },
+  headingArea: { gap: 8, alignItems: "center" },
+  title: { fontSize: 30, fontFamily: "Inter_700Bold", lineHeight: 38, letterSpacing: -0.5, textAlign: "center" },
+  subtitle: { fontSize: 15, fontFamily: "Inter_400Regular", lineHeight: 22, textAlign: "center" },
   form: { gap: 16 },
   errorBox: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 10, borderWidth: 1, padding: 12 },
   errorText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: "#EF4444", lineHeight: 18 },

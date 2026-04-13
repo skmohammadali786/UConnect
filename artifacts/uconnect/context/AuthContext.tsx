@@ -124,8 +124,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
-    await AsyncStorage.removeItem("@uconnect_theme");
-    await supabase.auth.signOut();
+    await AsyncStorage.multiRemove(["@uconnect_theme", "@uconnect_settings"]).catch(() => {});
+    try {
+      await supabase.auth.signOut();
+    } catch {}
     setUser(null);
   };
 

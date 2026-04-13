@@ -9,19 +9,16 @@ import { useColors } from "@/hooks/useColors";
 const ND = Platform.OS !== "web";
 
 const COLLEGES = [
-  "IIT Delhi", "IIT Bombay", "IIT Madras", "IIT Kanpur", "IIT Kharagpur",
-  "IIT Roorkee", "IIT Guwahati", "IIT Hyderabad", "NIT Trichy", "NIT Warangal",
-  "NIT Surathkal", "BITS Pilani", "BITS Hyderabad", "BITS Goa", "Delhi University",
-  "Jadavpur University", "Anna University", "VIT Vellore", "SRM Chennai",
-  "Manipal Institute", "Amity University", "Christ University", "Symbiosis Pune",
-  "NMIMS Mumbai", "XLRI Jamshedpur", "IIM Ahmedabad", "IIM Bangalore", "IIM Calcutta",
-  "Other",
+  "Aliah University",
+  "Jadavpur University",
+  "Amity University",
+  "Others",
 ];
 
 export default function CollegeSelectScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { email } = useLocalSearchParams<{ email: string }>();
+  const { email, referralCode } = useLocalSearchParams<{ email: string; referralCode?: string }>();
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState("");
   const [customCollege, setCustomCollege] = useState("");
@@ -37,7 +34,7 @@ export default function CollegeSelectScreen() {
   }, []);
 
   const filtered = COLLEGES.filter((c) => c.toLowerCase().includes(search.toLowerCase()));
-  const isOther = selected === "Other";
+  const isOther = selected === "Others";
   const finalCollege = isOther ? customCollege.trim() : selected;
   const canContinue = !!selected && (!isOther || customCollege.trim().length >= 3);
 
@@ -99,8 +96,8 @@ export default function CollegeSelectScreen() {
               },
             ]}
           >
-            <View style={[styles.collegeIcon, { backgroundColor: item === "Other" ? colors.secondary : (selected === item ? colors.primary + "20" : colors.secondary) }]}>
-              <Feather name={item === "Other" ? "edit-2" : "book"} size={14} color={selected === item ? colors.primary : colors.mutedForeground} />
+            <View style={[styles.collegeIcon, { backgroundColor: item === "Others" ? colors.secondary : (selected === item ? colors.primary + "20" : colors.secondary) }]}>
+              <Feather name={item === "Others" ? "edit-2" : "book"} size={14} color={selected === item ? colors.primary : colors.mutedForeground} />
             </View>
             <Text style={[styles.collegeName, { color: selected === item ? colors.primary : colors.foreground }]}>{item}</Text>
             {selected === item && (
@@ -126,7 +123,7 @@ export default function CollegeSelectScreen() {
         )}
         <AppButton
           title="Continue"
-          onPress={() => router.push({ pathname: "/auth/username", params: { email, college: finalCollege } })}
+          onPress={() => router.push({ pathname: "/auth/username", params: { email, college: finalCollege, referralCode: referralCode || "" } })}
           disabled={!canContinue}
           fullWidth
           size="lg"

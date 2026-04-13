@@ -386,6 +386,7 @@ create table if not exists notes (
   saves int not null default 0,
   created_at timestamptz not null default now()
 );
+alter table notes add column if not exists image_urls text[] not null default '{}';
 alter table notes enable row level security;
 create policy "Notes are viewable" on notes for select using (true);
 create policy "Authenticated users can upload notes" on notes for insert with check (auth.uid() = uploader_id);
@@ -402,6 +403,31 @@ create table if not exists note_saves (
 );
 alter table note_saves enable row level security;
 create policy "Users can manage own saves" on note_saves for all using (auth.uid() = user_id);
+
+-- ─── APP RATINGS ───────────────────────────────────────────────────────────────
+create table if not exists app_ratings (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid not null references profiles(id) on delete cascade,
+  rating int not null check (rating >= 1 and rating <= 5),
+  feedback text,
+  created_at timestamptz not null default now()
+);
+alter table app_ratings enable row level security;
+create policy "Users can add own ratings" on app_ratings for insert with check (auth.uid() = user_id);
+create policy "Users can view own ratings" on app_ratings for select using (auth.uid() = user_id);
+
+-- ─── INVITE CODES ──────────────────────────────────────────────────────────────
+create table if not exists invite_codes (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid not null unique references profiles(id) on delete cascade,
+  code text not null unique,
+  total_shares int not null default 0,
+  total_joins int not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table invite_codes enable row level security;
+create policy "Users can manage own invite code" on invite_codes for all using (auth.uid() = user_id);
 
 -- ─── FUNCTIONS ───────────────────────────────────────────────────────────────
 
@@ -532,3 +558,551 @@ end;
 $$;
 
 grant execute on function delete_account() to authenticated;
+
+-- ─── LIFECYCLE + REDIRECT + REFERRAL EXTENSIONS ──────────────────────────────
+
+create or replace function set_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+-- Notifications: richer cross-feature redirect payload
+alter table notifications
+  add column if not exists redirect_path text,
+  add column if not exists entity_type text,
+  add column if not exists entity_id text,
+  add column if not exists secondary_entity_type text,
+  add column if not exists secondary_entity_id text,
+  add column if not exists metadata jsonb not null default '{}'::jsonb;
+
+create table if not exists notification_action_routes (
+  action_type text primary key,
+  redirect_template text not null,
+  description text not null
+);
+
+insert into notification_action_routes(action_type, redirect_template, description) values
+  ('post', '/post/:post_id', 'Post detail'),
+  ('profile', '/user/:username', 'User profile'),
+  ('chat', '/chat/:conversation_id', 'Conversation'),
+  ('internship', '/internships/:internship_id', 'Internship detail'),
+  ('internship_application', '/internships/:internship_id?tab=applications', 'Internship host applications'),
+  ('internship_application_status', '/internships/:internship_id', 'Applicant internship status'),
+  ('event', '/events/:event_id', 'Event detail'),
+  ('event_attendee_request', '/events/:event_id?tab=attendees', 'Event host attendee requests'),
+  ('event_attendee_status', '/events/:event_id', 'Event attendee status'),
+  ('team', '/teams/:team_id', 'Team detail'),
+  ('team_request', '/teams/:team_id', 'Team requests'),
+  ('team_request_status', '/teams/:team_id', 'Team request status'),
+  ('confession', '/confessions/:confession_id', 'Confession detail'),
+  ('note', '/notes/:note_id', 'Note detail'),
+  ('invite', '/invite', 'Invite screen'),
+  ('system', '/(tabs)/notifications', 'Notifications screen')
+on conflict (action_type) do update
+set redirect_template = excluded.redirect_template,
+    description = excluded.description;
+
+-- Internship application lifecycle + reasons
+alter table internship_applications
+  add column if not exists status text not null default 'pending' check (status in ('pending', 'approved', 'rejected', 'withdrawn', 'hired', 'closed')),
+  add column if not exists apply_message text not null default '',
+  add column if not exists review_reason text,
+  add column if not exists reviewed_by uuid references profiles(id) on delete set null,
+  add column if not exists reviewed_at timestamptz,
+  add column if not exists updated_at timestamptz not null default now();
+
+create index if not exists idx_internship_applications_internship_status
+  on internship_applications(internship_id, status, created_at desc);
+
+drop trigger if exists trg_internship_applications_updated_at on internship_applications;
+create trigger trg_internship_applications_updated_at
+before update on internship_applications
+for each row execute function set_updated_at();
+
+drop policy if exists "Users can manage own applications" on internship_applications;
+drop policy if exists "Applications viewable" on internship_applications;
+
+create policy "Applicant or internship host can view applications"
+on internship_applications
+for select
+using (
+  auth.uid() = user_id
+  or exists (
+    select 1 from internships i
+    where i.id = internship_applications.internship_id
+      and i.poster_id = auth.uid()
+  )
+);
+
+create policy "Applicant can create own application"
+on internship_applications
+for insert
+with check (
+  auth.uid() = user_id
+  and exists (
+    select 1 from internships i
+    where i.id = internship_applications.internship_id
+      and i.poster_id <> auth.uid()
+  )
+);
+
+create policy "Internship host can review applications"
+on internship_applications
+for update
+using (
+  exists (
+    select 1 from internships i
+    where i.id = internship_applications.internship_id
+      and i.poster_id = auth.uid()
+  )
+);
+
+create policy "Applicant can delete own application"
+on internship_applications
+for delete
+using (auth.uid() = user_id);
+
+create or replace function apply_internship(p_internship_id uuid, p_message text default '')
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_host_id uuid;
+  v_app_id uuid;
+begin
+  if v_user_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  select poster_id into v_host_id from internships where id = p_internship_id;
+  if v_host_id is null then
+    raise exception 'Internship not found';
+  end if;
+  if v_host_id = v_user_id then
+    raise exception 'Cannot apply to own internship';
+  end if;
+
+  insert into internship_applications(user_id, internship_id, status, apply_message)
+  values (v_user_id, p_internship_id, 'pending', coalesce(p_message, ''))
+  on conflict (user_id, internship_id)
+  do update set
+    status = case
+      when internship_applications.status in ('rejected', 'withdrawn') then 'pending'
+      else internship_applications.status
+    end,
+    apply_message = excluded.apply_message,
+    updated_at = now()
+  returning id into v_app_id;
+
+  insert into notifications(user_id, type, title, body, action_id, action_type, redirect_path, entity_type, entity_id, secondary_entity_type, secondary_entity_id, metadata)
+  values (
+    v_host_id,
+    'event',
+    'New internship application',
+    'A student applied to your internship post.',
+    p_internship_id::text,
+    'internship_application',
+    '/internships/' || p_internship_id || '?tab=applications',
+    'internship',
+    p_internship_id::text,
+    'application',
+    v_app_id::text,
+    jsonb_build_object('applicant_id', v_user_id)
+  );
+
+  return v_app_id;
+end;
+$$;
+
+grant execute on function apply_internship(uuid, text) to authenticated;
+
+create or replace function review_internship_application(
+  p_application_id uuid,
+  p_new_status text,
+  p_reason text default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_host_id uuid := auth.uid();
+  v_applicant_id uuid;
+  v_internship_id uuid;
+begin
+  if v_host_id is null then
+    raise exception 'Not authenticated';
+  end if;
+  if p_new_status not in ('approved', 'rejected', 'hired', 'closed') then
+    raise exception 'Invalid status';
+  end if;
+
+  select ia.user_id, ia.internship_id
+  into v_applicant_id, v_internship_id
+  from internship_applications ia
+  join internships i on i.id = ia.internship_id
+  where ia.id = p_application_id
+    and i.poster_id = v_host_id;
+
+  if v_internship_id is null then
+    raise exception 'Application not found or unauthorized';
+  end if;
+
+  update internship_applications
+  set status = p_new_status,
+      review_reason = p_reason,
+      reviewed_by = v_host_id,
+      reviewed_at = now(),
+      updated_at = now()
+  where id = p_application_id;
+
+  insert into notifications(user_id, type, title, body, action_id, action_type, redirect_path, entity_type, entity_id, secondary_entity_type, secondary_entity_id, metadata)
+  values (
+    v_applicant_id,
+    'event',
+    'Internship application updated',
+    'Your application was ' || p_new_status || coalesce(': ' || p_reason, ''),
+    v_internship_id::text,
+    'internship_application_status',
+    '/internships/' || v_internship_id,
+    'internship',
+    v_internship_id::text,
+    'application',
+    p_application_id::text,
+    jsonb_build_object('status', p_new_status, 'reason', p_reason)
+  );
+end;
+$$;
+
+grant execute on function review_internship_application(uuid, text, text) to authenticated;
+
+-- Event attendee approval lifecycle
+alter table events
+  add column if not exists requires_approval boolean not null default false;
+
+alter table event_rsvps
+  add column if not exists status text not null default 'approved' check (status in ('pending', 'approved', 'rejected', 'cancelled')),
+  add column if not exists request_note text not null default '',
+  add column if not exists decision_reason text,
+  add column if not exists reviewed_by uuid references profiles(id) on delete set null,
+  add column if not exists reviewed_at timestamptz,
+  add column if not exists updated_at timestamptz not null default now();
+
+create index if not exists idx_event_rsvps_event_status
+  on event_rsvps(event_id, status, created_at desc);
+
+drop trigger if exists trg_event_rsvps_updated_at on event_rsvps;
+create trigger trg_event_rsvps_updated_at
+before update on event_rsvps
+for each row execute function set_updated_at();
+
+drop policy if exists "Users can manage own RSVPs" on event_rsvps;
+drop policy if exists "RSVPs viewable" on event_rsvps;
+
+create policy "Attendee or host can view rsvps"
+on event_rsvps
+for select
+using (
+  auth.uid() = user_id
+  or exists (
+    select 1 from events e
+    where e.id = event_rsvps.event_id
+      and e.organizer_id = auth.uid()
+  )
+);
+
+create policy "Attendee can create own rsvp"
+on event_rsvps
+for insert
+with check (auth.uid() = user_id);
+
+create policy "Host can review attendee request"
+on event_rsvps
+for update
+using (
+  exists (
+    select 1 from events e
+    where e.id = event_rsvps.event_id
+      and e.organizer_id = auth.uid()
+  )
+);
+
+create policy "Attendee can delete own rsvp"
+on event_rsvps
+for delete
+using (auth.uid() = user_id);
+
+create or replace function rsvp_event(p_user_id uuid, p_event_id uuid, p_request_note text default '')
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_requires_approval boolean;
+  v_host_id uuid;
+  v_existing_status text;
+  v_new_status text;
+begin
+  if auth.uid() is null or auth.uid() <> p_user_id then
+    raise exception 'Unauthorized';
+  end if;
+
+  select requires_approval, organizer_id
+  into v_requires_approval, v_host_id
+  from events
+  where id = p_event_id;
+
+  if v_host_id is null then
+    raise exception 'Event not found';
+  end if;
+  if v_host_id = p_user_id then
+    raise exception 'Host cannot RSVP to own event';
+  end if;
+
+  v_new_status := case when v_requires_approval then 'pending' else 'approved' end;
+
+  select status into v_existing_status from event_rsvps where user_id = p_user_id and event_id = p_event_id;
+
+  if v_existing_status is null then
+    insert into event_rsvps(user_id, event_id, status, request_note)
+    values (p_user_id, p_event_id, v_new_status, coalesce(p_request_note, ''));
+    if v_new_status = 'approved' then
+      update events set rsvp_count = rsvp_count + 1 where id = p_event_id;
+    end if;
+  else
+    if v_existing_status = 'approved' and v_new_status <> 'approved' then
+      update events set rsvp_count = greatest(0, rsvp_count - 1) where id = p_event_id;
+    elsif v_existing_status <> 'approved' and v_new_status = 'approved' then
+      update events set rsvp_count = rsvp_count + 1 where id = p_event_id;
+    end if;
+    update event_rsvps
+    set status = v_new_status,
+        request_note = coalesce(p_request_note, ''),
+        decision_reason = null,
+        reviewed_by = null,
+        reviewed_at = null,
+        updated_at = now()
+    where user_id = p_user_id and event_id = p_event_id;
+  end if;
+
+  insert into notifications(user_id, type, title, body, action_id, action_type, redirect_path, entity_type, entity_id, secondary_entity_type, secondary_entity_id, metadata)
+  values (
+    v_host_id,
+    'event',
+    case when v_new_status = 'pending' then 'New attendee request' else 'New event RSVP' end,
+    case when v_new_status = 'pending' then 'A student requested to attend your event.' else 'A student RSVP''d to your event.' end,
+    p_event_id::text,
+    'event_attendee_request',
+    '/events/' || p_event_id || '?tab=attendees',
+    'event',
+    p_event_id::text,
+    'attendee',
+    p_user_id::text,
+    jsonb_build_object('status', v_new_status)
+  );
+end;
+$$;
+
+create or replace function rsvp_event(p_user_id uuid, p_event_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  perform rsvp_event(p_user_id, p_event_id, '');
+end;
+$$;
+
+create or replace function unrsvp_event(p_user_id uuid, p_event_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_old_status text;
+begin
+  select status into v_old_status from event_rsvps where user_id = p_user_id and event_id = p_event_id;
+  delete from event_rsvps where user_id = p_user_id and event_id = p_event_id;
+  if v_old_status = 'approved' then
+    update events set rsvp_count = greatest(0, rsvp_count - 1) where id = p_event_id;
+  end if;
+end;
+$$;
+
+grant execute on function rsvp_event(uuid, uuid, text) to authenticated;
+grant execute on function rsvp_event(uuid, uuid) to authenticated;
+grant execute on function unrsvp_event(uuid, uuid) to authenticated;
+
+create or replace function review_event_attendee(
+  p_event_id uuid,
+  p_user_id uuid,
+  p_decision text,
+  p_reason text default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_host_id uuid := auth.uid();
+  v_old_status text;
+begin
+  if v_host_id is null then
+    raise exception 'Not authenticated';
+  end if;
+  if p_decision not in ('approved', 'rejected') then
+    raise exception 'Invalid decision';
+  end if;
+  if not exists (select 1 from events e where e.id = p_event_id and e.organizer_id = v_host_id) then
+    raise exception 'Unauthorized';
+  end if;
+
+  select status into v_old_status from event_rsvps where user_id = p_user_id and event_id = p_event_id;
+  if v_old_status is null then
+    raise exception 'RSVP request not found';
+  end if;
+
+  if v_old_status = 'approved' and p_decision <> 'approved' then
+    update events set rsvp_count = greatest(0, rsvp_count - 1) where id = p_event_id;
+  elsif v_old_status <> 'approved' and p_decision = 'approved' then
+    update events set rsvp_count = rsvp_count + 1 where id = p_event_id;
+  end if;
+
+  update event_rsvps
+  set status = p_decision,
+      decision_reason = p_reason,
+      reviewed_by = v_host_id,
+      reviewed_at = now(),
+      updated_at = now()
+  where user_id = p_user_id and event_id = p_event_id;
+
+  insert into notifications(user_id, type, title, body, action_id, action_type, redirect_path, entity_type, entity_id, secondary_entity_type, secondary_entity_id, metadata)
+  values (
+    p_user_id,
+    'event',
+    'Event attendance updated',
+    'Your request was ' || p_decision || coalesce(': ' || p_reason, ''),
+    p_event_id::text,
+    'event_attendee_status',
+    '/events/' || p_event_id,
+    'event',
+    p_event_id::text,
+    'attendee',
+    p_user_id::text,
+    jsonb_build_object('status', p_decision, 'reason', p_reason)
+  );
+end;
+$$;
+
+grant execute on function review_event_attendee(uuid, uuid, text, text) to authenticated;
+
+-- Referral attribution lifecycle from signup
+alter table profiles
+  add column if not exists referred_by_user_id uuid references profiles(id) on delete set null,
+  add column if not exists referral_code_used text,
+  add column if not exists referral_at timestamptz;
+
+create table if not exists referral_attributions (
+  id uuid primary key default uuid_generate_v4(),
+  referrer_user_id uuid not null references profiles(id) on delete cascade,
+  referred_user_id uuid not null unique references profiles(id) on delete cascade,
+  invite_code text not null,
+  status text not null default 'signed_up' check (status in ('signed_up', 'verified', 'activated', 'rewarded', 'rejected')),
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table referral_attributions enable row level security;
+
+drop trigger if exists trg_referral_attributions_updated_at on referral_attributions;
+create trigger trg_referral_attributions_updated_at
+before update on referral_attributions
+for each row execute function set_updated_at();
+
+create policy "Users can view referral records they belong to"
+on referral_attributions
+for select
+using (auth.uid() = referrer_user_id or auth.uid() = referred_user_id);
+
+create policy "Referred user can insert own attribution"
+on referral_attributions
+for insert
+with check (auth.uid() = referred_user_id);
+
+create policy "Referrer can update own attribution records"
+on referral_attributions
+for update
+using (auth.uid() = referrer_user_id);
+
+create or replace function claim_referral(p_invite_code text, p_referred_user_id uuid default auth.uid())
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_referrer_id uuid;
+  v_inserted int;
+begin
+  if p_referred_user_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  select user_id into v_referrer_id from invite_codes where code = p_invite_code;
+  if v_referrer_id is null then
+    raise exception 'Invalid invite code';
+  end if;
+  if v_referrer_id = p_referred_user_id then
+    raise exception 'Self referral not allowed';
+  end if;
+
+  insert into referral_attributions(referrer_user_id, referred_user_id, invite_code, status)
+  values (v_referrer_id, p_referred_user_id, p_invite_code, 'signed_up')
+  on conflict (referred_user_id) do nothing;
+
+  get diagnostics v_inserted = row_count;
+
+  if v_inserted > 0 then
+    update profiles
+    set referred_by_user_id = v_referrer_id,
+        referral_code_used = p_invite_code,
+        referral_at = now()
+    where id = p_referred_user_id;
+
+    update invite_codes
+    set total_joins = total_joins + 1,
+        updated_at = now()
+    where user_id = v_referrer_id;
+
+    insert into notifications(user_id, type, title, body, action_id, action_type, redirect_path, entity_type, entity_id, metadata)
+    values (
+      v_referrer_id,
+      'follow',
+      'New referral signup',
+      'A student joined using your invite code.',
+      p_referred_user_id::text,
+      'invite',
+      '/invite',
+      'referral',
+      p_referred_user_id::text,
+      jsonb_build_object('invite_code', p_invite_code)
+    );
+  end if;
+end;
+$$;
+
+grant execute on function claim_referral(text, uuid) to authenticated;

@@ -7,17 +7,82 @@ import { AppButton } from "@/components/AppButton";
 import { AppInput } from "@/components/AppInput";
 import { useColors } from "@/hooks/useColors";
 
-const BRANCHES = ["Computer Science", "Electrical", "Mechanical", "Civil", "Chemical", "Electronics", "Information Technology", "Data Science", "Mathematics", "Physics", "Other"];
+const BRANCHES = [
+  "Computer Science Engineering",
+  "Information Technology",
+  "Computer Engineering",
+  "Software Engineering",
+  "Artificial Intelligence",
+  "Data Science",
+  "Cybersecurity",
+  "Electronics and Communication",
+  "Electrical Engineering",
+  "Electrical and Electronics",
+  "Mechanical Engineering",
+  "Civil Engineering",
+  "Chemical Engineering",
+  "Aerospace Engineering",
+  "Automobile Engineering",
+  "Biotechnology Engineering",
+  "Biomedical Engineering",
+  "Production Engineering",
+  "Industrial Engineering",
+  "Marine Engineering",
+  "Mining Engineering",
+  "Petroleum Engineering",
+  "Metallurgical Engineering",
+  "Textile Engineering",
+  "Agricultural Engineering",
+  "Food Technology",
+  "Environmental Engineering",
+  "Instrumentation Engineering",
+  "Mechatronics",
+  "Power Engineering",
+  "BSc Computer Science",
+  "BSc Information Technology",
+  "BSc Physics",
+  "BSc Chemistry",
+  "BSc Mathematics",
+  "BSc Statistics",
+  "BSc Data Science",
+  "BSc Biotechnology",
+  "BSc Microbiology",
+  "BSc Zoology",
+  "BSc Botany",
+  "BSc Economics",
+  "BSc Psychology",
+  "BSc Geography",
+  "BSc Environmental Science",
+  "BSc Forensic Science",
+  "BSc Electronics",
+  "BSc Nursing",
+  "BSc Hospitality",
+  "MBA",
+  "MBA Finance",
+  "MBA Marketing",
+  "MBA HR",
+  "MBA Operations",
+  "MBA Business Analytics",
+  "MCA",
+  "MTech",
+  "MSc",
+  "BBA",
+  "BCA",
+  "BCom",
+  "BA",
+  "Other",
+];
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "Postgraduate", "PhD", "Alumni"];
 
 export default function ProfileSetupScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { email, college, username } = useLocalSearchParams<{ email: string; college: string; username: string }>();
+  const { email, college, username, referralCode: incomingReferralCode } = useLocalSearchParams<{ email: string; college: string; username: string; referralCode?: string }>();
   const [displayName, setDisplayName] = useState("");
   const [branch, setBranch] = useState("");
   const [year, setYear] = useState("");
   const [bio, setBio] = useState("");
+  const [referralCode, setReferralCode] = useState((incomingReferralCode || "").toUpperCase());
   const [showBranchPicker, setShowBranchPicker] = useState(false);
   const [showYearPicker, setShowYearPicker] = useState(false);
 
@@ -73,10 +138,19 @@ export default function ProfileSetupScreen() {
         </View>
 
         <AppInput label="Bio (optional)" placeholder="Tell your college what you're about..." value={bio} onChangeText={setBio} multiline numberOfLines={3} style={{ height: 80, textAlignVertical: "top", paddingTop: 12 }} />
+        <AppInput
+          label="Referral code (optional)"
+          placeholder="UCON-XXXXXX-XXXX"
+          value={referralCode}
+          onChangeText={(t) => setReferralCode(t.toUpperCase())}
+          autoCapitalize="characters"
+          autoCorrect={false}
+          leftIcon="gift"
+        />
 
         <AppButton
           title="Continue"
-          onPress={() => router.push({ pathname: "/auth/interests", params: { email, college, username, displayName, branch, year, bio } })}
+          onPress={() => router.push({ pathname: "/auth/interests", params: { email, college, username, displayName, branch, year, bio, referralCode: referralCode.trim() } })}
           disabled={!displayName.trim() || !branch || !year}
           fullWidth
           size="lg"

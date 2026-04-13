@@ -88,9 +88,7 @@ export default function HelpScreen() {
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Contact Us</Text>
 
         {[
-          { icon: "mail", label: "Email Support", sub: "support@uconnect.app", action: () => showSuccess("Email copied!", "support@uconnect.app") },
-          { icon: "twitter", label: "Twitter", sub: "@UConnectApp", action: () => showSuccess("Opening Twitter...") },
-          { icon: "message-square", label: "Live Chat", sub: "Usually responds in minutes", action: () => showSuccess("Chat coming soon", "We're building this feature!") },
+          { icon: "mail", label: "Email Support", sub: "support@uconnect.socail", action: () => showSuccess("Email copied!", "support@uconnect.socail") },
         ].map((item) => (
           <TouchableOpacity
             key={item.label}
