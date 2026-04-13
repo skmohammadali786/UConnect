@@ -16,6 +16,8 @@ function isUUID(s: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
 }
 
+const LOCAL_ID_PREFIX = "local_";
+
 function rowToComment(row: any): Comment {
   return {
     id: row.id,
@@ -32,6 +34,15 @@ function rowToComment(row: any): Comment {
     createdAt: row.created_at,
     replies: [],
   };
+}
+
+function hasMatchingRemoteComment(local: Comment, remote: Comment[]): boolean {
+  return remote.some((c) =>
+    c.parentId === local.parentId
+    && c.authorId === local.authorId
+    && c.isAnonymous === local.isAnonymous
+    && c.content === local.content
+  );
 }
 
 export default function PostDetailScreen() {
@@ -84,7 +95,43 @@ export default function PostDetailScreen() {
         ...c,
         replies: replyMap.get(c.id) ?? [],
       }));
-      setLoadedComments(withReplies);
+      setLoadedComments((prev) => {
+        const prevTopLevelLocal = prev.filter((c) => c.id.startsWith(LOCAL_ID_PREFIX) && !c.parentId);
+        const prevReplyLocalByParent = new Map<string, Comment[]>();
+        prev.forEach((c) => {
+          c.replies.forEach((r) => {
+            if (!r.id.startsWith(LOCAL_ID_PREFIX)) return;
+            const parentId = r.parentId ?? c.id;
+            const current = prevReplyLocalByParent.get(parentId) ?? [];
+            prevReplyLocalByParent.set(parentId, [...current, r]);
+          });
+        });
+        const remoteReplies = withReplies.flatMap((c) => c.replies);
+        const merged = [...withReplies];
+        const mergedById = new Map(merged.map((c) => [c.id, c]));
+
+        prevTopLevelLocal
+          .filter((local) => !hasMatchingRemoteComment(local, withReplies))
+          .forEach((local) => {
+            if (mergedById.has(local.id)) return;
+            merged.push(local);
+            mergedById.set(local.id, local);
+          });
+
+        prevReplyLocalByParent.forEach((locals, parentId) => {
+          const parent = mergedById.get(parentId);
+          if (!parent) return;
+          const existingReplyIds = new Set(parent.replies.map((r) => r.id));
+          const pendingReplies = locals.filter((local) => !hasMatchingRemoteComment(local, remoteReplies) && !existingReplyIds.has(local.id));
+          if (pendingReplies.length === 0) return;
+          const updatedParent = { ...parent, replies: [...parent.replies, ...pendingReplies] };
+          mergedById.set(parentId, updatedParent);
+          const parentIndex = merged.findIndex((c) => c.id === parentId);
+          if (parentIndex >= 0) merged[parentIndex] = updatedParent;
+          });
+
+        return merged;
+      });
     } catch {}
     setCommentsLoading(false);
   }, [post?.id]);
@@ -128,7 +175,7 @@ export default function PostDetailScreen() {
 
   const handleSendComment = () => {
     if (!comment.trim() || !user) return;
-    const tempId = "local_" + Date.now();
+    const tempId = LOCAL_ID_PREFIX + Date.now();
     newLocalIds.current.add(tempId);
     const newComment: Comment = {
       id: tempId,

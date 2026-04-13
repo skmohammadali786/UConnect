@@ -225,11 +225,20 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         : c
     ));
     if (user) {
-      supabase.from("messages")
-        .update({ is_read: true })
-        .eq("conversation_id", conversationId)
-        .neq("sender_id", user.id)
-        .then(() => {});
+      supabase.rpc("mark_conversation_read", { p_conversation_id: conversationId }).then(({ error }) => {
+        if (error) {
+          console.error("mark_conversation_read failed, falling back to direct update:", error.message);
+          supabase.from("messages")
+            .update({ is_read: true })
+            .eq("conversation_id", conversationId)
+            .neq("sender_id", user.id)
+            .then(({ error: fallbackError }) => {
+              if (fallbackError) {
+                console.error("Fallback mark-read update failed:", fallbackError.message);
+              }
+            });
+        }
+      });
     }
   };
 
