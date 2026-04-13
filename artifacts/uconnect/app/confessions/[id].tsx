@@ -122,8 +122,9 @@ export default function ConfessionDetailScreen() {
   const handleSendComment = async () => {
     if (!comment.trim() || !user) return;
     const message = comment.trim();
+    const tempCommentId = LOCAL_ID_PREFIX + Date.now();
     const newComment: ConfessionComment = {
-      id: LOCAL_ID_PREFIX + Date.now(),
+      id: tempCommentId,
       authorId: isAnon ? "anon" : user.id,
       isAnonymous: isAnon,
       content: message,
@@ -131,7 +132,6 @@ export default function ConfessionDetailScreen() {
       createdAt: new Date().toISOString(),
     };
     setLoadedComments((prev) => [...prev, newComment]);
-    setComment("");
 
     const ok = await addConfessionComment(confession.id, {
       authorId: isAnon ? "anon" : user.id,
@@ -140,10 +140,13 @@ export default function ConfessionDetailScreen() {
     });
     if (!ok) {
       setLoadedComments((prev) => prev.filter((c) => c.id !== newComment.id));
+      setComment(message);
       showError("Failed to post comment", "Please try again");
       return;
     }
 
+    setComment("");
+    setLoadedComments((prev) => prev.filter((c) => c.id !== tempCommentId));
     if (!isLocalId(confession.id)) {
       loadComments();
     }
