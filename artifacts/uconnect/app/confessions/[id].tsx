@@ -10,17 +10,17 @@ import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { useConfessions } from "@/context/ConfessionsContext";
 import { useSettings } from "@/context/SettingsContext";
+import { useToast } from "@/components/Toast";
 import { supabase } from "@/lib/supabase";
 import { formatRelativeTime } from "@/utils/time";
 import type { ConfessionComment } from "@/context/ConfessionsContext";
 
 const ND = Platform.OS !== "web";
 
-function isUUID(s: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
-}
-
 const LOCAL_ID_PREFIX = "local_";
+function isLocalId(value: unknown) {
+  return typeof value === "string" && value.startsWith(LOCAL_ID_PREFIX);
+}
 
 export default function ConfessionDetailScreen() {
   const colors = useColors();
@@ -29,6 +29,7 @@ export default function ConfessionDetailScreen() {
   const { confessions, voteConfession, addConfessionComment } = useConfessions();
   const { settings } = useSettings();
   const { user } = useAuth();
+  const { showError } = useToast();
   const [comment, setComment] = useState("");
   const [isAnon, setIsAnon] = useState(true);
   const [revealed, setRevealed] = useState(false);
@@ -44,7 +45,7 @@ export default function ConfessionDetailScreen() {
 
   const loadComments = useCallback(async () => {
     if (!confession) { setCommentsLoading(false); return; }
-    if (!isUUID(confession.id)) {
+    if (isLocalId(confession.id)) {
       setLoadedComments(confession.comments);
       setCommentsLoading(false);
       return;
@@ -91,7 +92,7 @@ export default function ConfessionDetailScreen() {
   }, [loadComments]);
 
   useEffect(() => {
-    if (!confession || !isUUID(confession.id)) return;
+    if (!confession || isLocalId(confession.id)) return;
     const channel = supabase
       .channel(`confession-comments-${confession.id}`)
       .on(
@@ -118,23 +119,37 @@ export default function ConfessionDetailScreen() {
 
   const isRevealed = settings.showSensitiveContent || revealed;
 
-  const handleSendComment = () => {
+  const handleSendComment = async () => {
     if (!comment.trim() || !user) return;
+    const message = comment.trim();
+    const tempCommentId = LOCAL_ID_PREFIX + Date.now();
     const newComment: ConfessionComment = {
-      id: LOCAL_ID_PREFIX + Date.now(),
+      id: tempCommentId,
       authorId: isAnon ? "anon" : user.id,
       isAnonymous: isAnon,
-      content: comment.trim(),
+      content: message,
       upvotes: 0,
       createdAt: new Date().toISOString(),
     };
     setLoadedComments((prev) => [...prev, newComment]);
-    addConfessionComment(confession.id, {
+
+    const ok = await addConfessionComment(confession.id, {
       authorId: isAnon ? "anon" : user.id,
       isAnonymous: isAnon,
-      content: comment.trim(),
+      content: message,
     });
+    if (!ok) {
+      setLoadedComments((prev) => prev.filter((c) => c.id !== newComment.id));
+      setComment(message);
+      showError("Failed to post comment", "Please try again");
+      return;
+    }
+
     setComment("");
+    setLoadedComments((prev) => prev.filter((c) => c.id !== tempCommentId));
+    if (!isLocalId(confession.id)) {
+      loadComments();
+    }
   };
 
   const displayComments = [

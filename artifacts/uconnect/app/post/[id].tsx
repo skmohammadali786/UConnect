@@ -12,15 +12,10 @@ import { useToast } from "@/components/Toast";
 import { supabase } from "@/lib/supabase";
 import type { Comment } from "@/context/PostsContext";
 
-function isUUID(s: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
-}
-
-function isServerGeneratedId(postId: string) {
-  return isUUID(postId);
-}
-
 const LOCAL_ID_PREFIX = "local_";
+function isLocalId(value: unknown) {
+  return typeof value === "string" && value.startsWith(LOCAL_ID_PREFIX);
+}
 
 function rowToComment(row: any): Comment {
   return {
@@ -67,7 +62,7 @@ export default function PostDetailScreen() {
 
   const loadComments = useCallback(async () => {
     if (!post) { setCommentsLoading(false); return; }
-    if (!isUUID(post.id)) {
+    if (isLocalId(post.id)) {
       setLoadedComments(post.comments);
       setCommentsLoading(false);
       return;
@@ -146,7 +141,7 @@ export default function PostDetailScreen() {
   }, [loadComments]);
 
   useEffect(() => {
-    if (!post || !isUUID(post.id)) return;
+    if (!post || isLocalId(post.id)) return;
     const channel = supabase
       .channel(`post-comments-${post.id}`)
       .on(
@@ -230,7 +225,7 @@ export default function PostDetailScreen() {
       return;
     }
 
-    if (isServerGeneratedId(post.id)) {
+    if (!isLocalId(post.id)) {
       loadComments();
     }
   };
