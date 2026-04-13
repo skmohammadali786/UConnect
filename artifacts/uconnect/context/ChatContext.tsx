@@ -148,16 +148,22 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         content,
       }).then(() => {});
       supabase.from("conversations").update({ last_message: content, last_message_at: newMessage.createdAt }).eq("id", conversationId).then(() => {});
-      if (conv?.participantId) {
-        supabase.from("notifications").insert({
-          user_id: conv.participantId,
-          type: "message",
-          title: `New message from @${user.username}`,
-          body: content.length > 80 ? `${content.slice(0, 80)}...` : content,
-          action_id: conversationId,
-          action_type: "chat",
-        }).then(() => {});
-      }
+        if (conv?.participantId) {
+          supabase.from("notifications").insert({
+            user_id: conv.participantId,
+            type: "message",
+            title: `New message from @${user.username}`,
+            body: content.length > 80 ? `${content.slice(0, 80)}...` : content,
+            action_id: conversationId,
+            action_type: "chat",
+            redirect_path: `/chat/${conversationId}`,
+            entity_type: "conversation",
+            entity_id: conversationId,
+            secondary_entity_type: "sender",
+            secondary_entity_id: senderId,
+            metadata: { source: "chat_message" },
+          }).then(() => {});
+        }
     }
   };
 

@@ -18,7 +18,7 @@ const COLLEGES = [
 export default function CollegeSelectScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { email } = useLocalSearchParams<{ email: string }>();
+  const { email, referralCode } = useLocalSearchParams<{ email: string; referralCode?: string }>();
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState("");
   const [customCollege, setCustomCollege] = useState("");
@@ -123,7 +123,7 @@ export default function CollegeSelectScreen() {
         )}
         <AppButton
           title="Continue"
-          onPress={() => router.push({ pathname: "/auth/username", params: { email, college: finalCollege } })}
+          onPress={() => router.push({ pathname: "/auth/username", params: { email, college: finalCollege, referralCode: referralCode || "" } })}
           disabled={!canContinue}
           fullWidth
           size="lg"

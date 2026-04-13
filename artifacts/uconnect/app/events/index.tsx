@@ -21,6 +21,11 @@ interface Event {
   createdAt: string;
 }
 
+interface RsvpState {
+  status: string;
+  reason: string | null;
+}
+
 function rowToEvent(r: any): Event {
   return {
     id: r.id,
@@ -35,9 +40,12 @@ function rowToEvent(r: any): Event {
   };
 }
 
-function EventCard({ item, index, rsvpIds, onRSVP, colors }: any) {
+function EventCard({ item, index, rsvpStates, onRSVP, colors }: any) {
   const anim = useRef(new Animated.Value(0)).current;
-  const isGoing = rsvpIds.has(item.id);
+  const rsvpState = rsvpStates[item.id] as RsvpState | undefined;
+  const status = rsvpState?.status;
+  const isGoing = status === "approved";
+  const isPending = status === "pending";
 
   useEffect(() => {
     Animated.timing(anim, { toValue: 1, duration: 300, delay: index * 65, useNativeDriver: true }).start();
@@ -58,6 +66,12 @@ function EventCard({ item, index, rsvpIds, onRSVP, colors }: any) {
             <View style={[styles.goingBadge, { backgroundColor: colors.primary + "20" }]}>
               <Feather name="check" size={10} color={colors.primary} />
               <Text style={[styles.goingText, { color: colors.primary }]}>Going</Text>
+            </View>
+          )}
+          {isPending && (
+            <View style={[styles.goingBadge, { backgroundColor: "#F59E0B20" }]}>
+              <Feather name="clock" size={10} color="#F59E0B" />
+              <Text style={[styles.goingText, { color: "#F59E0B" }]}>Pending</Text>
             </View>
           )}
         </View>
@@ -84,9 +98,10 @@ function EventCard({ item, index, rsvpIds, onRSVP, colors }: any) {
             onPress={(e) => { e.stopPropagation?.(); onRSVP(item.id); }}
             style={[styles.attendBtn, { backgroundColor: isGoing ? colors.primary : "transparent", borderColor: isGoing ? colors.primary : colors.border }]}
           >
-            <Text style={[styles.attendBtnText, { color: isGoing ? "#FFF" : colors.foreground }]}>{isGoing ? "Going" : "Attend"}</Text>
+            <Text style={[styles.attendBtnText, { color: isGoing ? "#FFF" : colors.foreground }]}>{status ? "Cancel" : "Attend"}</Text>
           </TouchableOpacity>
         </View>
+        {rsvpState?.reason ? <Text style={[styles.reasonText, { color: colors.mutedForeground }]}>Reason: {rsvpState.reason}</Text> : null}
       </TouchableOpacity>
     </Animated.View>
   );
@@ -98,7 +113,7 @@ export default function EventsScreen() {
   const { showSuccess } = useToast();
   const { user } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
-  const [rsvpIds, setRsvpIds] = useState<Set<string>>(new Set());
+  const [rsvpStates, setRsvpStates] = useState<Record<string, RsvpState>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const headerAnim = useRef(new Animated.Value(0)).current;
@@ -129,9 +144,18 @@ export default function EventsScreen() {
     try {
       const { data } = await supabase
         .from("event_rsvps")
-        .select("event_id")
+        .select("event_id,status,decision_reason")
         .eq("user_id", user.id);
-      if (data) setRsvpIds(new Set(data.map((r: any) => r.event_id)));
+      if (data) {
+        const next: Record<string, RsvpState> = {};
+        for (const row of data as any[]) {
+          next[row.event_id] = {
+            status: row.status ?? "approved",
+            reason: row.decision_reason ?? null,
+          };
+        }
+        setRsvpStates(next);
+      }
     } catch {}
   }, [user?.id]);
 
@@ -146,18 +170,19 @@ export default function EventsScreen() {
 
   const handleRSVP = async (id: string) => {
     if (!user) return;
-    const already = rsvpIds.has(id);
-    const updated = new Set(rsvpIds);
-    if (already) { updated.delete(id); } else { updated.add(id); }
-    setRsvpIds(updated);
+    const existing = rsvpStates[id];
+    const updated = { ...rsvpStates };
 
-    if (already) {
+    if (existing) {
       await supabase.rpc("unrsvp_event", { p_user_id: user.id, p_event_id: id });
+      delete updated[id];
     } else {
-      await supabase.rpc("rsvp_event", { p_user_id: user.id, p_event_id: id });
+      await supabase.rpc("rsvp_event", { p_user_id: user.id, p_event_id: id, p_request_note: "" });
       const event = events.find((e) => e.id === id);
       showSuccess("RSVP confirmed!", event?.title);
+      updated[id] = { status: "pending", reason: null };
     }
+    setRsvpStates(updated);
   };
 
   return (
@@ -168,7 +193,11 @@ export default function EventsScreen() {
         </TouchableOpacity>
         <View>
           <TypewriterText text="Events" style={[styles.title, { color: colors.foreground }]} delay={300} speed={70} />
-          {rsvpIds.size > 0 && <Text style={[styles.subtitle, { color: colors.primary }]}>{rsvpIds.size} attending</Text>}
+          {Object.values(rsvpStates).filter((r) => r.status === "approved").length > 0 && (
+            <Text style={[styles.subtitle, { color: colors.primary }]}>
+              {Object.values(rsvpStates).filter((r) => r.status === "approved").length} attending
+            </Text>
+          )}
         </View>
         <TouchableOpacity onPress={() => router.push("/events/create")}>
           <Feather name="plus" size={22} color={colors.primary} />
@@ -184,7 +213,7 @@ export default function EventsScreen() {
           data={events}
           keyExtractor={(item) => item.id}
           renderItem={({ item, index }) => (
-            <EventCard item={item} index={index} rsvpIds={rsvpIds} onRSVP={handleRSVP} colors={colors} />
+            <EventCard item={item} index={index} rsvpStates={rsvpStates} onRSVP={handleRSVP} colors={colors} />
           )}
           ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 80 }}
@@ -228,6 +257,7 @@ const styles = StyleSheet.create({
   attendeeText: { fontSize: 13, fontFamily: "Inter_400Regular" },
   attendBtn: { paddingHorizontal: 16, paddingVertical: 7, borderRadius: 8, borderWidth: 1 },
   attendBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  reasonText: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
   empty: { alignItems: "center", paddingTop: 60, gap: 8 },
   emptyTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
   emptyText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", paddingHorizontal: 24 },

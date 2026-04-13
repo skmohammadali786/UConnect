@@ -26,7 +26,7 @@ const INTERESTS = [
 export default function InterestsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { email, college, username, displayName, branch, year, bio } = useLocalSearchParams<Record<string, string>>();
+  const { email, college, username, displayName, branch, year, bio, referralCode } = useLocalSearchParams<Record<string, string>>();
   const [selected, setSelected] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const { setUserData } = useAuth();
@@ -80,6 +80,14 @@ export default function InterestsScreen() {
         compact_mode: false,
         updated_at: now,
       });
+
+      const code = (referralCode || "").trim().toUpperCase();
+      if (code) {
+        await supabase.rpc("claim_referral", {
+          p_invite_code: code,
+          p_referred_user_id: userId,
+        }).then(() => {});
+      }
 
       await setUserData({
         id: userId,

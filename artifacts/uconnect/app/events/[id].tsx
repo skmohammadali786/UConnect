@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppButton } from "@/components/AppButton";
 import { useColors } from "@/hooks/useColors";
@@ -16,7 +16,19 @@ interface EventDetail {
   date: string;
   location: string;
   organizer: string;
+  organizerId: string;
+  requiresApproval: boolean;
   rsvpCount: number;
+}
+
+interface AttendeeRequest {
+  userId: string;
+  status: string;
+  requestNote: string;
+  decisionReason: string | null;
+  name: string;
+  username: string;
+  college: string;
 }
 
 export default function EventDetailScreen() {
@@ -27,8 +39,11 @@ export default function EventDetailScreen() {
   const { showSuccess } = useToast();
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [eventLoading, setEventLoading] = useState(true);
-  const [isAttending, setIsAttending] = useState(false);
+  const [rsvpStatus, setRsvpStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [attendees, setAttendees] = useState<AttendeeRequest[]>([]);
+  const [reasonDrafts, setReasonDrafts] = useState<Record<string, string>>({});
+  const [actioningUserId, setActioningUserId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) {
@@ -50,6 +65,8 @@ export default function EventDetailScreen() {
             date: data.date,
             location: data.location,
             organizer: data.organizer,
+            organizerId: data.organizer_id,
+            requiresApproval: !!data.requires_approval,
             rsvpCount: data.rsvp_count ?? 0,
           });
         } else {
@@ -68,25 +85,67 @@ export default function EventDetailScreen() {
       try {
         const { data } = await supabase
           .from("event_rsvps")
-          .select("event_id")
+          .select("status")
           .eq("user_id", user.id)
           .eq("event_id", id)
           .maybeSingle();
-        setIsAttending(!!data);
+        setRsvpStatus(data?.status ?? null);
       } catch {}
     })();
   }, [user?.id, id]);
 
+  const isHost = !!user && event?.organizerId === user.id;
+
+  const loadAttendees = async () => {
+    if (!id || !isHost) {
+      setAttendees([]);
+      return;
+    }
+    const { data } = await supabase
+      .from("event_rsvps")
+      .select("user_id,status,request_note,decision_reason")
+      .eq("event_id", id)
+      .order("created_at", { ascending: false });
+    const rows = (data ?? []) as any[];
+    if (rows.length === 0) {
+      setAttendees([]);
+      return;
+    }
+    const userIds = Array.from(new Set(rows.map((r) => r.user_id)));
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id,display_name,username,college")
+      .in("id", userIds);
+    const byId = new Map((profiles ?? []).map((p: any) => [p.id, p]));
+    setAttendees(rows.map((r) => {
+      const p = byId.get(r.user_id);
+      return {
+        userId: r.user_id,
+        status: r.status ?? "pending",
+        requestNote: r.request_note ?? "",
+        decisionReason: r.decision_reason ?? null,
+        name: p?.display_name || p?.username || "Student",
+        username: p?.username || "student",
+        college: p?.college || "",
+      };
+    }));
+  };
+
+  useEffect(() => {
+    loadAttendees();
+  }, [id, isHost]);
+
   const handleRSVP = async () => {
     if (!event || !id || loading) return;
-    const newVal = !isAttending;
-    setIsAttending(newVal);
+    const hasRsvp = !!rsvpStatus;
+    const nextStatus = hasRsvp ? null : event.requiresApproval ? "pending" : "approved";
+    setRsvpStatus(nextStatus);
     if (user) {
       setLoading(true);
       try {
-        if (newVal) {
-          await supabase.rpc("rsvp_event", { p_user_id: user.id, p_event_id: id });
-          showSuccess("RSVP confirmed!", event?.title);
+        if (!hasRsvp) {
+          await supabase.rpc("rsvp_event", { p_user_id: user.id, p_event_id: id, p_request_note: "" });
+          showSuccess(event.requiresApproval ? "Request sent!" : "RSVP confirmed!", event?.title);
         } else {
           await supabase.rpc("unrsvp_event", { p_user_id: user.id, p_event_id: id });
           showSuccess("RSVP cancelled");
@@ -94,8 +153,26 @@ export default function EventDetailScreen() {
       } catch {}
       setLoading(false);
     } else {
-      if (newVal) showSuccess("RSVP confirmed!", event?.title);
+      if (!hasRsvp) showSuccess("RSVP confirmed!", event?.title);
     }
+  };
+
+  const handleHostDecision = async (targetUserId: string, decision: "approved" | "rejected") => {
+    if (!id) return;
+    setActioningUserId(targetUserId);
+    const reason = reasonDrafts[targetUserId]?.trim() || null;
+    await supabase.rpc("review_event_attendee", {
+      p_event_id: id,
+      p_user_id: targetUserId,
+      p_decision: decision,
+      p_reason: reason,
+    });
+    setAttendees((prev) =>
+      prev.map((a) =>
+        a.userId === targetUserId ? { ...a, status: decision, decisionReason: reason } : a,
+      ),
+    );
+    setActioningUserId(null);
   };
 
   if (eventLoading) {
@@ -145,16 +222,18 @@ export default function EventDetailScreen() {
         </TouchableOpacity>
       </View>
       <ScrollView contentContainerStyle={{ padding: 20, gap: 20, paddingBottom: 100 }}>
-        <View style={[styles.heroCard, { backgroundColor: colors.card, borderColor: isAttending ? colors.primary + "50" : colors.border }]}>
+        <View style={[styles.heroCard, { backgroundColor: colors.card, borderColor: rsvpStatus ? colors.primary + "50" : colors.border }]}>
           <View style={[styles.eventIcon, { backgroundColor: colors.primary + "15" }]}>
             <Feather name="calendar" size={40} color={colors.primary} />
           </View>
           <Text style={[styles.eventTitle, { color: colors.foreground }]}>{event.title}</Text>
           <Text style={[styles.organizer, { color: colors.mutedForeground }]}>by {event.organizer}</Text>
-          {isAttending && (
+          {rsvpStatus && (
             <View style={[styles.goingBadge, { backgroundColor: colors.primary + "15" }]}>
-              <Feather name="check-circle" size={14} color={colors.primary} />
-              <Text style={[styles.goingText, { color: colors.primary }]}>You're going!</Text>
+              <Feather name={rsvpStatus === "pending" ? "clock" : rsvpStatus === "approved" ? "check-circle" : "x-circle"} size={14} color={rsvpStatus === "rejected" ? "#EF4444" : colors.primary} />
+              <Text style={[styles.goingText, { color: rsvpStatus === "rejected" ? "#EF4444" : colors.primary }]}>
+                {rsvpStatus === "pending" ? "Pending approval" : rsvpStatus === "approved" ? "You're going!" : "Request rejected"}
+              </Text>
             </View>
           )}
         </View>
@@ -162,7 +241,7 @@ export default function EventDetailScreen() {
             {[
               { icon: "calendar", label: "Date", value: event.date },
               { icon: "map-pin", label: "Location", value: event.location },
-              { icon: "users", label: "Attendees", value: `${event.rsvpCount + (isAttending ? 1 : 0)} going` },
+              { icon: "users", label: "Attendees", value: `${event.rsvpCount + (rsvpStatus === "approved" ? 1 : 0)} going` },
             ].map((item) => (
               <View key={item.label} style={[styles.infoRow, { borderBottomColor: colors.border }]}>
               <View style={[styles.infoIcon, { backgroundColor: colors.primary + "15" }]}>
@@ -179,15 +258,54 @@ export default function EventDetailScreen() {
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>About</Text>
           <Text style={[styles.desc, { color: colors.foreground }]}>{event.description}</Text>
         </View>
+        {isHost ? (
+          <View style={styles.hostSection}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Attendee Requests</Text>
+            {attendees.length === 0 ? (
+              <Text style={[styles.desc, { color: colors.mutedForeground }]}>No attendee requests yet.</Text>
+            ) : attendees.map((a) => (
+              <View key={a.userId} style={[styles.attendeeCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View style={styles.attendeeHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.attendeeName, { color: colors.foreground }]}>{a.name}</Text>
+                    <Text style={[styles.attendeeMeta, { color: colors.mutedForeground }]}>@{a.username}{a.college ? ` • ${a.college}` : ""}</Text>
+                  </View>
+                  <View style={[styles.attendeeStatus, { backgroundColor: a.status === "rejected" ? "#EF444414" : a.status === "approved" ? "#00A86B14" : "#F59E0B14" }]}>
+                    <Text style={[styles.attendeeStatusText, { color: a.status === "rejected" ? "#EF4444" : a.status === "approved" ? "#00A86B" : "#F59E0B" }]}>{a.status}</Text>
+                  </View>
+                </View>
+                {a.requestNote ? <Text style={[styles.attendeeNote, { color: colors.foreground }]}>{a.requestNote}</Text> : null}
+                {a.decisionReason ? <Text style={[styles.attendeeReason, { color: colors.mutedForeground }]}>Reason: {a.decisionReason}</Text> : null}
+                <TextInput
+                  placeholder="Optional decision reason"
+                  placeholderTextColor={colors.placeholder}
+                  style={[styles.reasonInput, { color: colors.foreground, backgroundColor: colors.input, borderColor: colors.border }]}
+                  value={reasonDrafts[a.userId] ?? ""}
+                  onChangeText={(t) => setReasonDrafts((prev) => ({ ...prev, [a.userId]: t }))}
+                />
+                <View style={styles.attendeeActions}>
+                  <TouchableOpacity disabled={actioningUserId === a.userId} onPress={() => handleHostDecision(a.userId, "approved")} style={[styles.attendeeApprove, { backgroundColor: "#00A86B18", borderColor: "#00A86B55" }]}>
+                    <Text style={[styles.attendeeActionText, { color: "#00A86B" }]}>Approve</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity disabled={actioningUserId === a.userId} onPress={() => handleHostDecision(a.userId, "rejected")} style={[styles.attendeeReject, { backgroundColor: "#EF444418", borderColor: "#EF444455" }]}>
+                    <Text style={[styles.attendeeActionText, { color: "#EF4444" }]}>Reject</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </View>
+        ) : null}
       </ScrollView>
       <View style={[styles.bottomBar, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 8 }]}>
-        <AppButton
-          title={isAttending ? "Cancel RSVP" : "RSVP — I'm Going!"}
-          onPress={handleRSVP}
-          variant={isAttending ? "outline" : "primary"}
-          fullWidth
-          size="lg"
-        />
+        {!isHost ? (
+          <AppButton
+            title={rsvpStatus ? "Cancel RSVP" : event.requiresApproval ? "Request to Attend" : "RSVP — I'm Going!"}
+            onPress={handleRSVP}
+            variant={rsvpStatus ? "outline" : "primary"}
+            fullWidth
+            size="lg"
+          />
+        ) : null}
       </View>
     </View>
   );
@@ -213,4 +331,18 @@ const styles = StyleSheet.create({
   highlight: { flexDirection: "row", alignItems: "flex-start", gap: 10, marginBottom: 8 },
   highlightText: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 20, flex: 1 },
   bottomBar: { position: "absolute", bottom: 0, left: 0, right: 0, padding: 16, borderTopWidth: 1 },
+  hostSection: { gap: 10 },
+  attendeeCard: { borderRadius: 12, borderWidth: 1, padding: 12, gap: 10 },
+  attendeeHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
+  attendeeName: { fontSize: 14, fontFamily: "Inter_700Bold" },
+  attendeeMeta: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
+  attendeeStatus: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  attendeeStatusText: { fontSize: 11, textTransform: "capitalize", fontFamily: "Inter_600SemiBold" },
+  attendeeNote: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  attendeeReason: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  reasonInput: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, fontFamily: "Inter_400Regular" },
+  attendeeActions: { flexDirection: "row", gap: 8 },
+  attendeeApprove: { flex: 1, borderWidth: 1, borderRadius: 10, paddingVertical: 10, alignItems: "center", justifyContent: "center" },
+  attendeeReject: { flex: 1, borderWidth: 1, borderRadius: 10, paddingVertical: 10, alignItems: "center", justifyContent: "center" },
+  attendeeActionText: { fontSize: 13, fontFamily: "Inter_700Bold" },
 });

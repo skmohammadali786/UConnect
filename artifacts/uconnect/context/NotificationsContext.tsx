@@ -3,6 +3,23 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 
 export type NotificationType = "reply" | "mention" | "upvote" | "follow" | "message" | "event" | "system";
+export type NotificationActionType =
+  | "post"
+  | "profile"
+  | "chat"
+  | "internship"
+  | "internship_application"
+  | "internship_application_status"
+  | "event"
+  | "event_attendee_request"
+  | "event_attendee_status"
+  | "team"
+  | "team_request"
+  | "team_request_status"
+  | "confession"
+  | "note"
+  | "invite"
+  | "system";
 
 export interface Notification {
   id: string;
@@ -12,7 +29,13 @@ export interface Notification {
   isRead: boolean;
   createdAt: string;
   actionId?: string;
-  actionType?: "post" | "profile" | "chat";
+  actionType?: NotificationActionType;
+  redirectPath?: string;
+  entityType?: string;
+  entityId?: string;
+  secondaryEntityType?: string;
+  secondaryEntityId?: string;
+  metadata?: Record<string, any>;
 }
 
 interface NotificationsContextType {
@@ -52,6 +75,12 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
         createdAt: row.created_at,
         actionId: row.action_id ?? undefined,
         actionType: row.action_type ?? undefined,
+        redirectPath: row.redirect_path ?? undefined,
+        entityType: row.entity_type ?? undefined,
+        entityId: row.entity_id ?? undefined,
+        secondaryEntityType: row.secondary_entity_type ?? undefined,
+        secondaryEntityId: row.secondary_entity_id ?? undefined,
+        metadata: row.metadata ?? undefined,
       })));
     } catch {
       setNotifications([]);
@@ -111,6 +140,12 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
         body: n.body,
         action_id: n.actionId ?? null,
         action_type: n.actionType ?? null,
+        redirect_path: n.redirectPath ?? null,
+        entity_type: n.entityType ?? null,
+        entity_id: n.entityId ?? null,
+        secondary_entity_type: n.secondaryEntityType ?? null,
+        secondary_entity_id: n.secondaryEntityId ?? null,
+        metadata: n.metadata ?? {},
       }).then(() => {});
     }
   };

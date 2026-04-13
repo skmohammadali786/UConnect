@@ -25,6 +25,7 @@ export default function InviteScreen() {
   const [inviteCode, setInviteCode] = useState("");
   const [invitedCount, setInvitedCount] = useState(0);
   const [joinedCount, setJoinedCount] = useState(0);
+  const [recentReferrals, setRecentReferrals] = useState<Array<{ id: string; status: string; created_at: string }>>([]);
 
   const fallbackCode = useMemo(() => {
     const seed = `${user?.id ?? "guest"}-${user?.username ?? "uconnect"}`.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
@@ -44,11 +45,18 @@ export default function InviteScreen() {
         setInviteCode(data.code);
         setInvitedCount(data.total_shares ?? 0);
         setJoinedCount(data.total_joins ?? 0);
-        return;
+      } else {
+        const code = fallbackCode;
+        setInviteCode(code);
+        await supabase.from("invite_codes").upsert({ user_id: user.id, code, total_shares: 0, total_joins: 0, updated_at: new Date().toISOString() }).then(() => {});
       }
-      const code = fallbackCode;
-      setInviteCode(code);
-      await supabase.from("invite_codes").upsert({ user_id: user.id, code, total_shares: 0, total_joins: 0, updated_at: new Date().toISOString() }).then(() => {});
+      const { data: refs } = await supabase
+        .from("referral_attributions")
+        .select("id,status,created_at")
+        .eq("referrer_user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(5);
+      setRecentReferrals((refs ?? []) as any);
     })();
   }, [user?.id, fallbackCode]);
 
@@ -148,6 +156,21 @@ export default function InviteScreen() {
             <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Joined</Text>
           </View>
         </View>
+        {recentReferrals.length > 0 ? (
+          <View style={[styles.referralsCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.referralsTitle, { color: colors.foreground }]}>Recent referrals</Text>
+            {recentReferrals.map((r) => (
+              <View key={r.id} style={styles.referralRow}>
+                <Text style={[styles.referralStatus, { color: colors.foreground }]}>
+                  {r.status.replace("_", " ")}
+                </Text>
+                <Text style={[styles.referralDate, { color: colors.mutedForeground }]}>
+                  {new Date(r.created_at).toLocaleDateString()}
+                </Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
       </ScrollView>
     </View>
   );
@@ -175,4 +198,9 @@ const styles = StyleSheet.create({
   statNum: { fontSize: 24, fontFamily: "Inter_700Bold" },
   statLabel: { fontSize: 13, fontFamily: "Inter_400Regular" },
   statDivider: { width: 1, height: 40, alignSelf: "center" },
+  referralsCard: { borderWidth: 1, borderRadius: 12, padding: 14, gap: 8 },
+  referralsTitle: { fontSize: 14, fontFamily: "Inter_700Bold" },
+  referralRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  referralStatus: { fontSize: 13, fontFamily: "Inter_500Medium", textTransform: "capitalize" },
+  referralDate: { fontSize: 12, fontFamily: "Inter_400Regular" },
 });

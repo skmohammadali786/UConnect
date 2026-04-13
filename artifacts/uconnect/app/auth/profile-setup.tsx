@@ -77,11 +77,12 @@ const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "Post
 export default function ProfileSetupScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { email, college, username } = useLocalSearchParams<{ email: string; college: string; username: string }>();
+  const { email, college, username, referralCode: incomingReferralCode } = useLocalSearchParams<{ email: string; college: string; username: string; referralCode?: string }>();
   const [displayName, setDisplayName] = useState("");
   const [branch, setBranch] = useState("");
   const [year, setYear] = useState("");
   const [bio, setBio] = useState("");
+  const [referralCode, setReferralCode] = useState((incomingReferralCode || "").toUpperCase());
   const [showBranchPicker, setShowBranchPicker] = useState(false);
   const [showYearPicker, setShowYearPicker] = useState(false);
 
@@ -137,10 +138,19 @@ export default function ProfileSetupScreen() {
         </View>
 
         <AppInput label="Bio (optional)" placeholder="Tell your college what you're about..." value={bio} onChangeText={setBio} multiline numberOfLines={3} style={{ height: 80, textAlignVertical: "top", paddingTop: 12 }} />
+        <AppInput
+          label="Referral code (optional)"
+          placeholder="UCON-XXXXXX-XXXX"
+          value={referralCode}
+          onChangeText={(t) => setReferralCode(t.toUpperCase())}
+          autoCapitalize="characters"
+          autoCorrect={false}
+          leftIcon="gift"
+        />
 
         <AppButton
           title="Continue"
-          onPress={() => router.push({ pathname: "/auth/interests", params: { email, college, username, displayName, branch, year, bio } })}
+          onPress={() => router.push({ pathname: "/auth/interests", params: { email, college, username, displayName, branch, year, bio, referralCode: referralCode.trim() } })}
           disabled={!displayName.trim() || !branch || !year}
           fullWidth
           size="lg"

@@ -11,9 +11,10 @@ import { useAuth } from "@/context/AuthContext";
 export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { flow } = useLocalSearchParams<{ flow: string }>();
+  const { flow, ref, referralCode } = useLocalSearchParams<{ flow: string; ref?: string; referralCode?: string }>();
   const { signIn, signUp } = useAuth();
   const isSignIn = flow === "signin";
+  const incomingReferralCode = (referralCode || ref || "").trim().toUpperCase();
 
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -58,7 +59,7 @@ export default function LoginScreen() {
     }
 
     if (isNewUser) {
-      router.replace({ pathname: "/auth/college-select", params: { email: email.trim() } });
+      router.replace({ pathname: "/auth/college-select", params: { email: email.trim(), referralCode: incomingReferralCode } });
     } else {
       router.replace("/(tabs)/");
     }
@@ -85,7 +86,7 @@ export default function LoginScreen() {
       return;
     }
 
-    router.replace({ pathname: "/auth/college-select", params: { email: email.trim() } });
+    router.replace({ pathname: "/auth/college-select", params: { email: email.trim(), referralCode: incomingReferralCode } });
   };
 
   return (
