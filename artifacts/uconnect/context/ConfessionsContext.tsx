@@ -26,7 +26,7 @@ interface ConfessionsContextType {
   confessions: Confession[];
   addConfession: (content: string, sensitive?: boolean) => Promise<void>;
   voteConfession: (id: string, vote: "up" | "down") => void;
-  addConfessionComment: (confessionId: string, comment: Omit<ConfessionComment, "id" | "createdAt" | "upvotes">) => void;
+  addConfessionComment: (confessionId: string, comment: Omit<ConfessionComment, "id" | "createdAt" | "upvotes">) => Promise<boolean>;
 }
 
 const ConfessionsContext = createContext<ConfessionsContextType | undefined>(undefined);
@@ -103,21 +103,51 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
     }
   }, [user]);
 
-  const addConfessionComment = useCallback((confessionId: string, comment: Omit<ConfessionComment, "id" | "createdAt" | "upvotes">) => {
+  const addConfessionComment = useCallback(async (confessionId: string, comment: Omit<ConfessionComment, "id" | "createdAt" | "upvotes">) => {
     const newComment: ConfessionComment = { ...comment, id: "local_" + Date.now(), upvotes: 0, createdAt: new Date().toISOString() };
     setConfessions((prev) => prev.map((c) => {
       if (c.id !== confessionId) return c;
       return { ...c, commentCount: c.commentCount + 1, comments: [...c.comments, newComment] };
     }));
-    if (user) {
-      supabase.from("confession_comments").insert({
-        confession_id: confessionId,
-        author_id: user.id,
-        is_anonymous: comment.isAnonymous,
-        content: comment.content,
-      }).then(() => {});
-      supabase.rpc("increment_confession_comment_count", { p_confession_id: confessionId }).then(() => {});
+    if (!user) return false;
+
+    const { data, error } = await supabase.from("confession_comments").insert({
+      confession_id: confessionId,
+      author_id: user.id,
+      is_anonymous: comment.isAnonymous,
+      content: comment.content,
+    }).select("*").single();
+
+    if (error || !data) {
+      setConfessions((prev) => prev.map((c) => {
+        if (c.id !== confessionId) return c;
+        return {
+          ...c,
+          commentCount: Math.max(0, c.commentCount - 1),
+          comments: c.comments.filter((cm) => cm.id !== newComment.id),
+        };
+      }));
+      return false;
     }
+
+    const persistedComment: ConfessionComment = {
+      id: data.id,
+      authorId: data.is_anonymous ? "anon" : data.author_id,
+      isAnonymous: data.is_anonymous,
+      content: data.content,
+      upvotes: data.upvotes ?? 0,
+      createdAt: data.created_at,
+    };
+    setConfessions((prev) => prev.map((c) => {
+      if (c.id !== confessionId) return c;
+      return {
+        ...c,
+        comments: c.comments.map((cm) => (cm.id === newComment.id ? persistedComment : cm)),
+      };
+    }));
+
+    supabase.rpc("increment_confession_comment_count", { p_confession_id: confessionId }).then(() => {});
+    return true;
   }, [user]);
 
   return (

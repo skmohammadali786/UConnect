@@ -58,6 +58,7 @@ export default function CreatePostScreen() {
   const [content, setContent] = useState("");
   const [tag, setTag] = useState<PostTag>("General");
   const [isAnonymous, setIsAnonymous] = useState(settings.defaultAnonymous);
+  const [anonymousTouched, setAnonymousTouched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showDrafts, setShowDrafts] = useState(false);
   const [showAutoDelete, setShowAutoDelete] = useState(false);
@@ -75,6 +76,12 @@ export default function CreatePostScreen() {
       Animated.timing(headerAnim, { toValue: 1, duration: 280, useNativeDriver: ND }),
     ]).start();
   }, []);
+
+  useEffect(() => {
+    if (!anonymousTouched) {
+      setIsAnonymous(settings.defaultAnonymous);
+    }
+  }, [settings.defaultAnonymous, anonymousTouched]);
 
   useEffect(() => {
     Animated.spring(draftsAnim, { toValue: showDrafts ? 1 : 0, tension: 120, friction: 14, useNativeDriver: ND }).start();
@@ -221,7 +228,7 @@ export default function CreatePostScreen() {
             </View>
             <View style={styles.toggleRow}>
               <Text style={[styles.anonLabel, { color: colors.mutedForeground }]}>Anon</Text>
-              <Switch value={isAnonymous} onValueChange={setIsAnonymous} trackColor={{ false: colors.border, true: colors.primary }} thumbColor="#FFF" ios_backgroundColor={colors.border} />
+              <Switch value={isAnonymous} onValueChange={(value) => { setAnonymousTouched(true); setIsAnonymous(value); }} trackColor={{ false: colors.border, true: colors.primary }} thumbColor="#FFF" ios_backgroundColor={colors.border} />
             </View>
           </View>
 

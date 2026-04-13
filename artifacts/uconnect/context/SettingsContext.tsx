@@ -24,12 +24,16 @@ const DEFAULT_SETTINGS: Settings = {
 };
 
 const STORAGE_KEY = "@uconnect_settings";
+function getStorageKey(userId?: string) {
+  return userId ? `${STORAGE_KEY}:${userId}` : `${STORAGE_KEY}:guest`;
+}
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
+  const storageKey = getStorageKey(user?.id);
 
   useEffect(() => {
     (async () => {
@@ -42,38 +46,43 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
             .eq("user_id", user.id)
             .maybeSingle();
           if (data) {
-            setSettings({
+            const remoteSettings = {
               pushNotifications: data.push_notifications,
               defaultAnonymous: data.default_anonymous,
               showSensitiveContent: data.show_sensitive_content,
               compactMode: data.compact_mode,
-            });
+            };
+            setSettings(remoteSettings);
+            await AsyncStorage.setItem(storageKey, JSON.stringify(remoteSettings)).catch(() => {});
             setIsLoading(false);
             return;
           }
         }
         // Fallback to local
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
+        const raw = await AsyncStorage.getItem(storageKey);
         if (raw) setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(raw) });
       } catch {}
       setIsLoading(false);
     })();
-  }, [user?.id]);
+  }, [user?.id, storageKey]);
 
   const updateSetting = async <K extends keyof Settings>(key: K, value: Settings[K]) => {
     const updated = { ...settings, [key]: value };
     setSettings(updated);
     // Always persist locally as backup
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated)).catch(() => {});
+    await AsyncStorage.setItem(storageKey, JSON.stringify(updated)).catch(() => {});
     if (user) {
-      await supabase.from("user_settings").upsert({
-        user_id: user.id,
-        push_notifications: updated.pushNotifications,
-        default_anonymous: updated.defaultAnonymous,
-        show_sensitive_content: updated.showSensitiveContent,
-        compact_mode: updated.compactMode,
-        updated_at: new Date().toISOString(),
-      });
+      await supabase.from("user_settings").upsert(
+        {
+          user_id: user.id,
+          push_notifications: updated.pushNotifications,
+          default_anonymous: updated.defaultAnonymous,
+          show_sensitive_content: updated.showSensitiveContent,
+          compact_mode: updated.compactMode,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id" },
+      );
     }
   };
 
