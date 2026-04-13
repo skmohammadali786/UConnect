@@ -16,6 +16,8 @@ function isUUID(s: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
 }
 
+const LOCAL_ID_PREFIX = "local_";
+
 function rowToComment(row: any): Comment {
   return {
     id: row.id,
@@ -94,8 +96,8 @@ export default function PostDetailScreen() {
         replies: replyMap.get(c.id) ?? [],
       }));
       setLoadedComments((prev) => {
-        const prevTopLevelLocal = prev.filter((c) => c.id.startsWith("local_") && !c.parentId);
-        const prevReplyLocal = prev.flatMap((c) => c.replies.filter((r) => r.id.startsWith("local_")));
+        const prevTopLevelLocal = prev.filter((c) => c.id.startsWith(LOCAL_ID_PREFIX) && !c.parentId);
+        const prevReplyLocal = prev.flatMap((c) => c.replies.filter((r) => r.id.startsWith(LOCAL_ID_PREFIX)));
         const remoteReplies = withReplies.flatMap((c) => c.replies);
         const merged = [...withReplies];
 
@@ -160,7 +162,7 @@ export default function PostDetailScreen() {
 
   const handleSendComment = () => {
     if (!comment.trim() || !user) return;
-    const tempId = "local_" + Date.now();
+    const tempId = LOCAL_ID_PREFIX + Date.now();
     newLocalIds.current.add(tempId);
     const newComment: Comment = {
       id: tempId,

@@ -20,6 +20,8 @@ function isUUID(s: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
 }
 
+const LOCAL_ID_PREFIX = "local_";
+
 export default function ConfessionDetailScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -65,7 +67,7 @@ export default function ConfessionDetailScreen() {
         }));
         setLoadedComments((prev) => {
           const pendingLocal = prev.filter((c) =>
-            c.id.startsWith("local_")
+            c.id.startsWith(LOCAL_ID_PREFIX)
             && !remoteComments.some((r) =>
               r.authorId === c.authorId
               && r.isAnonymous === c.isAnonymous
@@ -119,7 +121,7 @@ export default function ConfessionDetailScreen() {
   const handleSendComment = () => {
     if (!comment.trim() || !user) return;
     const newComment: ConfessionComment = {
-      id: "local_" + Date.now(),
+      id: LOCAL_ID_PREFIX + Date.now(),
       authorId: isAnon ? "anon" : user.id,
       isAnonymous: isAnon,
       content: comment.trim(),
@@ -136,8 +138,8 @@ export default function ConfessionDetailScreen() {
   };
 
   const displayComments = [
-    ...loadedComments.filter((c) => !c.id.startsWith("local_")),
-    ...loadedComments.filter((c) => c.id.startsWith("local_")),
+    ...loadedComments.filter((c) => !c.id.startsWith(LOCAL_ID_PREFIX)),
+    ...loadedComments.filter((c) => c.id.startsWith(LOCAL_ID_PREFIX)),
   ];
 
   return (
