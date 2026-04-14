@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useEffect, useRef } from "react";
-import { Animated, Easing, FlatList, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Animated, Easing, FlatList, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useChat } from "@/context/ChatContext";
@@ -45,9 +45,17 @@ export default function ChatListScreen() {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <TouchableOpacity onPress={() => router.push({ pathname: "/chat/[id]" as any, params: { id: item.id } })} style={[styles.convItem, { borderBottomColor: colors.separator }]}>
-            <View style={[styles.avatar, { backgroundColor: item.isAnonymous && !item.isRevealed ? colors.muted : colors.primary + "20" }]}>
-              <Feather name={item.isAnonymous && !item.isRevealed ? "user-x" : "user"} size={20} color={item.isAnonymous && !item.isRevealed ? colors.mutedForeground : colors.primary} />
-            </View>
+            {item.isAnonymous && !item.isRevealed ? (
+              <View style={[styles.avatar, { backgroundColor: colors.muted }]}>
+                <Feather name="user-x" size={20} color={colors.mutedForeground} />
+              </View>
+            ) : item.participantAvatar ? (
+              <Image source={{ uri: item.participantAvatar }} style={styles.avatarImage} />
+            ) : (
+              <View style={[styles.avatar, { backgroundColor: colors.primary + "20" }]}>
+                <Feather name="user" size={20} color={colors.primary} />
+              </View>
+            )}
             <View style={styles.convInfo}>
               <View style={styles.convHeader}>
                 <Text style={[styles.convName, { color: colors.foreground }]}>
@@ -84,6 +92,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 18, fontFamily: "Inter_700Bold" },
   convItem: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14, gap: 12, borderBottomWidth: 1 },
   avatar: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  avatarImage: { width: 48, height: 48, borderRadius: 24, flexShrink: 0 },
   convInfo: { flex: 1 },
   convHeader: { flexDirection: "row", justifyContent: "space-between", marginBottom: 3 },
   convName: { fontSize: 15, fontFamily: "Inter_600SemiBold" },

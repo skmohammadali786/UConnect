@@ -167,6 +167,7 @@ create table if not exists confessions (
   college text not null default 'All',
   content text not null,
   upvotes int not null default 0,
+  downvotes int not null default 0,
   comment_count int not null default 0,
   has_sensitive_content boolean not null default false,
   created_at timestamptz not null default now()
@@ -196,11 +197,24 @@ create table if not exists confession_comments (
   is_anonymous boolean not null default true,
   content text not null,
   upvotes int not null default 0,
+  downvotes int not null default 0,
   created_at timestamptz not null default now()
 );
 alter table confession_comments enable row level security;
 create policy "Confession comments viewable" on confession_comments for select using (true);
 create policy "Authenticated users can comment on confessions" on confession_comments for insert with check (auth.uid() = author_id);
+
+create table if not exists confession_comment_votes (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid not null references profiles(id) on delete cascade,
+  comment_id uuid not null references confession_comments(id) on delete cascade,
+  vote text not null check (vote in ('up', 'down')),
+  created_at timestamptz not null default now(),
+  unique(user_id, comment_id)
+);
+alter table confession_comment_votes enable row level security;
+create policy "Users can manage own confession comment votes" on confession_comment_votes for all using (auth.uid() = user_id);
+create policy "Confession comment votes viewable" on confession_comment_votes for select using (true);
 
 -- ─── CONVERSATIONS ────────────────────────────────────────────────────────────
 create table if not exists conversations (
@@ -503,11 +517,86 @@ begin
     insert into confession_votes(user_id, confession_id, vote) values (p_user_id, p_confession_id, p_vote);
     if p_vote = 'up' then
       update confessions set upvotes = upvotes + 1 where id = p_confession_id;
+    else
+      update confessions set downvotes = downvotes + 1 where id = p_confession_id;
     end if;
   elsif existing_vote = p_vote then
     delete from confession_votes where confession_id = p_confession_id and user_id = p_user_id;
     if p_vote = 'up' then
       update confessions set upvotes = greatest(0, upvotes - 1) where id = p_confession_id;
+    else
+      update confessions set downvotes = greatest(0, downvotes - 1) where id = p_confession_id;
+    end if;
+  else
+    update confession_votes set vote = p_vote where confession_id = p_confession_id and user_id = p_user_id;
+    if p_vote = 'up' then
+      update confessions set upvotes = upvotes + 1, downvotes = greatest(0, downvotes - 1) where id = p_confession_id;
+    else
+      update confessions set downvotes = downvotes + 1, upvotes = greatest(0, upvotes - 1) where id = p_confession_id;
+    end if;
+  end if;
+end;
+$$;
+
+-- Vote on a post comment
+create or replace function vote_comment(p_comment_id uuid, p_user_id uuid, p_vote text)
+returns void language plpgsql security definer as $$
+declare
+  existing_vote text;
+begin
+  select vote into existing_vote from comment_votes where comment_id = p_comment_id and user_id = p_user_id;
+  if existing_vote is null then
+    insert into comment_votes(user_id, comment_id, vote) values (p_user_id, p_comment_id, p_vote);
+    if p_vote = 'up' then
+      update comments set upvotes = upvotes + 1 where id = p_comment_id;
+    else
+      update comments set downvotes = downvotes + 1 where id = p_comment_id;
+    end if;
+  elsif existing_vote = p_vote then
+    delete from comment_votes where comment_id = p_comment_id and user_id = p_user_id;
+    if p_vote = 'up' then
+      update comments set upvotes = greatest(0, upvotes - 1) where id = p_comment_id;
+    else
+      update comments set downvotes = greatest(0, downvotes - 1) where id = p_comment_id;
+    end if;
+  else
+    update comment_votes set vote = p_vote where comment_id = p_comment_id and user_id = p_user_id;
+    if p_vote = 'up' then
+      update comments set upvotes = upvotes + 1, downvotes = greatest(0, downvotes - 1) where id = p_comment_id;
+    else
+      update comments set downvotes = downvotes + 1, upvotes = greatest(0, upvotes - 1) where id = p_comment_id;
+    end if;
+  end if;
+end;
+$$;
+
+-- Vote on a confession comment
+create or replace function vote_confession_comment(p_comment_id uuid, p_user_id uuid, p_vote text)
+returns void language plpgsql security definer as $$
+declare
+  existing_vote text;
+begin
+  select vote into existing_vote from confession_comment_votes where comment_id = p_comment_id and user_id = p_user_id;
+  if existing_vote is null then
+    insert into confession_comment_votes(user_id, comment_id, vote) values (p_user_id, p_comment_id, p_vote);
+    if p_vote = 'up' then
+      update confession_comments set upvotes = upvotes + 1 where id = p_comment_id;
+    else
+      update confession_comments set downvotes = downvotes + 1 where id = p_comment_id;
+    end if;
+  elsif existing_vote = p_vote then
+    delete from confession_comment_votes where comment_id = p_comment_id and user_id = p_user_id;
+    if p_vote = 'up' then
+      update confession_comments set upvotes = greatest(0, upvotes - 1) where id = p_comment_id;
+    else
+      update confession_comments set downvotes = greatest(0, downvotes - 1) where id = p_comment_id;
+    end if;
+  else
+    update confession_comment_votes set vote = p_vote where comment_id = p_comment_id and user_id = p_user_id;
+    if p_vote = 'up' then
+      update confession_comments set upvotes = upvotes + 1, downvotes = greatest(0, downvotes - 1) where id = p_comment_id;
+    else
+      update confession_comments set downvotes = downvotes + 1, upvotes = greatest(0, upvotes - 1) where id = p_comment_id;
     end if;
   end if;
 end;

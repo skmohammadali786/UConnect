@@ -26,7 +26,7 @@ export default function ConfessionDetailScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { confessions, voteConfession, addConfessionComment } = useConfessions();
+  const { confessions, voteConfession, addConfessionComment, voteConfessionComment } = useConfessions();
   const { settings } = useSettings();
   const { user } = useAuth();
   const { showError } = useToast();
@@ -58,12 +58,24 @@ export default function ConfessionDetailScreen() {
         .order("created_at", { ascending: true });
 
       if (data) {
+        const commentIds = (data ?? []).map((row: any) => row.id);
+        let voteMap = new Map<string, "up" | "down">();
+        if (user && commentIds.length > 0) {
+          const { data: voteRows } = await supabase
+            .from("confession_comment_votes")
+            .select("comment_id, vote")
+            .eq("user_id", user.id)
+            .in("comment_id", commentIds);
+          (voteRows ?? []).forEach((v: any) => voteMap.set(v.comment_id, v.vote));
+        }
         const remoteComments = data.map((row: any) => ({
           id: row.id,
           authorId: row.is_anonymous ? "anon" : row.author_id,
           isAnonymous: row.is_anonymous,
           content: row.content,
           upvotes: row.upvotes ?? 0,
+          downvotes: row.downvotes ?? 0,
+          userVote: voteMap.get(row.id) ?? null,
           createdAt: row.created_at,
         }));
         setLoadedComments((prev) => {
@@ -84,7 +96,7 @@ export default function ConfessionDetailScreen() {
       setLoadedComments(confession.comments);
     }
     setCommentsLoading(false);
-  }, [confession?.id]);
+  }, [confession?.id, user?.id]);
 
   useEffect(() => {
     setCommentsLoading(true);
@@ -129,6 +141,8 @@ export default function ConfessionDetailScreen() {
       isAnonymous: isAnon,
       content: message,
       upvotes: 0,
+      downvotes: 0,
+      userVote: null,
       createdAt: new Date().toISOString(),
     };
     setLoadedComments((prev) => [...prev, newComment]);
@@ -199,6 +213,13 @@ export default function ConfessionDetailScreen() {
                 <Feather name="arrow-up" size={16} color={confession.userVote === "up" ? colors.primary : colors.mutedForeground} />
                 <Text style={[styles.voteCount, { color: confession.userVote === "up" ? colors.primary : colors.mutedForeground }]}>{confession.upvotes}</Text>
               </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => voteConfession(confession.id, "down")}
+                style={[styles.voteBtn, confession.userVote === "down" && { backgroundColor: "#EF444420" }]}
+              >
+                <Feather name="arrow-down" size={16} color={confession.userVote === "down" ? "#EF4444" : colors.mutedForeground} />
+                <Text style={[styles.voteCount, { color: confession.userVote === "down" ? "#EF4444" : colors.mutedForeground }]}>{confession.downvotes}</Text>
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -232,9 +253,21 @@ export default function ConfessionDetailScreen() {
                       </Text>
                       <Text style={[styles.commentTime, { color: colors.mutedForeground }]}>{formatRelativeTime(c.createdAt)}</Text>
                     </View>
-                    <View style={[styles.upvotePill, { backgroundColor: colors.primary + "12" }]}>
-                      <Feather name="arrow-up" size={12} color={colors.primary} />
-                      <Text style={[styles.upvoteText, { color: colors.primary }]}>{c.upvotes}</Text>
+                    <View style={styles.commentVoteWrap}>
+                      <TouchableOpacity
+                        onPress={() => voteConfessionComment(confession.id, c.id, "up")}
+                        style={[styles.commentVoteBtn, c.userVote === "up" && { backgroundColor: colors.primary + "16" }]}
+                      >
+                        <Feather name="arrow-up" size={12} color={c.userVote === "up" ? colors.primary : colors.mutedForeground} />
+                        <Text style={[styles.upvoteText, { color: c.userVote === "up" ? colors.primary : colors.mutedForeground }]}>{c.upvotes}</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => voteConfessionComment(confession.id, c.id, "down")}
+                        style={[styles.commentVoteBtn, c.userVote === "down" && { backgroundColor: "#EF444416" }]}
+                      >
+                        <Feather name="arrow-down" size={12} color={c.userVote === "down" ? "#EF4444" : colors.mutedForeground} />
+                        <Text style={[styles.upvoteText, { color: c.userVote === "down" ? "#EF4444" : colors.mutedForeground }]}>{c.downvotes}</Text>
+                      </TouchableOpacity>
                     </View>
                   </View>
                   <Text style={[styles.commentContent, { color: colors.foreground }]}>{c.content}</Text>
@@ -299,7 +332,8 @@ const styles = StyleSheet.create({
   commentAvatar: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
   commentAuthor: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   commentTime: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 },
-  upvotePill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  commentVoteWrap: { flexDirection: "row", alignItems: "center", gap: 6 },
+  commentVoteBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 7, paddingVertical: 4, borderRadius: 8 },
   upvoteText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
   commentContent: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 21 },
   inputBar: { flexDirection: "row", alignItems: "flex-end", gap: 8, paddingHorizontal: 12, paddingTop: 10, borderTopWidth: 1 },

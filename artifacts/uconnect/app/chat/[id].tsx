@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
-import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { FlatList, Image, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChatBubble } from "@/components/ChatBubble";
 import { ConfirmModal } from "@/components/ConfirmModal";
@@ -79,9 +79,17 @@ export default function ChatScreen() {
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <View style={[styles.avatar, { backgroundColor: conv.isAnonymous && !conv.isRevealed ? colors.muted : colors.primary + "20" }]}>
-            <Feather name={conv.isAnonymous && !conv.isRevealed ? "user-x" : "user"} size={16} color={conv.isAnonymous && !conv.isRevealed ? colors.mutedForeground : colors.primary} />
-          </View>
+          {conv.isAnonymous && !conv.isRevealed ? (
+            <View style={[styles.avatar, { backgroundColor: colors.muted }]}>
+              <Feather name="user-x" size={16} color={colors.mutedForeground} />
+            </View>
+          ) : conv.participantAvatar ? (
+            <Image source={{ uri: conv.participantAvatar }} style={styles.avatarImage} />
+          ) : (
+            <View style={[styles.avatar, { backgroundColor: colors.primary + "20" }]}>
+              <Feather name="user" size={16} color={colors.primary} />
+            </View>
+          )}
           <Text style={[styles.headerName, { color: colors.foreground }]}>{displayName}</Text>
         </View>
         <View style={styles.headerActions}>
@@ -166,6 +174,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: 1, gap: 12 },
   headerCenter: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
   avatar: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  avatarImage: { width: 36, height: 36, borderRadius: 18 },
   headerName: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
   headerActions: { flexDirection: "row", gap: 4 },
   headerBtn: { padding: 6 },
