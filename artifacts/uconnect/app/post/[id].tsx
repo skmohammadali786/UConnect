@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Animated, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CommentItem } from "@/components/CommentItem";
 import { PostCard } from "@/components/PostCard";
@@ -13,6 +13,7 @@ import { supabase } from "@/lib/supabase";
 import type { Comment } from "@/context/PostsContext";
 
 const LOCAL_ID_PREFIX = "local_";
+const ND = Platform.OS !== "web";
 function isLocalId(value: unknown) {
   return typeof value === "string" && value.startsWith(LOCAL_ID_PREFIX);
 }
@@ -57,8 +58,17 @@ export default function PostDetailScreen() {
   const [loadedComments, setLoadedComments] = useState<Comment[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(true);
   const newLocalIds = useRef<Set<string>>(new Set());
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(24)).current;
 
   const post = posts.find((p) => p.id === id);
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: ND }),
+      Animated.spring(slideAnim, { toValue: 0, tension: 80, friction: 10, useNativeDriver: ND }),
+    ]).start();
+  }, []);
 
   const loadComments = useCallback(async () => {
     if (!post) { setCommentsLoading(false); return; }
@@ -251,73 +261,101 @@ export default function PostDetailScreen() {
 
   const displayCount = loadedComments.reduce((acc, c) => acc + 1 + c.replies.length, 0);
 
+  const applyVoteToComments = useCallback((comments: Comment[], commentId: string, vote: "up" | "down"): Comment[] => {
+    const applyVote = (c: Comment): Comment => {
+      const prevVote = c.userVote;
+      let upvotes = c.upvotes;
+      let downvotes = c.downvotes;
+      if (prevVote === "up") upvotes = Math.max(0, upvotes - 1);
+      if (prevVote === "down") downvotes = Math.max(0, downvotes - 1);
+      const nextVote: "up" | "down" | null = prevVote === vote ? null : vote;
+      if (nextVote === "up") upvotes += 1;
+      if (nextVote === "down") downvotes += 1;
+      return { ...c, upvotes, downvotes, userVote: nextVote };
+    };
+
+    return comments.map((c) => {
+      if (c.id === commentId) return applyVote(c);
+      if (c.replies.length === 0) return c;
+      return { ...c, replies: applyVoteToComments(c.replies, commentId, vote) };
+    });
+  }, []);
+
+  const handleVoteComment = useCallback((commentId: string, vote: "up" | "down") => {
+    setLoadedComments((prev) => applyVoteToComments(prev, commentId, vote));
+    if (isLocalId(commentId)) return;
+    voteComment(post.id, commentId, vote);
+  }, [applyVoteToComments, post.id, voteComment]);
+
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={Platform.OS === "ios" ? insets.bottom + 56 : 0}>
-      <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, backgroundColor: colors.headerBg, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Feather name="arrow-left" size={22} color={colors.foreground} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Post</Text>
-        <View style={{ width: 38 }} />
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        <PostCard post={post} currentUserId={user?.id || ""} onDelete={handleDelete} />
-        <View style={[styles.commentsHeader, { borderBottomColor: colors.border }]}>
-          <Text style={[styles.commentsTitle, { color: colors.foreground }]}>
-            Comments ({displayCount})
-          </Text>
+      <Animated.View style={{ flex: 1, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+        <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, backgroundColor: colors.headerBg, borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <Feather name="arrow-left" size={22} color={colors.foreground} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Post</Text>
+          <View style={{ width: 38 }} />
         </View>
-        <View style={{ paddingHorizontal: 16 }}>
-          {commentsLoading ? (
-            <View style={styles.empty}>
-              <ActivityIndicator size="small" color={colors.primary} />
+
+        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <PostCard post={post} currentUserId={user?.id || ""} onDelete={handleDelete} />
+          <View style={[styles.commentsHeader, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.commentsTitle, { color: colors.foreground }]}>
+              Comments ({displayCount})
+            </Text>
+          </View>
+          <View style={{ paddingHorizontal: 16 }}>
+            {commentsLoading ? (
+              <View style={styles.empty}>
+                <ActivityIndicator size="small" color={colors.primary} />
+              </View>
+            ) : loadedComments.length === 0 ? (
+              <View style={styles.empty}>
+                <Feather name="message-circle" size={36} color={colors.mutedForeground} />
+                <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>No comments yet. Be the first!</Text>
+              </View>
+            ) : (
+              loadedComments.map((c) => (
+                <CommentItem
+                  key={c.id}
+                  comment={c}
+                  postId={post.id}
+                  onReply={(cm) => setReplyTo(cm)}
+                  onVote={handleVoteComment}
+                />
+              ))
+            )}
+          </View>
+        </ScrollView>
+
+        <View style={[styles.inputBar, { backgroundColor: colors.card, borderTopColor: colors.border, paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 4 }]}>
+          {replyTo && (
+            <View style={[styles.replyBanner, { backgroundColor: colors.primary + "15" }]}>
+              <Text style={[styles.replyText, { color: colors.primary }]}>Replying to {replyTo.isAnonymous ? "Anonymous" : `@${replyTo.authorUsername}`}</Text>
+              <TouchableOpacity onPress={() => setReplyTo(null)}>
+                <Feather name="x" size={14} color={colors.primary} />
+              </TouchableOpacity>
             </View>
-          ) : loadedComments.length === 0 ? (
-            <View style={styles.empty}>
-              <Feather name="message-circle" size={36} color={colors.mutedForeground} />
-              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>No comments yet. Be the first!</Text>
-            </View>
-          ) : (
-            loadedComments.map((c) => (
-              <CommentItem
-                key={c.id}
-                comment={c}
-                postId={post.id}
-                onReply={(cm) => setReplyTo(cm)}
-                onVote={(commentId, vote) => voteComment(post.id, commentId, vote)}
-              />
-            ))
           )}
-        </View>
-      </ScrollView>
-
-      <View style={[styles.inputBar, { backgroundColor: colors.card, borderTopColor: colors.border, paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 4 }]}>
-        {replyTo && (
-          <View style={[styles.replyBanner, { backgroundColor: colors.primary + "15" }]}>
-            <Text style={[styles.replyText, { color: colors.primary }]}>Replying to {replyTo.isAnonymous ? "Anonymous" : `@${replyTo.authorUsername}`}</Text>
-            <TouchableOpacity onPress={() => setReplyTo(null)}>
-              <Feather name="x" size={14} color={colors.primary} />
+          <View style={styles.inputRow}>
+            <TouchableOpacity onPress={() => setIsAnon((v) => !v)} style={[styles.anonToggle, { backgroundColor: isAnon ? colors.primary + "20" : colors.muted }]}>
+              <Feather name={isAnon ? "user-x" : "user"} size={14} color={isAnon ? colors.primary : colors.mutedForeground} />
+            </TouchableOpacity>
+            <TextInput
+              value={comment}
+              onChangeText={setComment}
+              placeholder={isAnon ? "Comment anonymously..." : "Write a comment..."}
+              placeholderTextColor={colors.placeholder}
+              style={[styles.input, { color: colors.foreground, backgroundColor: colors.input, borderColor: colors.border }]}
+              multiline
+            />
+            <TouchableOpacity onPress={handleSendComment} disabled={!comment.trim()} style={[styles.sendBtn, { backgroundColor: comment.trim() ? colors.primary : colors.muted }]}>
+              <Feather name="send" size={16} color={comment.trim() ? "#FFFFFF" : colors.mutedForeground} />
             </TouchableOpacity>
           </View>
-        )}
-        <View style={styles.inputRow}>
-          <TouchableOpacity onPress={() => setIsAnon((v) => !v)} style={[styles.anonToggle, { backgroundColor: isAnon ? colors.primary + "20" : colors.muted }]}>
-            <Feather name={isAnon ? "user-x" : "user"} size={14} color={isAnon ? colors.primary : colors.mutedForeground} />
-          </TouchableOpacity>
-          <TextInput
-            value={comment}
-            onChangeText={setComment}
-            placeholder={isAnon ? "Comment anonymously..." : "Write a comment..."}
-            placeholderTextColor={colors.placeholder}
-            style={[styles.input, { color: colors.foreground, backgroundColor: colors.input, borderColor: colors.border }]}
-            multiline
-          />
-          <TouchableOpacity onPress={handleSendComment} disabled={!comment.trim()} style={[styles.sendBtn, { backgroundColor: comment.trim() ? colors.primary : colors.muted }]}>
-            <Feather name="send" size={16} color={comment.trim() ? "#FFFFFF" : colors.mutedForeground} />
-          </TouchableOpacity>
         </View>
-      </View>
+      </Animated.View>
     </KeyboardAvoidingView>
   );
 }

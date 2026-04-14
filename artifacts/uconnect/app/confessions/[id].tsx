@@ -36,11 +36,15 @@ export default function ConfessionDetailScreen() {
   const [loadedComments, setLoadedComments] = useState<ConfessionComment[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(true);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(24)).current;
 
   const confession = confessions.find((c) => c.id === id);
 
   useEffect(() => {
-    Animated.timing(fadeAnim, { toValue: 1, duration: 280, useNativeDriver: ND }).start();
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: ND }),
+      Animated.spring(slideAnim, { toValue: 0, tension: 80, friction: 10, useNativeDriver: ND }),
+    ]).start();
   }, []);
 
   const loadComments = useCallback(async () => {
@@ -171,9 +175,26 @@ export default function ConfessionDetailScreen() {
     ...loadedComments.filter((c) => c.id.startsWith(LOCAL_ID_PREFIX)),
   ];
 
+  const handleVoteConfessionComment = useCallback((commentId: string, vote: "up" | "down") => {
+    setLoadedComments((prev) => prev.map((cm) => {
+      if (cm.id !== commentId) return cm;
+      const prevVote = cm.userVote;
+      let upvotes = cm.upvotes;
+      let downvotes = cm.downvotes;
+      if (prevVote === "up") upvotes = Math.max(0, upvotes - 1);
+      if (prevVote === "down") downvotes = Math.max(0, downvotes - 1);
+      const nextVote: "up" | "down" | null = prevVote === vote ? null : vote;
+      if (nextVote === "up") upvotes += 1;
+      if (nextVote === "down") downvotes += 1;
+      return { ...cm, upvotes, downvotes, userVote: nextVote };
+    }));
+    if (isLocalId(commentId)) return;
+    voteConfessionComment(confession.id, commentId, vote);
+  }, [confession.id, voteConfessionComment]);
+
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={insets.bottom + 56}>
-      <Animated.View style={[{ flex: 1, backgroundColor: colors.background }, { opacity: fadeAnim }]}>
+      <Animated.View style={[{ flex: 1, backgroundColor: colors.background }, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
         <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, borderBottomColor: colors.border }]}>
           <TouchableOpacity onPress={() => router.back()}>
             <Feather name="arrow-left" size={22} color={colors.foreground} />
@@ -255,14 +276,14 @@ export default function ConfessionDetailScreen() {
                     </View>
                     <View style={styles.commentVoteWrap}>
                       <TouchableOpacity
-                        onPress={() => voteConfessionComment(confession.id, c.id, "up")}
+                        onPress={() => handleVoteConfessionComment(c.id, "up")}
                         style={[styles.commentVoteBtn, c.userVote === "up" && { backgroundColor: colors.primary + "16" }]}
                       >
                         <Feather name="arrow-up" size={12} color={c.userVote === "up" ? colors.primary : colors.mutedForeground} />
                         <Text style={[styles.upvoteText, { color: c.userVote === "up" ? colors.primary : colors.mutedForeground }]}>{c.upvotes}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        onPress={() => voteConfessionComment(confession.id, c.id, "down")}
+                        onPress={() => handleVoteConfessionComment(c.id, "down")}
                         style={[styles.commentVoteBtn, c.userVote === "down" && { backgroundColor: "#EF444416" }]}
                       >
                         <Feather name="arrow-down" size={12} color={c.userVote === "down" ? "#EF4444" : colors.mutedForeground} />

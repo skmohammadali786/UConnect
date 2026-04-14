@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useState } from "react";
-import { Animated, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { Animated, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useToast } from "@/components/Toast";
@@ -36,9 +36,17 @@ const FAQS = [
 export default function HelpScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { showSuccess } = useToast();
+  const { showError } = useToast();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
-  const anims = FAQS.map(() => React.useRef(new Animated.Value(0)).current);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(24)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: Platform.OS !== "web" }),
+      Animated.spring(slideAnim, { toValue: 0, tension: 80, friction: 10, useNativeDriver: Platform.OS !== "web" }),
+    ]).start();
+  }, []);
 
   const toggle = (i: number) => {
     if (openIndex === i) {
@@ -48,8 +56,21 @@ export default function HelpScreen() {
     }
   };
 
+  const handleEmailSupport = async () => {
+    const email = "support@uconnect.social";
+    const url = `mailto:${email}`;
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+        return;
+      }
+    } catch {}
+    showError("Could not open email app", email);
+  };
+
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <Animated.View style={[styles.container, { backgroundColor: colors.background, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
       <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Feather name="arrow-left" size={22} color={colors.foreground} />
@@ -88,7 +109,7 @@ export default function HelpScreen() {
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Contact Us</Text>
 
         {[
-          { icon: "mail", label: "Email Support", sub: "support@uconnect.socail", action: () => showSuccess("Email copied!", "support@uconnect.socail") },
+          { icon: "mail", label: "Email Support", sub: "support@uconnect.social", action: handleEmailSupport },
         ].map((item) => (
           <TouchableOpacity
             key={item.label}
@@ -106,7 +127,7 @@ export default function HelpScreen() {
           </TouchableOpacity>
         ))}
       </ScrollView>
-    </View>
+    </Animated.View>
   );
 }
 
