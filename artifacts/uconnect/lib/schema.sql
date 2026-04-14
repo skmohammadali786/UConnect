@@ -167,6 +167,7 @@ create table if not exists confessions (
   college text not null default 'All',
   content text not null,
   upvotes int not null default 0,
+  downvotes int not null default 0,
   comment_count int not null default 0,
   has_sensitive_content boolean not null default false,
   created_at timestamptz not null default now()
@@ -516,11 +517,22 @@ begin
     insert into confession_votes(user_id, confession_id, vote) values (p_user_id, p_confession_id, p_vote);
     if p_vote = 'up' then
       update confessions set upvotes = upvotes + 1 where id = p_confession_id;
+    else
+      update confessions set downvotes = downvotes + 1 where id = p_confession_id;
     end if;
   elsif existing_vote = p_vote then
     delete from confession_votes where confession_id = p_confession_id and user_id = p_user_id;
     if p_vote = 'up' then
       update confessions set upvotes = greatest(0, upvotes - 1) where id = p_confession_id;
+    else
+      update confessions set downvotes = greatest(0, downvotes - 1) where id = p_confession_id;
+    end if;
+  else
+    update confession_votes set vote = p_vote where confession_id = p_confession_id and user_id = p_user_id;
+    if p_vote = 'up' then
+      update confessions set upvotes = upvotes + 1, downvotes = greatest(0, downvotes - 1) where id = p_confession_id;
+    else
+      update confessions set downvotes = downvotes + 1, upvotes = greatest(0, upvotes - 1) where id = p_confession_id;
     end if;
   end if;
 end;

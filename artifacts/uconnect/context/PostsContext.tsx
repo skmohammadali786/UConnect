@@ -399,31 +399,13 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
     applyPosts(updated);
     if (!user) return;
 
-    (async () => {
-      const { data: existing } = await supabase
-        .from("comment_votes")
-        .select("vote")
-        .eq("user_id", user.id)
-        .eq("comment_id", commentId)
-        .maybeSingle();
-
-      const existingVote = existing?.vote as "up" | "down" | null | undefined;
-      if (!existingVote) {
-        await supabase.from("comment_votes").insert({ user_id: user.id, comment_id: commentId, vote });
-      } else if (existingVote === vote) {
-        await supabase.from("comment_votes").delete().eq("user_id", user.id).eq("comment_id", commentId);
-      } else {
-        await supabase.from("comment_votes").update({ vote }).eq("user_id", user.id).eq("comment_id", commentId);
-      }
-
-      const { data: votes } = await supabase
-        .from("comment_votes")
-        .select("vote")
-        .eq("comment_id", commentId);
-      const upvotes = (votes ?? []).filter((v: any) => v.vote === "up").length;
-      const downvotes = (votes ?? []).filter((v: any) => v.vote === "down").length;
-      await supabase.from("comments").update({ upvotes, downvotes }).eq("id", commentId);
-    })();
+    supabase
+      .rpc("vote_comment", { p_comment_id: commentId, p_user_id: user.id, p_vote: vote })
+      .then(({ error }) => {
+        if (error) {
+          console.error("Failed to persist comment vote:", error.message);
+        }
+      });
   }, [applyPosts, user]);
 
   const reportPost = useCallback((postId: string, reason: string) => {

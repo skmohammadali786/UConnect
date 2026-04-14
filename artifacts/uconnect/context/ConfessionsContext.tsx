@@ -68,7 +68,7 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
             id: row.id,
             content: row.content,
             upvotes: voteCounts.get(row.id)?.up ?? row.upvotes ?? 0,
-            downvotes: voteCounts.get(row.id)?.down ?? 0,
+            downvotes: voteCounts.get(row.id)?.down ?? row.downvotes ?? 0,
             commentCount: row.comment_count,
             userVote: userVotes.get(row.id) ?? null,
             hasSensitiveContent: row.has_sensitive_content,
@@ -114,30 +114,13 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
       return { ...c, upvotes, downvotes, userVote: nextVote };
     }));
     if (!user) return;
-
-    (async () => {
-      const { data: existing } = await supabase
-        .from("confession_votes")
-        .select("vote")
-        .eq("user_id", user.id)
-        .eq("confession_id", id)
-        .maybeSingle();
-      const existingVote = existing?.vote as "up" | "down" | null | undefined;
-      if (!existingVote) {
-        await supabase.from("confession_votes").insert({ user_id: user.id, confession_id: id, vote });
-      } else if (existingVote === vote) {
-        await supabase.from("confession_votes").delete().eq("user_id", user.id).eq("confession_id", id);
-      } else {
-        await supabase.from("confession_votes").update({ vote }).eq("user_id", user.id).eq("confession_id", id);
-      }
-
-      const { data: votes } = await supabase
-        .from("confession_votes")
-        .select("vote")
-        .eq("confession_id", id);
-      const upvotes = (votes ?? []).filter((v: any) => v.vote === "up").length;
-      await supabase.from("confessions").update({ upvotes }).eq("id", id);
-    })();
+    supabase
+      .rpc("vote_confession", { p_confession_id: id, p_user_id: user.id, p_vote: vote })
+      .then(({ error }) => {
+        if (error) {
+          console.error("Failed to persist confession vote:", error.message);
+        }
+      });
   }, [user]);
 
   const addConfessionComment = useCallback(async (confessionId: string, comment: Omit<ConfessionComment, "id" | "createdAt" | "upvotes" | "downvotes" | "userVote">) => {
@@ -211,30 +194,13 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
     }));
 
     if (!user) return;
-    (async () => {
-      const { data: existing } = await supabase
-        .from("confession_comment_votes")
-        .select("vote")
-        .eq("user_id", user.id)
-        .eq("comment_id", commentId)
-        .maybeSingle();
-      const existingVote = existing?.vote as "up" | "down" | null | undefined;
-      if (!existingVote) {
-        await supabase.from("confession_comment_votes").insert({ user_id: user.id, comment_id: commentId, vote });
-      } else if (existingVote === vote) {
-        await supabase.from("confession_comment_votes").delete().eq("user_id", user.id).eq("comment_id", commentId);
-      } else {
-        await supabase.from("confession_comment_votes").update({ vote }).eq("user_id", user.id).eq("comment_id", commentId);
-      }
-
-      const { data: votes } = await supabase
-        .from("confession_comment_votes")
-        .select("vote")
-        .eq("comment_id", commentId);
-      const upvotes = (votes ?? []).filter((v: any) => v.vote === "up").length;
-      const downvotes = (votes ?? []).filter((v: any) => v.vote === "down").length;
-      await supabase.from("confession_comments").update({ upvotes, downvotes }).eq("id", commentId);
-    })();
+    supabase
+      .rpc("vote_confession_comment", { p_comment_id: commentId, p_user_id: user.id, p_vote: vote })
+      .then(({ error }) => {
+        if (error) {
+          console.error("Failed to persist confession comment vote:", error.message);
+        }
+      });
   }, [user]);
 
   return (

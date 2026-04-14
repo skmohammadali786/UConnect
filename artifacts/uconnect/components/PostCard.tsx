@@ -222,7 +222,7 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
             {post.mediaUrls.map((uri, i) => (
               <TouchableOpacity
                 key={i}
-                onPress={(e) => { e.stopPropagation?.(); openImage(uri); }}
+                onPress={(e) => { e.stopPropagation(); openImage(uri); }}
                 activeOpacity={0.9}
               >
                 <Image source={{ uri }} style={[styles.mediaThumb, post.mediaUrls.length === 1 && styles.mediaThumbSingle]} resizeMode="cover" />
@@ -233,7 +233,7 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
 
         {hasVideo && (
           <TouchableOpacity
-            onPress={(e) => { e.stopPropagation?.(); openVideo(); }}
+            onPress={(e) => { e.stopPropagation(); openVideo(); }}
             activeOpacity={0.85}
             style={[styles.videoThumb, { backgroundColor: colors.secondary }]}
           >
