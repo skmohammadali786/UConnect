@@ -55,12 +55,12 @@ function RootLayoutNav() {
   return (
     <Stack screenOptions={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: colors.background } }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }} />
-      <Stack.Screen name="create-post" options={{ headerShown: false, presentation: "modal", animation: "slide_from_bottom", contentStyle: { backgroundColor: colors.background } }} />
+      <Stack.Screen name="create-post" options={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: colors.background } }} />
       <Stack.Screen name="edit-profile" options={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: colors.background } }} />
       <Stack.Screen name="invite" options={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: colors.background } }} />
       <Stack.Screen name="user" options={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: colors.background } }} />
       <Stack.Screen name="settings" options={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: colors.background } }} />
-      <Stack.Screen name="+not-found" options={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }} />
+      <Stack.Screen name="+not-found" options={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: colors.background } }} />
     </Stack>
   );
 }
