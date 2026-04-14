@@ -8,6 +8,8 @@ export interface ConfessionComment {
   isAnonymous: boolean;
   content: string;
   upvotes: number;
+  downvotes: number;
+  userVote: "up" | "down" | null;
   createdAt: string;
 }
 
@@ -15,6 +17,7 @@ export interface Confession {
   id: string;
   content: string;
   upvotes: number;
+  downvotes: number;
   commentCount: number;
   userVote: "up" | "down" | null;
   hasSensitiveContent: boolean;
@@ -26,7 +29,8 @@ interface ConfessionsContextType {
   confessions: Confession[];
   addConfession: (content: string, sensitive?: boolean) => Promise<void>;
   voteConfession: (id: string, vote: "up" | "down") => void;
-  addConfessionComment: (confessionId: string, comment: Omit<ConfessionComment, "id" | "createdAt" | "upvotes">) => Promise<boolean>;
+  addConfessionComment: (confessionId: string, comment: Omit<ConfessionComment, "id" | "createdAt" | "upvotes" | "downvotes" | "userVote">) => Promise<boolean>;
+  voteConfessionComment: (confessionId: string, commentId: string, vote: "up" | "down") => void;
 }
 
 const ConfessionsContext = createContext<ConfessionsContextType | undefined>(undefined);
@@ -45,21 +49,28 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
           .limit(100);
 
         if (data && data.length > 0) {
-          let voteMap = new Map<string, "up" | "down">();
-          if (user) {
-            const { data: votes } = await supabase
-              .from("confession_votes")
-              .select("confession_id, vote")
-              .eq("user_id", user.id);
-            (votes ?? []).forEach((v: any) => voteMap.set(v.confession_id, v.vote));
-          }
+          const ids = data.map((row: any) => row.id);
+          const { data: voteRows } = await supabase
+            .from("confession_votes")
+            .select("confession_id, user_id, vote")
+            .in("confession_id", ids);
+          const voteCounts = new Map<string, { up: number; down: number }>();
+          const userVotes = new Map<string, "up" | "down">();
+          (voteRows ?? []).forEach((v: any) => {
+            const current = voteCounts.get(v.confession_id) ?? { up: 0, down: 0 };
+            if (v.vote === "up") current.up += 1;
+            if (v.vote === "down") current.down += 1;
+            voteCounts.set(v.confession_id, current);
+            if (user && v.user_id === user.id) userVotes.set(v.confession_id, v.vote);
+          });
 
           const mapped: Confession[] = data.map((row: any) => ({
             id: row.id,
             content: row.content,
-            upvotes: row.upvotes,
+            upvotes: voteCounts.get(row.id)?.up ?? row.upvotes ?? 0,
+            downvotes: voteCounts.get(row.id)?.down ?? 0,
             commentCount: row.comment_count,
-            userVote: voteMap.get(row.id) ?? null,
+            userVote: userVotes.get(row.id) ?? null,
             hasSensitiveContent: row.has_sensitive_content,
             createdAt: row.created_at,
             comments: [],
@@ -74,7 +85,7 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
 
   const addConfession = useCallback(async (content: string, sensitive = false) => {
     if (!user) {
-      const newC: Confession = { id: "local_" + Date.now(), content, upvotes: 0, commentCount: 0, userVote: null, hasSensitiveContent: sensitive, createdAt: new Date().toISOString(), comments: [] };
+      const newC: Confession = { id: "local_" + Date.now(), content, upvotes: 0, downvotes: 0, commentCount: 0, userVote: null, hasSensitiveContent: sensitive, createdAt: new Date().toISOString(), comments: [] };
       setConfessions((prev) => [newC, ...prev]);
       return;
     }
@@ -84,29 +95,55 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
       has_sensitive_content: sensitive,
     }).select().single();
     if (data) {
-      const newC: Confession = { id: data.id, content: data.content, upvotes: 0, commentCount: 0, userVote: null, hasSensitiveContent: data.has_sensitive_content, createdAt: data.created_at, comments: [] };
+      const newC: Confession = { id: data.id, content: data.content, upvotes: 0, downvotes: 0, commentCount: 0, userVote: null, hasSensitiveContent: data.has_sensitive_content, createdAt: data.created_at, comments: [] };
       setConfessions((prev) => [newC, ...prev]);
     }
   }, [user]);
 
   const voteConfession = useCallback((id: string, vote: "up" | "down") => {
-    setConfessions((prev) => {
-      const updated = prev.map((c) => {
-        if (c.id !== id) return c;
-        const wasVoted = c.userVote === vote;
-        return { ...c, upvotes: vote === "up" ? (wasVoted ? c.upvotes - 1 : c.upvotes + 1) : c.upvotes, userVote: wasVoted ? null : vote };
-      });
-      return updated;
-    });
-    if (user) {
-      supabase.rpc("vote_confession", { p_confession_id: id, p_user_id: user.id, p_vote: vote }).then(() => {});
-    }
+    setConfessions((prev) => prev.map((c) => {
+      if (c.id !== id) return c;
+      const prevVote = c.userVote;
+      let upvotes = c.upvotes;
+      let downvotes = c.downvotes;
+      if (prevVote === "up") upvotes = Math.max(0, upvotes - 1);
+      if (prevVote === "down") downvotes = Math.max(0, downvotes - 1);
+      const nextVote: "up" | "down" | null = prevVote === vote ? null : vote;
+      if (nextVote === "up") upvotes += 1;
+      if (nextVote === "down") downvotes += 1;
+      return { ...c, upvotes, downvotes, userVote: nextVote };
+    }));
+    if (!user) return;
+
+    (async () => {
+      const { data: existing } = await supabase
+        .from("confession_votes")
+        .select("vote")
+        .eq("user_id", user.id)
+        .eq("confession_id", id)
+        .maybeSingle();
+      const existingVote = existing?.vote as "up" | "down" | null | undefined;
+      if (!existingVote) {
+        await supabase.from("confession_votes").insert({ user_id: user.id, confession_id: id, vote });
+      } else if (existingVote === vote) {
+        await supabase.from("confession_votes").delete().eq("user_id", user.id).eq("confession_id", id);
+      } else {
+        await supabase.from("confession_votes").update({ vote }).eq("user_id", user.id).eq("confession_id", id);
+      }
+
+      const { data: votes } = await supabase
+        .from("confession_votes")
+        .select("vote")
+        .eq("confession_id", id);
+      const upvotes = (votes ?? []).filter((v: any) => v.vote === "up").length;
+      await supabase.from("confessions").update({ upvotes }).eq("id", id);
+    })();
   }, [user]);
 
-  const addConfessionComment = useCallback(async (confessionId: string, comment: Omit<ConfessionComment, "id" | "createdAt" | "upvotes">) => {
+  const addConfessionComment = useCallback(async (confessionId: string, comment: Omit<ConfessionComment, "id" | "createdAt" | "upvotes" | "downvotes" | "userVote">) => {
     if (!user) return false;
 
-    const newComment: ConfessionComment = { ...comment, id: "local_" + Date.now(), upvotes: 0, createdAt: new Date().toISOString() };
+    const newComment: ConfessionComment = { ...comment, id: "local_" + Date.now(), upvotes: 0, downvotes: 0, userVote: null, createdAt: new Date().toISOString() };
     setConfessions((prev) => prev.map((c) => {
       if (c.id !== confessionId) return c;
       return { ...c, commentCount: c.commentCount + 1, comments: [...c.comments, newComment] };
@@ -137,6 +174,8 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
       isAnonymous: data.is_anonymous,
       content: data.content,
       upvotes: data.upvotes ?? 0,
+      downvotes: data.downvotes ?? 0,
+      userVote: null,
       createdAt: data.created_at,
     };
     setConfessions((prev) => prev.map((c) => {
@@ -151,8 +190,55 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
     return true;
   }, [user]);
 
+  const voteConfessionComment = useCallback((confessionId: string, commentId: string, vote: "up" | "down") => {
+    setConfessions((prev) => prev.map((c) => {
+      if (c.id !== confessionId) return c;
+      return {
+        ...c,
+        comments: c.comments.map((cm) => {
+          if (cm.id !== commentId) return cm;
+          const prevVote = cm.userVote;
+          let upvotes = cm.upvotes;
+          let downvotes = cm.downvotes;
+          if (prevVote === "up") upvotes = Math.max(0, upvotes - 1);
+          if (prevVote === "down") downvotes = Math.max(0, downvotes - 1);
+          const nextVote: "up" | "down" | null = prevVote === vote ? null : vote;
+          if (nextVote === "up") upvotes += 1;
+          if (nextVote === "down") downvotes += 1;
+          return { ...cm, upvotes, downvotes, userVote: nextVote };
+        }),
+      };
+    }));
+
+    if (!user) return;
+    (async () => {
+      const { data: existing } = await supabase
+        .from("confession_comment_votes")
+        .select("vote")
+        .eq("user_id", user.id)
+        .eq("comment_id", commentId)
+        .maybeSingle();
+      const existingVote = existing?.vote as "up" | "down" | null | undefined;
+      if (!existingVote) {
+        await supabase.from("confession_comment_votes").insert({ user_id: user.id, comment_id: commentId, vote });
+      } else if (existingVote === vote) {
+        await supabase.from("confession_comment_votes").delete().eq("user_id", user.id).eq("comment_id", commentId);
+      } else {
+        await supabase.from("confession_comment_votes").update({ vote }).eq("user_id", user.id).eq("comment_id", commentId);
+      }
+
+      const { data: votes } = await supabase
+        .from("confession_comment_votes")
+        .select("vote")
+        .eq("comment_id", commentId);
+      const upvotes = (votes ?? []).filter((v: any) => v.vote === "up").length;
+      const downvotes = (votes ?? []).filter((v: any) => v.vote === "down").length;
+      await supabase.from("confession_comments").update({ upvotes, downvotes }).eq("id", commentId);
+    })();
+  }, [user]);
+
   return (
-    <ConfessionsContext.Provider value={{ confessions, addConfession, voteConfession, addConfessionComment }}>
+    <ConfessionsContext.Provider value={{ confessions, addConfession, voteConfession, addConfessionComment, voteConfessionComment }}>
       {children}
     </ConfessionsContext.Provider>
   );

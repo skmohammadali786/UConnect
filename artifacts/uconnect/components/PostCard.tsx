@@ -5,6 +5,8 @@ import React, { useRef, useState } from "react";
 import {
   Animated,
   Image,
+  Linking,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -18,6 +20,7 @@ import { usePosts } from "@/context/PostsContext";
 import { useSocial } from "@/context/SocialContext";
 import { useSettings } from "@/context/SettingsContext";
 import { ReportModal } from "@/components/ReportModal";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { formatRelativeTime } from "@/utils/time";
 
 const ND = Platform.OS !== "web";
@@ -66,6 +69,9 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
   const { hasReported } = useSocial();
   const { settings } = useSettings();
   const [reportVisible, setReportVisible] = useState(false);
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
+  const [mediaViewerVisible, setMediaViewerVisible] = useState(false);
+  const [activeMedia, setActiveMedia] = useState<{ type: "image" | "video"; uri: string } | null>(null);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const upAnim = useRef(new Animated.Value(1)).current;
   const downAnim = useRef(new Animated.Value(1)).current;
@@ -94,7 +100,31 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
   const handleDelete = () => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     pulse(deleteAnim);
-    setTimeout(() => onDelete?.(post.id), 180);
+    setDeleteConfirmVisible(true);
+  };
+
+  const confirmDelete = () => {
+    setDeleteConfirmVisible(false);
+    setTimeout(() => onDelete?.(post.id), 120);
+  };
+
+  const openImage = (uri: string) => {
+    setActiveMedia({ type: "image", uri });
+    setMediaViewerVisible(true);
+  };
+
+  const openVideo = async () => {
+    if (!post.videoUrl) return;
+    setActiveMedia({ type: "video", uri: post.videoUrl });
+    setMediaViewerVisible(true);
+  };
+
+  const handleOpenVideoExternally = async () => {
+    if (!activeMedia?.uri) return;
+    const can = await Linking.canOpenURL(activeMedia.uri);
+    if (can) {
+      await Linking.openURL(activeMedia.uri);
+    }
   };
 
   const handlePressIn = () => {
@@ -190,18 +220,28 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
         {hasMedia && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mediaRow} contentContainerStyle={{ gap: 8 }}>
             {post.mediaUrls.map((uri, i) => (
-              <Image key={i} source={{ uri }} style={[styles.mediaThumb, post.mediaUrls.length === 1 && styles.mediaThumbSingle]} resizeMode="cover" />
+              <TouchableOpacity
+                key={i}
+                onPress={(e) => { e.stopPropagation?.(); openImage(uri); }}
+                activeOpacity={0.9}
+              >
+                <Image source={{ uri }} style={[styles.mediaThumb, post.mediaUrls.length === 1 && styles.mediaThumbSingle]} resizeMode="cover" />
+              </TouchableOpacity>
             ))}
           </ScrollView>
         )}
 
         {hasVideo && (
-          <View style={[styles.videoThumb, { backgroundColor: colors.secondary }]}>
+          <TouchableOpacity
+            onPress={(e) => { e.stopPropagation?.(); openVideo(); }}
+            activeOpacity={0.85}
+            style={[styles.videoThumb, { backgroundColor: colors.secondary }]}
+          >
             <View style={[styles.playBtn, { backgroundColor: colors.primary }]}>
               <Feather name="play" size={18} color="#FFF" />
             </View>
             <Text style={[styles.videoLabel, { color: colors.mutedForeground }]}>Video attached</Text>
-          </View>
+          </TouchableOpacity>
         )}
 
         <View style={styles.actions}>
@@ -257,6 +297,35 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
       </TouchableOpacity>
 
       <ReportModal postId={post.id} visible={reportVisible} onClose={() => setReportVisible(false)} />
+      <ConfirmModal
+        visible={deleteConfirmVisible}
+        title="Delete Post"
+        message="Are you sure you want to delete this post? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteConfirmVisible(false)}
+      />
+      <Modal visible={mediaViewerVisible} transparent animationType="fade" onRequestClose={() => setMediaViewerVisible(false)}>
+        <View style={[styles.mediaModalOverlay, { backgroundColor: colors.overlay }]}>
+          <TouchableOpacity style={styles.mediaCloseBtn} onPress={() => setMediaViewerVisible(false)}>
+            <Feather name="x" size={24} color="#FFF" />
+          </TouchableOpacity>
+          {activeMedia?.type === "image" ? (
+            <Image source={{ uri: activeMedia.uri }} style={styles.mediaModalImage} resizeMode="contain" />
+          ) : (
+            <View style={[styles.videoModalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Feather name="video" size={28} color={colors.primary} />
+              <Text style={[styles.videoModalTitle, { color: colors.foreground }]}>Open video</Text>
+              <Text style={[styles.videoModalText, { color: colors.mutedForeground }]} numberOfLines={2}>{activeMedia?.uri}</Text>
+              <TouchableOpacity onPress={handleOpenVideoExternally} style={[styles.videoOpenBtn, { backgroundColor: colors.primary }]}>
+                <Text style={styles.videoOpenText}>Open Video</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </Modal>
     </Animated.View>
   );
 }
@@ -319,4 +388,12 @@ const styles = StyleSheet.create({
   actionText: { fontSize: 13, fontFamily: "Inter_500Medium" },
   reportedBanner: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, marginTop: 10 },
   reportedText: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  mediaModalOverlay: { flex: 1, alignItems: "center", justifyContent: "center", padding: 20 },
+  mediaCloseBtn: { position: "absolute", right: 20, top: Platform.OS === "web" ? 30 : 54, zIndex: 5, padding: 8 },
+  mediaModalImage: { width: "100%", height: "80%", borderRadius: 12 },
+  videoModalCard: { width: "100%", maxWidth: 420, borderWidth: 1, borderRadius: 16, padding: 18, alignItems: "center", gap: 10 },
+  videoModalTitle: { fontSize: 16, fontFamily: "Inter_700Bold" },
+  videoModalText: { fontSize: 12, fontFamily: "Inter_400Regular", textAlign: "center" },
+  videoOpenBtn: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, marginTop: 4 },
+  videoOpenText: { color: "#FFF", fontSize: 13, fontFamily: "Inter_700Bold" },
 });

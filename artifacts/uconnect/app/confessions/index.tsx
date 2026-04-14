@@ -72,6 +72,13 @@ function ConfessionCard({ item, index, colors, onVote, globalReveal, revealedIds
               <Text style={[styles.actionCount, { color: item.userVote === "up" ? colors.primary : colors.mutedForeground }]}>{item.upvotes}</Text>
             </TouchableOpacity>
             <TouchableOpacity
+              onPress={(e) => { e.stopPropagation?.(); handleVote("down"); }}
+              style={[styles.actionBtn, item.userVote === "down" && { backgroundColor: "#EF444420" }]}
+            >
+              <Feather name="arrow-down" size={15} color={item.userVote === "down" ? "#EF4444" : colors.mutedForeground} />
+              <Text style={[styles.actionCount, { color: item.userVote === "down" ? "#EF4444" : colors.mutedForeground }]}>{item.downvotes}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
               onPress={() => router.push({ pathname: "/confessions/[id]" as any, params: { id: item.id } })}
               style={styles.actionBtn}
             >

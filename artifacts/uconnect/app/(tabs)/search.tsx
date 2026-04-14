@@ -433,10 +433,6 @@ export default function SearchScreen() {
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Trending</Text>
-                <View style={[styles.livePill, { backgroundColor: "#EF444418", borderColor: "#EF444430" }]}>
-                  <View style={[styles.liveDot, { backgroundColor: "#EF4444" }]} />
-                  <Text style={[styles.liveText, { color: "#EF4444" }]}>LIVE</Text>
-                </View>
               </View>
               <View style={styles.trendingGrid}>
                 {TRENDING_HASHTAGS.slice(0, 6).map((item, i) => (
@@ -448,9 +444,6 @@ export default function SearchScreen() {
                     >
                       <View style={styles.trendTop}>
                         <Text style={[styles.trendHash, { color: colors.primary }]}>#</Text>
-                        {item.hot && (
-                          <View style={[styles.hotDot, { backgroundColor: "#EF4444" }]} />
-                        )}
                       </View>
                       <Text style={[styles.trendTagName, { color: colors.foreground }]}>{item.tag}</Text>
                       <Text style={[styles.trendPostCount, { color: colors.mutedForeground }]}>{item.posts.toLocaleString()} posts</Text>
@@ -556,16 +549,12 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   sectionTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
   sectionAction: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  livePill: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, borderWidth: 1 },
-  liveDot: { width: 6, height: 6, borderRadius: 3 },
-  liveText: { fontSize: 11, fontFamily: "Inter_700Bold" },
   recentChip: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
   recentChipText: { fontSize: 13, fontFamily: "Inter_500Medium" },
   trendingGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   trendCard: { flex: 1, borderRadius: 14, borderWidth: 1, padding: 14, gap: 4 },
   trendTop: { flexDirection: "row", alignItems: "center", gap: 2 },
   trendHash: { fontSize: 20, fontFamily: "Inter_700Bold" },
-  hotDot: { width: 7, height: 7, borderRadius: 3.5, marginLeft: 2 },
   trendTagName: { fontSize: 14, fontFamily: "Inter_700Bold" },
   trendPostCount: { fontSize: 11, fontFamily: "Inter_400Regular" },
   personHorizontalCard: { width: 150, borderRadius: 16, borderWidth: 1, padding: 14, alignItems: "center", gap: 6 },

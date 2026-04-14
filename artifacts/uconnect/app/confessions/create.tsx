@@ -51,7 +51,7 @@ export default function CreateConfessionScreen() {
         {/* Anonymous badge */}
         <View style={[styles.anonBadge, { backgroundColor: colors.primary + "10", borderColor: colors.primary + "30" }]}>
           <Feather name="shield" size={18} color={colors.primary} />
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1, alignItems: "center" }}>
             <Text style={[styles.anonTitle, { color: colors.primary }]}>Fully anonymous</Text>
             <Text style={[styles.anonDesc, { color: colors.mutedForeground }]}>Your identity is never stored or shared.</Text>
           </View>
@@ -107,9 +107,9 @@ const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 16, gap: 14 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingBottom: 14, borderBottomWidth: 1 },
   title: { fontSize: 16, fontFamily: "Inter_700Bold" },
-  anonBadge: { flexDirection: "row", alignItems: "flex-start", gap: 12, borderRadius: 12, borderWidth: 1, padding: 14 },
-  anonTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  anonDesc: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
+  anonBadge: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12, borderRadius: 12, borderWidth: 1, padding: 14 },
+  anonTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", textAlign: "center" },
+  anonDesc: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2, textAlign: "center" },
   textWrap: { borderRadius: 14, borderWidth: 1.5, padding: 14, minHeight: 140 },
   textarea: { fontSize: 16, fontFamily: "Inter_400Regular", lineHeight: 24, textAlignVertical: "top", flex: 1 },
   counter: { fontSize: 12, fontFamily: "Inter_400Regular", textAlign: "right", marginTop: -8 },

@@ -17,7 +17,7 @@ function isLocalId(value: unknown) {
   return typeof value === "string" && value.startsWith(LOCAL_ID_PREFIX);
 }
 
-function rowToComment(row: any): Comment {
+function rowToComment(row: any, userVote: "up" | "down" | null = null): Comment {
   return {
     id: row.id,
     postId: row.post_id,
@@ -29,7 +29,7 @@ function rowToComment(row: any): Comment {
     content: row.content,
     upvotes: row.upvotes ?? 0,
     downvotes: row.downvotes ?? 0,
-    userVote: null,
+    userVote,
     createdAt: row.created_at,
     replies: [],
   };
@@ -75,7 +75,6 @@ export default function PostDetailScreen() {
         .is("parent_id", null)
         .order("created_at", { ascending: true });
 
-      const topLevel = (data ?? []).map(rowToComment);
       const { data: replyRows } = await supabase
         .from("comments")
         .select("*")
@@ -83,9 +82,23 @@ export default function PostDetailScreen() {
         .not("parent_id", "is", null)
         .order("created_at", { ascending: true });
 
+      const allRows = [...(data ?? []), ...(replyRows ?? [])];
+      const commentIds = allRows.map((r: any) => r.id);
+      let userVoteMap = new Map<string, "up" | "down">();
+      if (user && commentIds.length > 0) {
+        const { data: voteRows } = await supabase
+          .from("comment_votes")
+          .select("comment_id, vote")
+          .eq("user_id", user.id)
+          .in("comment_id", commentIds);
+        (voteRows ?? []).forEach((v: any) => userVoteMap.set(v.comment_id, v.vote));
+      }
+
+      const topLevel = (data ?? []).map((row: any) => rowToComment(row, userVoteMap.get(row.id) ?? null));
+
       const replyMap = new Map<string, Comment[]>();
       (replyRows ?? []).forEach((r: any) => {
-        const c = rowToComment(r);
+        const c = rowToComment(r, userVoteMap.get(r.id) ?? null);
         if (!replyMap.has(r.parent_id)) replyMap.set(r.parent_id, []);
         replyMap.get(r.parent_id)!.push(c);
       });
@@ -133,7 +146,7 @@ export default function PostDetailScreen() {
       });
     } catch {}
     setCommentsLoading(false);
-  }, [post?.id]);
+  }, [post?.id, user?.id]);
 
   useEffect(() => {
     setCommentsLoading(true);

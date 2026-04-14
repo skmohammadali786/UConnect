@@ -371,21 +371,60 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
   }, [user, applyPosts]);
 
   const voteComment = useCallback((postId: string, commentId: string, vote: "up" | "down") => {
+    const applyVote = (c: Comment): Comment => {
+      const prevVote = c.userVote;
+      let upvotes = c.upvotes;
+      let downvotes = c.downvotes;
+      if (prevVote === "up") upvotes = Math.max(0, upvotes - 1);
+      if (prevVote === "down") downvotes = Math.max(0, downvotes - 1);
+      const nextVote: "up" | "down" | null = prevVote === vote ? null : vote;
+      if (nextVote === "up") upvotes += 1;
+      if (nextVote === "down") downvotes += 1;
+      return { ...c, upvotes, downvotes, userVote: nextVote };
+    };
+    const updateTree = (comments: Comment[]): Comment[] =>
+      comments.map((c) => {
+        if (c.id === commentId) return applyVote(c);
+        if (c.replies.length === 0) return c;
+        return { ...c, replies: updateTree(c.replies) };
+      });
+
     const updated = postsRef.current.map((p) => {
       if (p.id !== postId) return p;
       return {
         ...p,
-        comments: p.comments.map((c) => {
-          if (c.id === commentId) {
-            const wasVoted = c.userVote === vote;
-            return { ...c, upvotes: vote === "up" ? (wasVoted ? c.upvotes - 1 : c.upvotes + 1) : c.upvotes, downvotes: vote === "down" ? (wasVoted ? c.downvotes - 1 : c.downvotes + 1) : c.downvotes, userVote: wasVoted ? null : vote };
-          }
-          return c;
-        }),
+        comments: updateTree(p.comments),
       };
     });
     applyPosts(updated);
-  }, [applyPosts]);
+    if (!user) return;
+
+    (async () => {
+      const { data: existing } = await supabase
+        .from("comment_votes")
+        .select("vote")
+        .eq("user_id", user.id)
+        .eq("comment_id", commentId)
+        .maybeSingle();
+
+      const existingVote = existing?.vote as "up" | "down" | null | undefined;
+      if (!existingVote) {
+        await supabase.from("comment_votes").insert({ user_id: user.id, comment_id: commentId, vote });
+      } else if (existingVote === vote) {
+        await supabase.from("comment_votes").delete().eq("user_id", user.id).eq("comment_id", commentId);
+      } else {
+        await supabase.from("comment_votes").update({ vote }).eq("user_id", user.id).eq("comment_id", commentId);
+      }
+
+      const { data: votes } = await supabase
+        .from("comment_votes")
+        .select("vote")
+        .eq("comment_id", commentId);
+      const upvotes = (votes ?? []).filter((v: any) => v.vote === "up").length;
+      const downvotes = (votes ?? []).filter((v: any) => v.vote === "down").length;
+      await supabase.from("comments").update({ upvotes, downvotes }).eq("id", commentId);
+    })();
+  }, [applyPosts, user]);
 
   const reportPost = useCallback((postId: string, reason: string) => {
     if (!user) return;
