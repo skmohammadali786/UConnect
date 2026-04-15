@@ -8,6 +8,7 @@ import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/Toast";
 import { supabase } from "@/lib/supabase";
+import { safeInsertNotification } from "@/utils/notifications";
 
 interface EventDetail {
   id: string;
@@ -174,7 +175,7 @@ export default function EventDetailScreen() {
           a.userId === targetUserId ? { ...a, status: decision, decisionReason: reason } : a,
         ),
       );
-      const { error: notifyError } = await supabase.from("notifications").insert({
+      const notifyError = await safeInsertNotification({
         user_id: targetUserId,
         type: "event",
         title: `Event request ${decision}`,

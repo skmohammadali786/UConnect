@@ -8,6 +8,7 @@ import { useToast } from "@/components/Toast";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
+import { safeInsertNotification } from "@/utils/notifications";
 
 const ND = Platform.OS !== "web";
 
@@ -193,7 +194,7 @@ export default function InternshipDetailScreen() {
       setHostApplications((prev) =>
         prev.map((a) => (a.id === app.id ? { ...a, status, reviewReason: reason } : a)),
       );
-      const { error: notifyError } = await supabase.from("notifications").insert({
+      const notifyError = await safeInsertNotification({
         user_id: app.userId,
         type: "system",
         title: `Internship Application ${status}`,

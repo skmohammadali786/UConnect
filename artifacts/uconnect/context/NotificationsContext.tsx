@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
+import { safeInsertNotification } from "@/utils/notifications";
 
 export type NotificationType = "reply" | "mention" | "upvote" | "follow" | "message" | "event" | "system";
 export type NotificationActionType =
@@ -133,7 +134,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     const newN: Notification = { ...n, id: generateId(), createdAt: new Date().toISOString(), isRead: false };
     setNotifications((prev) => [newN, ...prev]);
     if (user) {
-      supabase.from("notifications").insert({
+      safeInsertNotification({
         user_id: user.id,
         type: n.type,
         title: n.title,

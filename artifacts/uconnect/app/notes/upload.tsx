@@ -1,7 +1,8 @@
 import { Feather } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import React, { useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppButton } from "@/components/AppButton";
 import { AppInput } from "@/components/AppInput";
@@ -20,18 +21,44 @@ const SUBJECTS = [
   "Psychology", "Sociology", "English", "History", "Geography", "Law", "Other",
 ];
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "Postgraduate"];
+type SelectedImage = { uri: string; mimeType?: string; fileName?: string };
 
 export default function UploadNotesScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { showSuccess, showError } = useToast();
+  const { showSuccess, showError, showInfo } = useToast();
   const { user } = useAuth();
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState("");
   const [year, setYear] = useState("");
   const [description, setDescription] = useState("");
-  const [imageUrlsRaw, setImageUrlsRaw] = useState("");
+  const [images, setImages] = useState<SelectedImage[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const handlePickImages = async () => {
+    if (images.length >= 10) {
+      showError("Limit reached", "You can upload up to 10 images.");
+      return;
+    }
+    if (Platform.OS === "web") {
+      showInfo("Mobile recommended", "Image selection works best on mobile app.");
+      return;
+    }
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      showError("Permission denied", "Allow photo access in Settings.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      selectionLimit: 10 - images.length,
+      quality: 0.85,
+    });
+    if (result.canceled) return;
+    const next = result.assets.map((a) => ({ uri: a.uri, mimeType: a.mimeType ?? undefined, fileName: a.fileName ?? undefined }));
+    setImages((prev) => [...prev, ...next].slice(0, 10));
+  };
 
   const handleUpload = async () => {
     if (!title.trim() || !subject || !year) {
@@ -44,11 +71,21 @@ export default function UploadNotesScreen() {
     }
     setLoading(true);
     try {
-      const imageUrls = imageUrlsRaw
-        .split(/[\n,]/)
-        .map((x) => x.trim())
-        .filter(Boolean)
-        .slice(0, 10);
+      const imageUrls: string[] = [];
+      for (let i = 0; i < images.length; i += 1) {
+        const image = images[i];
+        const fileExt = (image.fileName?.split(".").pop() || image.mimeType?.split("/")[1] || "jpg").replace(/[^a-zA-Z0-9]/g, "");
+        const path = `${user.id}/${Date.now()}_${i}.${fileExt.toLowerCase()}`;
+        const response = await fetch(image.uri);
+        const blob = await response.blob();
+        const { error: uploadError } = await supabase.storage.from("notes").upload(path, blob, {
+          contentType: image.mimeType ?? undefined,
+          upsert: false,
+        });
+        if (uploadError) throw uploadError;
+        const { data: publicData } = supabase.storage.from("notes").getPublicUrl(path);
+        if (publicData?.publicUrl) imageUrls.push(publicData.publicUrl);
+      }
       const payload = {
         title: title.trim(),
         subject,
@@ -57,7 +94,7 @@ export default function UploadNotesScreen() {
         uploader_id: user.id,
         uploader_username: user.username,
         description: description.trim(),
-        file_url: "",
+        file_url: imageUrls[0] ?? "",
         file_type: imageUrls.length > 0 ? "images" : "pdf",
         image_urls: imageUrls,
         downloads: 0,
@@ -95,7 +132,7 @@ export default function UploadNotesScreen() {
           <View style={[styles.infoBanner, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "30" }]}>
             <Feather name="info" size={15} color={colors.primary} />
             <Text style={[styles.infoBannerText, { color: colors.primary }]}>
-              Share your notes with your college community. File upload coming soon.
+              Upload real photos of your notes so other students can open and download them.
             </Text>
           </View>
 
@@ -147,15 +184,29 @@ export default function UploadNotesScreen() {
             style={{ height: 80, textAlignVertical: "top", paddingTop: 10 }}
           />
 
-          <AppInput
-            label="Image URLs (optional, up to 10)"
-            placeholder="Paste image links separated by comma or new line"
-            value={imageUrlsRaw}
-            onChangeText={setImageUrlsRaw}
-            multiline
-            numberOfLines={4}
-            style={{ height: 100, textAlignVertical: "top", paddingTop: 10 }}
-          />
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: colors.mutedForeground }]}>Note Photos (optional, up to 10)</Text>
+            <TouchableOpacity onPress={handlePickImages} style={[styles.pickBtn, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Feather name="image" size={15} color={colors.primary} />
+              <Text style={[styles.pickBtnText, { color: colors.primary }]}>Select Photos</Text>
+              <Text style={[styles.pickCount, { color: colors.mutedForeground }]}>{images.length}/10</Text>
+            </TouchableOpacity>
+            {images.length > 0 && (
+              <View style={styles.previewGrid}>
+                {images.map((img, i) => (
+                  <View key={`${img.uri}_${i}`} style={styles.previewWrap}>
+                    <Image source={{ uri: img.uri }} style={styles.previewImg} />
+                    <TouchableOpacity
+                      onPress={() => setImages((prev) => prev.filter((_, idx) => idx !== i))}
+                      style={[styles.removeBtn, { backgroundColor: colors.overlay }]}
+                    >
+                      <Feather name="x" size={12} color="#FFF" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
 
           <View style={[styles.guideline, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Feather name="shield" size={14} color={colors.primary} />
@@ -184,4 +235,11 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 13, fontFamily: "Inter_500Medium" },
   guideline: { flexDirection: "row", alignItems: "flex-start", gap: 10, padding: 14, borderRadius: 12, borderWidth: 1 },
   guidelineText: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 18, flex: 1 },
+  pickBtn: { height: 44, borderRadius: 10, borderWidth: 1, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", gap: 8 },
+  pickBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold", flex: 1 },
+  pickCount: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  previewGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
+  previewWrap: { width: 72, height: 72, borderRadius: 10, overflow: "hidden" },
+  previewImg: { width: "100%", height: "100%" },
+  removeBtn: { position: "absolute", top: 3, right: 3, width: 18, height: 18, borderRadius: 9, alignItems: "center", justifyContent: "center" },
 });

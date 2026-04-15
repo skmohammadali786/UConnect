@@ -13,8 +13,8 @@ const FEATURES = [
 ];
 
 const TEAM = [
-  { name: "Sk Mohammad Ali", role: "Founder & CEO", letter: "S" },
-  { name: "Zayen Mallik", role: "Co Founder", letter: "Z" },
+  { name: "Sk Mohammad Ali", role: "Founder & CEO", letter: "S", image: "https://iili.io/BegEz22.md.webp" },
+  { name: "Zayen Mallik", role: "Co Founder", letter: "Z", image: "https://iili.io/BegWZiu.md.jpg" },
 ];
 
 export default function AboutScreen() {
@@ -68,9 +68,13 @@ export default function AboutScreen() {
           <View style={styles.teamGrid}>
             {TEAM.map((m) => (
               <View key={m.name} style={[styles.teamCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <View style={[styles.teamAvatar, { backgroundColor: colors.primary + "20" }]}>
-                  <Text style={[styles.teamLetter, { color: colors.primary }]}>{m.letter}</Text>
-                </View>
+                {m.image ? (
+                  <Image source={{ uri: m.image }} style={styles.teamAvatarImage} resizeMode="cover" />
+                ) : (
+                  <View style={[styles.teamAvatar, { backgroundColor: colors.primary + "20" }]}>
+                    <Text style={[styles.teamLetter, { color: colors.primary }]}>{m.letter}</Text>
+                  </View>
+                )}
                 <Text style={[styles.teamName, { color: colors.foreground }]}>{m.name}</Text>
                 <Text style={[styles.teamRole, { color: colors.mutedForeground }]}>{m.role}</Text>
               </View>
@@ -82,7 +86,6 @@ export default function AboutScreen() {
             {[
               { label: "Privacy Policy", route: "/settings/privacy-policy" },
               { label: "Terms of Service", route: "/settings/terms" },
-              { label: "Cookie Policy", route: null },
             ].map((item) => (
               <TouchableOpacity
                 key={item.label}
@@ -127,6 +130,7 @@ const styles = StyleSheet.create({
   teamGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   teamCard: { flex: 1, minWidth: "44%", borderRadius: 14, borderWidth: 1, padding: 16, alignItems: "center", gap: 8 },
   teamAvatar: { width: 56, height: 56, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  teamAvatarImage: { width: 56, height: 56, borderRadius: 18 },
   teamLetter: { fontSize: 24, fontFamily: "Inter_700Bold" },
   teamName: { fontSize: 13, fontFamily: "Inter_600SemiBold", textAlign: "center" },
   teamRole: { fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "center" },

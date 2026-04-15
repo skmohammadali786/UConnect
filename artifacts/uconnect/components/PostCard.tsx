@@ -115,6 +115,11 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
 
   const openVideo = async () => {
     if (!post.videoUrl) return;
+    const can = await Linking.canOpenURL(post.videoUrl);
+    if (can) {
+      await Linking.openURL(post.videoUrl);
+      return;
+    }
     setActiveMedia({ type: "video", uri: post.videoUrl });
     setMediaViewerVisible(true);
   };

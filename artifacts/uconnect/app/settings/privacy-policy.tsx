@@ -83,7 +83,7 @@ export default function PrivacyPolicyScreen() {
           <Text style={[styles.heroSub, { color: colors.mutedForeground }]}>
             UConnect is built for college students. We are committed to protecting your information and being transparent about how we use it.
           </Text>
-          <Text style={[styles.lastUpdated, { color: colors.mutedForeground }]}>Last updated: April 2025</Text>
+          <Text style={[styles.lastUpdated, { color: colors.mutedForeground }]}>Last updated: April 2026</Text>
         </View>
 
         {SECTIONS.map((section, i) => (

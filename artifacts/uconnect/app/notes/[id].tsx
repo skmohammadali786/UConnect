@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Animated, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Animated, Image, Linking, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useToast } from "@/components/Toast";
@@ -33,7 +33,7 @@ export default function NoteDetailScreen() {
   useEffect(() => {
     if (!id) { setNoteLoading(false); return; }
     supabase.from("notes").select("*").eq("id", id).maybeSingle().then(({ data }) => {
-      if (data) setNote({ ...data, uploader: data.uploader_username });
+      if (data) setNote({ ...data, uploader: data.uploader_username, image_urls: data.image_urls ?? [] });
       setNoteLoading(false);
     });
   }, [id]);
@@ -57,21 +57,39 @@ export default function NoteDetailScreen() {
     ]).start(() => { setDownloadModal(false); setDownloading(false); setProgress(0); });
   };
 
-  const handleStartDownload = () => {
+  const handleStartDownload = async () => {
+    const downloadUrl = note?.file_url || note?.image_urls?.[0];
+    if (!downloadUrl) {
+      showInfo("No downloadable file", "This note doesn't have a downloadable file yet.");
+      return;
+    }
+
     setDownloading(true);
-    Animated.timing(progressAnim, { toValue: 1, duration: 2000, useNativeDriver: false }).start();
-    let p = 0;
-    const interval = setInterval(() => {
-      p += 0.05;
-      setProgress(Math.min(p, 1));
-      if (p >= 1) {
-        clearInterval(interval);
-        setTimeout(() => {
-          closeDownloadModal();
-          showSuccess("Download complete!", `${note.title} saved to your device`);
-        }, 300);
+    setProgress(0.3);
+    Animated.timing(progressAnim, { toValue: 0.7, duration: 350, useNativeDriver: false }).start();
+
+    try {
+      const canOpen = await Linking.canOpenURL(downloadUrl);
+      if (!canOpen) throw new Error("Cannot open file URL");
+      await Linking.openURL(downloadUrl);
+
+      const { error: rpcError } = await supabase.rpc("increment_note_downloads", { p_note_id: note.id });
+      const nextDownloads = (note.downloads ?? 0) + 1;
+      if (rpcError) {
+        await supabase.from("notes").update({ downloads: nextDownloads }).eq("id", note.id);
       }
-    }, 100);
+      setNote((prev: any) => prev ? { ...prev, downloads: nextDownloads } : prev);
+
+      setProgress(1);
+      progressAnim.setValue(1);
+      setTimeout(() => {
+        closeDownloadModal();
+        showSuccess("Download complete!", `${note.title} opened successfully`);
+      }, 250);
+    } catch {
+      setDownloading(false);
+      showInfo("Download failed", "Could not open this note file.");
+    }
   };
 
   if (noteLoading) {
@@ -139,6 +157,19 @@ export default function NoteDetailScreen() {
 
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>About</Text>
         <Text style={[styles.description, { color: colors.foreground }]}>{note.description}</Text>
+
+        {note.image_urls?.length > 0 && (
+          <>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Note Images</Text>
+            <View style={styles.imagesWrap}>
+              {note.image_urls.map((uri: string, i: number) => (
+                <TouchableOpacity key={`${uri}_${i}`} onPress={() => Linking.openURL(uri)} activeOpacity={0.9}>
+                  <Image source={{ uri }} style={styles.noteImage} resizeMode="cover" />
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        )}
 
         {note.topics?.length > 0 && (
           <>
@@ -225,7 +256,7 @@ export default function NoteDetailScreen() {
                 Downloading... {Math.round(progress * 100)}%
               </Text>
               <Text style={[styles.progressSub, { color: colors.mutedForeground }]}>
-                {(parseFloat(note.fileSize) * progress).toFixed(1)} MB of {note.fileSize}
+                {(Number.parseFloat(String(note.fileSize ?? "0")) * progress).toFixed(1)} MB of {note.fileSize ?? "0 MB"}
               </Text>
             </View>
           )}
@@ -256,6 +287,8 @@ const styles = StyleSheet.create({
   topicsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 20 },
   topicChip: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, borderWidth: 1 },
   topicText: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  imagesWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 20 },
+  noteImage: { width: 108, height: 108, borderRadius: 10 },
   uploaderCard: { flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 14, borderWidth: 1, padding: 14, marginBottom: 20 },
   uploaderAvatar: { width: 42, height: 42, borderRadius: 21, alignItems: "center", justifyContent: "center" },
   uploaderAvatarText: { fontSize: 18, fontFamily: "Inter_700Bold" },
