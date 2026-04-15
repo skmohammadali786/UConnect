@@ -1,6 +1,10 @@
 {
+  "cli": {
+    "version": ">= 13.5.0"
+  },
   "build": {
     "preview": {
+      "pnpm": "9.15.0",
       "android": {
         "buildType": "apk"
       }
