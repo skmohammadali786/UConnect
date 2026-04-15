@@ -1,6 +1,7 @@
 {
   "build": {
     "production": {
+      "pnpm": "9.15.0",
       "android": {
         "buildType": "app-bundle"
       }
