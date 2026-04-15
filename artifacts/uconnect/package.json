@@ -10,7 +10,10 @@
     "serve": "node server/serve.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build:apk": "pnpm dlx eas-cli@latest build --platform android --profile preview",
-    "build:aab": "pnpm dlx eas-cli@latest build --platform android --profile production"
+    "build:aab": "pnpm dlx eas-cli@latest build --platform android --profile production",
+    "build:ios:internal": "pnpm dlx eas-cli@latest build --platform ios --profile internal",
+    "build:ios:preview": "pnpm dlx eas-cli@latest build --platform ios --profile preview",
+    "build:ios:production": "pnpm dlx eas-cli@latest build --platform ios --profile production"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

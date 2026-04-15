@@ -4,9 +4,25 @@
   },
   "build": {
     "preview": {
+      "extends": "internal"
+    },
+    "internal": {
+      "distribution": "internal",
       "pnpm": "9.15.0",
       "android": {
         "buildType": "apk"
+      },
+      "ios": {
+        "simulator": false
+      }
+    },
+    "production": {
+      "pnpm": "9.15.0",
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "ios": {
+        "simulator": false
       }
     }
   }

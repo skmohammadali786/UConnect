@@ -4,16 +4,7 @@
   },
   "build": {
     "preview": {
-      "distribution": "internal",
-      "node": "20.0.0",
-      "pnpm": "9.15.0",
-      "environment": "preview",
-      "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "https://lyrntcjjcigvsueyszom.supabase.co"
-      },
-      "android": {
-        "buildType": "apk"
-      }
+      "extends": "internal"
     },
     "production": {
       "node": "20.0.0",
@@ -24,6 +15,24 @@
       },
       "android": {
         "buildType": "app-bundle"
+      },
+      "ios": {
+        "simulator": false
+      }
+    },
+    "internal": {
+      "distribution": "internal",
+      "node": "20.0.0",
+      "pnpm": "9.15.0",
+      "environment": "preview",
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://lyrntcjjcigvsueyszom.supabase.co"
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "simulator": false
       }
     }
   }

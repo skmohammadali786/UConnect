@@ -14,7 +14,11 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.skmohammadali786.uconnect",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "UConnect needs access to your photo library so you can upload profile and post images."
+      }
     },
     "android": {
       "package": "com.skmohammadali786.uconnect",
