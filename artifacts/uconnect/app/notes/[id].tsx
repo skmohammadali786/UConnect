@@ -91,7 +91,7 @@ export default function NoteDetailScreen() {
       progressAnim.setValue(1);
       setTimeout(() => {
         closeDownloadModal();
-        showSuccess("Download complete!", `${openedCount} file(s) opened for ${note.title}`);
+        showSuccess("Download complete!", `${openedCount} file${openedCount === 1 ? "" : "s"} opened for ${note.title}`);
       }, 250);
     } catch {
       setDownloading(false);
