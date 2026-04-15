@@ -23,6 +23,15 @@ const SUBJECTS = [
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "Postgraduate"];
 type SelectedImage = { uri: string; mimeType?: string; fileName?: string };
 
+function getImageFileExtension(image: SelectedImage) {
+  const fromName = image.fileName?.split(".").pop()?.toLowerCase();
+  const fromMime = image.mimeType?.split("/")[1]?.toLowerCase();
+  const ext = fromName || fromMime || "jpg";
+  if (ext === "jpeg") return "jpg";
+  if (["jpg", "png", "webp", "heic", "heif", "gif"].includes(ext)) return ext;
+  return "jpg";
+}
+
 export default function UploadNotesScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -72,10 +81,9 @@ export default function UploadNotesScreen() {
     setLoading(true);
     try {
       const imageUrls: string[] = [];
-      for (let i = 0; i < images.length; i += 1) {
-        const image = images[i];
-        const fileExt = (image.fileName?.split(".").pop() || image.mimeType?.split("/")[1] || "jpg").replace(/[^a-zA-Z0-9]/g, "");
-        const path = `${user.id}/${Date.now()}_${i}.${fileExt.toLowerCase()}`;
+      for (let imageIndex = 0; imageIndex < images.length; imageIndex += 1) {
+        const image = images[imageIndex];
+        const path = `${user.id}/${Date.now()}_${imageIndex}.${getImageFileExtension(image)}`;
         const response = await fetch(image.uri);
         const blob = await response.blob();
         const { error: uploadError } = await supabase.storage.from("notes").upload(path, blob, {

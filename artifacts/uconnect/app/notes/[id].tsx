@@ -256,7 +256,7 @@ export default function NoteDetailScreen() {
                 Downloading... {Math.round(progress * 100)}%
               </Text>
               <Text style={[styles.progressSub, { color: colors.mutedForeground }]}>
-                {(Number.parseFloat(String(note.fileSize ?? "0")) * progress).toFixed(1)} MB of {note.fileSize ?? "0 MB"}
+                Preparing your file...
               </Text>
             </View>
           )}
