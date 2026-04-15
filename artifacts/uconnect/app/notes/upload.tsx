@@ -35,7 +35,7 @@ function getImageFileExtension(image: SelectedImage) {
 async function uriToBlob(uri: string): Promise<Blob> {
   return await new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.onerror = () => reject(new TypeError(`Failed to read selected image: ${uri}`));
+    xhr.onerror = () => reject(new TypeError("Failed to read selected image file."));
     xhr.onload = () => resolve(xhr.response as Blob);
     xhr.responseType = "blob";
     xhr.open("GET", uri, true);
@@ -95,9 +95,9 @@ export default function UploadNotesScreen() {
       for (let imageIndex = 0; imageIndex < images.length; imageIndex += 1) {
         const image = images[imageIndex];
         const path = `${user.id}/${Date.now()}_${imageIndex}.${getImageFileExtension(image)}`;
-        const blob = await uriToBlob(image.uri);
         let uploadError: unknown = null;
         for (let attempt = 0; attempt < 2; attempt += 1) {
+          const blob = await uriToBlob(image.uri);
           const { error } = await supabase.storage.from("notes").upload(path, blob, {
             contentType: image.mimeType ?? undefined,
             upsert: false,
