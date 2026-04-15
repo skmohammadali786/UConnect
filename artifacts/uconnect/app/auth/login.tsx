@@ -61,7 +61,7 @@ export default function LoginScreen() {
     if (isNewUser) {
       router.replace({ pathname: "/auth/college-select", params: { email: email.trim(), referralCode: incomingReferralCode } });
     } else {
-      router.replace("/(tabs)/");
+      router.replace("/(tabs)");
     }
   };
 
