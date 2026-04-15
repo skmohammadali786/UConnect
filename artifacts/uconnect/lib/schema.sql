@@ -1224,3 +1224,99 @@ end;
 $$;
 
 grant execute on function claim_referral(text, uuid) to authenticated;
+
+-- ─── NOTES DOWNLOAD + AUTO DELETE MAINTENANCE ────────────────────────────────
+create or replace function increment_note_downloads(p_note_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update notes
+  set downloads = downloads + 1
+  where id = p_note_id;
+end;
+$$;
+
+grant execute on function increment_note_downloads(uuid) to authenticated, anon;
+
+create or replace function delete_expired_posts()
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_deleted_count integer;
+begin
+  with deleted as (
+    delete from posts
+    where auto_delete_at is not null
+      and auto_delete_at <= now()
+    returning id
+  )
+  select count(*)::integer into v_deleted_count from deleted;
+
+  return coalesce(v_deleted_count, 0);
+end;
+$$;
+
+grant execute on function delete_expired_posts() to authenticated, service_role;
+
+insert into storage.buckets (id, name, public)
+values ('notes', 'notes', true)
+on conflict (id) do nothing;
+
+drop policy if exists "Public can read notes bucket" on storage.objects;
+create policy "Public can read notes bucket"
+on storage.objects
+for select
+using (bucket_id = 'notes');
+
+drop policy if exists "Authenticated can upload own notes objects" on storage.objects;
+create policy "Authenticated can upload own notes objects"
+on storage.objects
+for insert
+to authenticated
+with check (
+  bucket_id = 'notes'
+  and auth.uid() is not null
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
+
+drop policy if exists "Owners can update notes objects" on storage.objects;
+create policy "Owners can update notes objects"
+on storage.objects
+for update
+to authenticated
+using (bucket_id = 'notes' and owner = auth.uid())
+with check (bucket_id = 'notes' and owner = auth.uid());
+
+drop policy if exists "Owners can delete notes objects" on storage.objects;
+create policy "Owners can delete notes objects"
+on storage.objects
+for delete
+to authenticated
+using (bucket_id = 'notes' and owner = auth.uid());
+
+do $$
+begin
+  if exists (select 1 from pg_namespace where nspname = 'cron') then
+    if not exists (
+      select 1
+      from cron.job
+      where jobname = 'delete-expired-posts-every-5-min'
+    ) then
+      perform cron.schedule(
+        'delete-expired-posts-every-5-min',
+        '*/5 * * * *',
+        $$select public.delete_expired_posts();$$
+      );
+    end if;
+  end if;
+exception
+  when others then
+    raise notice 'Skipping cron schedule setup: %', sqlerrm;
+end;
+$$;

@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
+import { safeInsertNotification } from "@/utils/notifications";
 
 export interface Message {
   id: string;
@@ -150,7 +151,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       }).then(() => {});
       supabase.from("conversations").update({ last_message: content, last_message_at: newMessage.createdAt }).eq("id", conversationId).then(() => {});
         if (conv?.participantId) {
-          supabase.from("notifications").insert({
+          safeInsertNotification({
             user_id: conv.participantId,
             type: "message",
             title: `New message from @${user.username}`,

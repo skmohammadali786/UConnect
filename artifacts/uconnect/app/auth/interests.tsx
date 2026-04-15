@@ -108,7 +108,7 @@ export default function InterestsScreen() {
         joinedAt: now,
       });
 
-      router.replace("/(tabs)/");
+      router.replace("/(tabs)");
     } catch {
       setLoading(false);
     }

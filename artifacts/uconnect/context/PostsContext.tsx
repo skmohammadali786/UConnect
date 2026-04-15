@@ -127,7 +127,12 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     try {
       const [postsRes, votesRes, bookmarksRes] = await Promise.all([
-        supabase.from("posts").select("*").order("created_at", { ascending: false }).limit(100),
+        supabase
+          .from("posts")
+          .select("*")
+          .or(`auto_delete_at.is.null,auto_delete_at.gt.${new Date().toISOString()}`)
+          .order("created_at", { ascending: false })
+          .limit(100),
         user
           ? supabase.from("post_votes").select("post_id, vote").eq("user_id", user.id)
           : Promise.resolve({ data: [] }),
@@ -146,6 +151,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
           : { data: [] as any[] };
         const authorMap = new Map((authorProfiles ?? []).map((p: any) => [p.id, p]));
 
+        const now = Date.now();
         const mapped = postsRes.data.map((row: any) => {
           const profile = authorMap.get(row.author_id);
           return rowToPost(
@@ -157,7 +163,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
             voteMap.get(row.id) ?? null,
             bookmarkSet.has(row.id),
           );
-        });
+        }).filter((p) => !p.autoDeleteAt || new Date(p.autoDeleteAt).getTime() > now);
         applyPosts(mapped);
       } else {
         applyPosts([]);

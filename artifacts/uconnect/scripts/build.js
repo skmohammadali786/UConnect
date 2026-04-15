@@ -63,10 +63,11 @@ function getDeploymentDomain() {
     return stripProtocol(process.env.EXPO_PUBLIC_DOMAIN);
   }
 
-  console.error(
-    "ERROR: No deployment domain found. Set APP_DOMAIN or EXPO_PUBLIC_DOMAIN",
+  console.warn(
+    "WARN: No deployment domain found. Falling back to localhost. " +
+      "Set APP_DOMAIN or EXPO_PUBLIC_DOMAIN for production builds.",
   );
-  process.exit(1);
+  return "localhost";
 }
 
 function prepareDirectories(timestamp) {
