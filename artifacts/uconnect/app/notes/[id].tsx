@@ -58,8 +58,10 @@ export default function NoteDetailScreen() {
   };
 
   const handleStartDownload = async () => {
-    const downloadUrl = note?.file_url || note?.image_urls?.[0];
-    if (!downloadUrl) {
+    const downloadUrls = Array.from(
+      new Set([note?.file_url, ...(note?.image_urls ?? [])].filter((url): url is string => Boolean(url))),
+    );
+    if (downloadUrls.length === 0) {
       showInfo("No downloadable file", "This note doesn't have a downloadable file yet.");
       return;
     }
@@ -69,9 +71,14 @@ export default function NoteDetailScreen() {
     Animated.timing(progressAnim, { toValue: 0.7, duration: 350, useNativeDriver: false }).start();
 
     try {
-      const canOpen = await Linking.canOpenURL(downloadUrl);
-      if (!canOpen) throw new Error("Cannot open file URL");
-      await Linking.openURL(downloadUrl);
+      let openedCount = 0;
+      for (const url of downloadUrls) {
+        const canOpen = await Linking.canOpenURL(url);
+        if (!canOpen) continue;
+        await Linking.openURL(url);
+        openedCount += 1;
+      }
+      if (openedCount === 0) throw new Error("Cannot open file URL");
 
       const { error: rpcError } = await supabase.rpc("increment_note_downloads", { p_note_id: note.id });
       const nextDownloads = (note.downloads ?? 0) + 1;
@@ -84,7 +91,7 @@ export default function NoteDetailScreen() {
       progressAnim.setValue(1);
       setTimeout(() => {
         closeDownloadModal();
-        showSuccess("Download complete!", `${note.title} opened successfully`);
+        showSuccess("Download complete!", `${openedCount} file(s) opened for ${note.title}`);
       }, 250);
     } catch {
       setDownloading(false);

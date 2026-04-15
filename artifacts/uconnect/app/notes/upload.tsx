@@ -32,6 +32,17 @@ function getImageFileExtension(image: SelectedImage) {
   return "jpg";
 }
 
+async function uriToBlob(uri: string): Promise<Blob> {
+  return await new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.onerror = () => reject(new TypeError("Failed to read local image file"));
+    xhr.onload = () => resolve(xhr.response as Blob);
+    xhr.responseType = "blob";
+    xhr.open("GET", uri, true);
+    xhr.send(null);
+  });
+}
+
 export default function UploadNotesScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -84,12 +95,16 @@ export default function UploadNotesScreen() {
       for (let imageIndex = 0; imageIndex < images.length; imageIndex += 1) {
         const image = images[imageIndex];
         const path = `${user.id}/${Date.now()}_${imageIndex}.${getImageFileExtension(image)}`;
-        const response = await fetch(image.uri);
-        const blob = await response.blob();
-        const { error: uploadError } = await supabase.storage.from("notes").upload(path, blob, {
-          contentType: image.mimeType ?? undefined,
-          upsert: false,
-        });
+        const blob = await uriToBlob(image.uri);
+        let uploadError: any = null;
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          const { error } = await supabase.storage.from("notes").upload(path, blob, {
+            contentType: image.mimeType ?? undefined,
+            upsert: false,
+          });
+          uploadError = error;
+          if (!uploadError) break;
+        }
         if (uploadError) throw uploadError;
         const { data: publicData } = supabase.storage.from("notes").getPublicUrl(path);
         if (publicData?.publicUrl) imageUrls.push(publicData.publicUrl);
