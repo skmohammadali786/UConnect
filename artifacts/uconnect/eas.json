@@ -27,6 +27,9 @@
         "image": "latest",
         "buildType": "app-bundle"
       }
+    },
+    "production ": {
+      "extends": "production"
     }
   }
 }
