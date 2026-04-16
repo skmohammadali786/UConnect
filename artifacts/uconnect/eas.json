@@ -12,6 +12,7 @@
         "EXPO_PUBLIC_SUPABASE_URL": "https://lyrntcjjcigvsueyszom.supabase.co"
       },
       "android": {
+        "image": "latest",
         "buildType": "apk"
       }
     },
@@ -23,6 +24,7 @@
         "EXPO_PUBLIC_SUPABASE_URL": "https://lyrntcjjcigvsueyszom.supabase.co"
       },
       "android": {
+        "image": "latest",
         "buildType": "app-bundle"
       }
     }
