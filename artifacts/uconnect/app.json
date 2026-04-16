@@ -17,7 +17,8 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.skmohammadali786.uconnect",
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "UConnect needs access to your photo library so you can upload profile and post images."
+        "NSPhotoLibraryUsageDescription": "UConnect needs access to your photo library so you can upload profile and post images.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
