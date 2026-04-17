@@ -18,7 +18,6 @@ import { useColors } from "@/hooks/useColors";
 import type { Post } from "@/context/PostsContext";
 import { usePosts } from "@/context/PostsContext";
 import { useSocial } from "@/context/SocialContext";
-import { useSettings } from "@/context/SettingsContext";
 import { ReportModal } from "@/components/ReportModal";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { formatRelativeTime } from "@/utils/time";
@@ -67,7 +66,6 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
   const colors = useColors();
   const { votePost, bookmarkPost } = usePosts();
   const { hasReported } = useSocial();
-  const { settings } = useSettings();
   const [reportVisible, setReportVisible] = useState(false);
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
   const [mediaViewerVisible, setMediaViewerVisible] = useState(false);
@@ -157,9 +155,6 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
   const hasMedia = post.mediaUrls && post.mediaUrls.length > 0;
   const hasVideo = !!post.videoUrl;
 
-  const compact = settings.compactMode;
-  const pad = compact ? 12 : 16;
-
   const autoDeleteLabel = post.autoDeleteAt ? (() => {
     const diff = new Date(post.autoDeleteAt).getTime() - Date.now();
     if (diff < 0) return null;
@@ -181,7 +176,7 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
             backgroundColor: colors.card,
             borderColor: colors.border,
             borderRadius: colors.radius,
-            padding: pad,
+            padding: 16,
           },
         ]}
       >
@@ -218,7 +213,7 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
           </View>
         </View>
 
-        <Text style={[styles.content, { color: colors.foreground }]} numberOfLines={compact ? 3 : 5}>
+        <Text style={[styles.content, { color: colors.foreground }]} numberOfLines={5}>
           {renderHashtags(post.content, colors.primary, colors.foreground)}
         </Text>
 
