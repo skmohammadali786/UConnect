@@ -4,6 +4,67 @@ import * as RechartsPrimitive from "recharts"
 import { cn } from "@/lib/utils"
 
 const THEMES = { light: "", dark: ".dark" } as const
+const HEX_COLOR_PATTERN = /^#(?:[\da-fA-F]{3}|[\da-fA-F]{4}|[\da-fA-F]{6}|[\da-fA-F]{8})$/
+const NAMED_COLOR_PATTERN = /^[a-zA-Z]+$/
+const FUNCTION_COLOR_PATTERN =
+  /^(?:rgb|rgba|hsl|hsla|hwb|lab|lch|oklab|oklch|color|var)\(\s*[-#%(),./\s0-9a-zA-Z]+\s*\)$/
+
+const IDENTIFIER_FALLBACK = "value"
+
+function sanitizeCssIdentifier(value: string): string {
+  const sanitized = value.replace(/[^a-zA-Z0-9_-]/g, "")
+  if (!sanitized) {
+    return IDENTIFIER_FALLBACK
+  }
+
+  if (/^(-?\d)/.test(sanitized)) {
+    return `_${sanitized}`
+  }
+
+  return sanitized
+}
+
+function sanitizeCssAttributeSelectorValue(value: string): string {
+  const escapedValue =
+    typeof CSS !== "undefined" && typeof CSS.escape === "function"
+      ? CSS.escape(value)
+      : value.replace(/[^a-zA-Z0-9_-]/g, "_") || "chart"
+
+  return escapedValue.replace(/'/g, "\\'")
+}
+
+function sanitizeCssValue(value: string): string {
+  const normalized = value.trim()
+  const lowered = normalized.toLowerCase()
+
+  if (
+    !normalized ||
+    /[\n\r\f]/.test(normalized) ||
+    /[;<>{}"'`\\]/.test(normalized) ||
+    /(\/\*|\*\/)/.test(normalized) ||
+    lowered.startsWith("--") ||
+    /(url|expression)\s*\(/.test(lowered) ||
+    /@import|\b(javascript|data|vbscript):/.test(lowered)
+  ) {
+    return ""
+  }
+
+  if (
+    HEX_COLOR_PATTERN.test(normalized) ||
+    FUNCTION_COLOR_PATTERN.test(normalized) ||
+    NAMED_COLOR_PATTERN.test(normalized) ||
+    lowered === "transparent" ||
+    lowered === "currentcolor" ||
+    lowered === "inherit" ||
+    lowered === "initial" ||
+    lowered === "unset" ||
+    lowered === "revert"
+  ) {
+    return normalized
+  }
+
+  return ""
+}
 
 export type ChartConfig = {
   [k in string]: {
@@ -68,32 +129,49 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   const colorConfig = Object.entries(config).filter(
     ([, config]) => config.theme || config.color
   )
+  const selectorId = sanitizeCssAttributeSelectorValue(id)
 
   if (!colorConfig.length) {
     return null
   }
 
+  const cssText = Object.entries(THEMES)
+    .map(([theme, prefix]) => {
+      const declarations = colorConfig
+        .map(([key, itemConfig]) => {
+          const color =
+            itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
+            itemConfig.color
+          if (!color) {
+            return null
+          }
+
+          const sanitizedColor = sanitizeCssValue(color)
+          if (!sanitizedColor) {
+            return null
+          }
+
+          const sanitizedKey = sanitizeCssIdentifier(key)
+          return `  --color-${sanitizedKey}: ${sanitizedColor};`
+        })
+        .filter((declaration): declaration is string => declaration !== null)
+        .join("\n")
+
+      if (!declarations) {
+        return null
+      }
+
+      return `${prefix} [data-chart='${selectorId}'] {\n${declarations}\n}`
+    })
+    .filter((styleBlock): styleBlock is string => styleBlock !== null)
+    .join("\n")
+
+  if (!cssText) {
+    return null
+  }
+
   return (
-    <style
-      dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(
-            ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
-${colorConfig
-  .map(([key, itemConfig]) => {
-    const color =
-      itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
-      itemConfig.color
-    return color ? `  --color-${key}: ${color};` : null
-  })
-  .join("\n")}
-}
-`
-          )
-          .join("\n"),
-      }}
-    />
+    <style>{cssText}</style>
   )
 }
 
