@@ -65,6 +65,7 @@ export default function UserProfileScreen() {
             following: data.following ?? 0,
             isVerified: false,
             avatar: data.avatar || null,
+            banner: data.banner || null,
           });
         } else {
           setProfile({
@@ -79,6 +80,7 @@ export default function UserProfileScreen() {
             followers: 0,
             following: 0,
             isVerified: false,
+            banner: null,
           });
         }
       } catch {
@@ -94,6 +96,7 @@ export default function UserProfileScreen() {
           followers: 0,
           following: 0,
           isVerified: false,
+          banner: null,
         });
       }
       setProfileLoading(false);
@@ -174,7 +177,11 @@ export default function UserProfileScreen() {
             </View>
 
             <View style={{ backgroundColor: colors.card }}>
-              <View style={[styles.cover, { backgroundColor: colors.primary + "15" }]} />
+              {profile.banner ? (
+                <Image source={{ uri: profile.banner }} style={styles.cover} resizeMode="cover" />
+              ) : (
+                <View style={[styles.cover, { backgroundColor: colors.primary + "15" }]} />
+              )}
 
               <View style={styles.avatarRow}>
                 {profile.avatar ? (

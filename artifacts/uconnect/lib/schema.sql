@@ -16,6 +16,7 @@ create table if not exists profiles (
   year text not null default '',
   bio text not null default '',
   avatar text,
+  banner text,
   interests text[] not null default '{}',
   followers int not null default 0,
   following int not null default 0,

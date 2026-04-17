@@ -184,7 +184,11 @@ export default function ProfileScreen() {
 
       <View style={{ backgroundColor: colors.card }}>
         <View style={[styles.coverBanner, { backgroundColor: colors.primary + "18" }]}>
-          <View style={styles.coverGradient} />
+          {user.banner ? (
+            <Image source={{ uri: user.banner }} style={styles.coverImage} resizeMode="cover" />
+          ) : (
+            <View style={styles.coverGradient} />
+          )}
         </View>
 
         <View style={styles.avatarRow}>
@@ -375,6 +379,7 @@ const styles = StyleSheet.create({
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1 },
   topBarTitle: { fontSize: 22, fontFamily: "Inter_700Bold" },
   coverBanner: { height: 90, position: "relative" },
+  coverImage: { width: "100%", height: "100%" },
   coverGradient: { position: "absolute", inset: 0 },
   avatarRow: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", paddingHorizontal: 16, marginTop: -36, marginBottom: 12 },
   avatarContainer: { position: "relative" },

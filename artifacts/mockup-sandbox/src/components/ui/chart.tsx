@@ -29,6 +29,13 @@ function sanitizeCssAttributeSelectorValue(value: string): string {
   return sanitized || "chart"
 }
 
+function escapeCssAttributeSelectorValue(value: string): string {
+  if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
+    return CSS.escape(value)
+  }
+  return sanitizeCssAttributeSelectorValue(value)
+}
+
 function sanitizeCssValue(value: string): string {
   const normalized = value.trim()
   const lowered = normalized.toLowerCase()
@@ -125,7 +132,7 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   const colorConfig = Object.entries(config).filter(
     ([, config]) => config.theme || config.color
   )
-  const selectorId = sanitizeCssAttributeSelectorValue(id)
+  const selectorId = escapeCssAttributeSelectorValue(id)
 
   if (!colorConfig.length) {
     return null
@@ -157,7 +164,7 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
         return null
       }
 
-      return `${prefix} [data-chart=${JSON.stringify(selectorId)}] {\n${declarations}\n}`
+      return `${prefix} [data-chart="${selectorId}"] {\n${declarations}\n}`
     })
     .filter((styleBlock): styleBlock is string => styleBlock !== null)
     .join("\n")

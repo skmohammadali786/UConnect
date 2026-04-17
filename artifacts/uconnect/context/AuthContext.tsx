@@ -13,6 +13,7 @@ export interface User {
   year: string;
   bio: string;
   avatar: string | null;
+  banner: string | null;
   interests: string[];
   followers: number;
   following: number;
@@ -47,6 +48,7 @@ function rowToUser(row: any): User {
     year: row.year ?? "",
     bio: row.bio ?? "",
     avatar: row.avatar ?? null,
+    banner: row.banner ?? null,
     interests: row.interests ?? [],
     followers: row.followers ?? 0,
     following: row.following ?? 0,
@@ -162,6 +164,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       year: updated.year,
       bio: updated.bio,
       avatar: updated.avatar,
+      banner: updated.banner,
       interests: updated.interests,
       phone: updated.phone,
     }).eq("id", user.id);
@@ -180,6 +183,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       year: newUser.year,
       bio: newUser.bio,
       avatar: newUser.avatar,
+      banner: newUser.banner,
       interests: newUser.interests,
       followers: newUser.followers,
       following: newUser.following,
