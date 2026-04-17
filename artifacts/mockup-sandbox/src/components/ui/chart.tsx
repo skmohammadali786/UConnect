@@ -160,7 +160,7 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
         return null
       }
 
-      return `${prefix} [data-chart="${selectorId}"] {\n${declarations}\n}`
+      return `${prefix} [data-chart='${selectorId}'] {\n${declarations}\n}`
     })
     .filter((styleBlock): styleBlock is string => styleBlock !== null)
     .join("\n")
