@@ -61,7 +61,8 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        animation: "shift",
+        animation: "fade",
+        sceneStyle: { backgroundColor: colors.background },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.mutedForeground,
         tabBarStyle: {
@@ -75,7 +76,7 @@ export default function TabLayout() {
         },
         tabBarBackground: () =>
           isIOS ? (
-            <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFill} />
+            <BlurView intensity={90} tint={colors.background === "#0B1016" ? "dark" : "light"} style={StyleSheet.absoluteFill} />
           ) : (
             <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]} />
           ),

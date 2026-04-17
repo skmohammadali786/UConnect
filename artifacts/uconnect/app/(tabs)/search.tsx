@@ -15,23 +15,9 @@ import { PostCard } from "@/components/PostCard";
 import { formatRelativeTime } from "@/utils/time";
 import { TypewriterText } from "@/components/TypewriterText";
 import { supabase } from "@/lib/supabase";
+import { getItem, removeItem, setItem, STORAGE_KEYS } from "@/utils/storage";
 
 const ND = Platform.OS !== "web";
-
-const TRENDING_HASHTAGS = [
-  { tag: "placement", posts: 2840, hot: true },
-  { tag: "DSA", posts: 1920, hot: true },
-  { tag: "hackathon", posts: 1340, hot: false },
-  { tag: "internship", posts: 1180, hot: true },
-  { tag: "GATE2025", posts: 870, hot: false },
-  { tag: "cgpa", posts: 760, hot: false },
-  { tag: "hostellife", posts: 650, hot: false },
-  { tag: "coding", posts: 590, hot: false },
-  { tag: "startups", posts: 480, hot: true },
-  { tag: "research", posts: 320, hot: false },
-  { tag: "campuslife", posts: 270, hot: false },
-  { tag: "exams", posts: 210, hot: false },
-];
 
 const SAMPLE_PEOPLE = [
   { id: "user_cs_nerd", username: "cs_nerd", displayName: "CS Nerd", college: "IIT Bombay", branch: "Computer Science", followers: 342, bio: "ICPC World Finalist. Algorithms & Coffee." },
@@ -51,6 +37,18 @@ const DISCOVER = [
 ];
 
 type SearchTab = "posts" | "people" | "tags";
+type TrendingTag = { tag: string; posts: number; hot: boolean };
+
+function extractHashtags(content: string): string[] {
+  const out: string[] = [];
+  const regex = /(^|\s)#([a-zA-Z0-9_]+)/g;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(content)) !== null) {
+    const tag = (match[2] ?? "").trim();
+    if (tag) out.push(tag.toLowerCase());
+  }
+  return out;
+}
 
 function FadeSlideItem({ children, index, delay = 0, style }: { children: React.ReactNode; index: number; delay?: number; style?: any }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -91,7 +89,8 @@ export default function SearchScreen() {
 
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState<SearchTab>("posts");
-  const [recentSearches, setRecentSearches] = useState<string[]>(["DSA", "placement", "IIT Delhi"]);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [trendingTags, setTrendingTags] = useState<TrendingTag[]>([]);
   const [focused, setFocused] = useState(false);
   const [people, setPeople] = useState<{ id: string; username: string; displayName: string; college: string; branch: string; followers: number; bio: string }[]>([]);
   const [peopleLoading, setPeopleLoading] = useState(false);
@@ -107,6 +106,45 @@ export default function SearchScreen() {
     Animated.spring(headerAnim, { toValue: 1, tension: 90, friction: 14, useNativeDriver: ND }).start();
     (async () => {
       try {
+        const savedSearches = await getItem<string[]>(STORAGE_KEYS.SEARCH_HISTORY);
+        if (Array.isArray(savedSearches)) {
+          setRecentSearches(savedSearches.filter((v) => typeof v === "string").slice(0, 8));
+        }
+      } catch {}
+
+      try {
+        const { data: postRows } = await supabase
+          .from("posts")
+          .select("tag, content, created_at")
+          .order("created_at", { ascending: false })
+          .limit(600);
+
+        if (postRows && postRows.length > 0) {
+          const tagCounts = new Map<string, number>();
+          const hashCounts = new Map<string, number>();
+
+          postRows.forEach((row: any) => {
+            const rowTag = String(row.tag ?? "").trim().toLowerCase().replace(/\s+/g, "");
+            if (rowTag) tagCounts.set(rowTag, (tagCounts.get(rowTag) ?? 0) + 1);
+            extractHashtags(String(row.content ?? "")).forEach((hash) => {
+              hashCounts.set(hash, (hashCounts.get(hash) ?? 0) + 1);
+            });
+          });
+
+          const source = hashCounts.size > 0 ? hashCounts : tagCounts;
+          const ranked = Array.from(source.entries())
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 24)
+            .map(([tag, count], i) => ({ tag, posts: count, hot: i < 4 }));
+          setTrendingTags(ranked);
+        } else {
+          setTrendingTags([]);
+        }
+      } catch {
+        setTrendingTags([]);
+      }
+
+      try {
         const { data } = await supabase
           .from("profiles")
           .select("id, username, display_name, college, followers")
@@ -118,10 +156,18 @@ export default function SearchScreen() {
             id: r.id, username: r.username, displayName: r.display_name,
             college: r.college, followers: r.followers ?? 0,
           })));
+        } else {
+          setSuggestedPeople(SAMPLE_PEOPLE.map((p) => ({ id: p.id, username: p.username, displayName: p.displayName, college: p.college, followers: p.followers })));
         }
-      } catch {}
+      } catch {
+        setSuggestedPeople(SAMPLE_PEOPLE.map((p) => ({ id: p.id, username: p.username, displayName: p.displayName, college: p.college, followers: p.followers })));
+      }
     })();
   }, []);
+
+  useEffect(() => {
+    setItem(STORAGE_KEYS.SEARCH_HISTORY, recentSearches.slice(0, 8));
+  }, [recentSearches]);
 
   useEffect(() => {
     const q = query.trim();
@@ -173,16 +219,22 @@ export default function SearchScreen() {
   };
 
   const selectQuery = (q: string) => {
+    const trimmed = q.trim();
+    if (!trimmed) return;
     setShowPeopleDirectory(false);
-    setQuery(q);
-    if (!recentSearches.includes(q)) {
-      setRecentSearches((prev) => [q, ...prev].slice(0, 8));
-    }
+    setQuery(trimmed);
+    setRecentSearches((prev) => {
+      const deduped = prev.filter((item) => item.toLowerCase() !== trimmed.toLowerCase());
+      return [trimmed, ...deduped].slice(0, 8);
+    });
     setFocused(false);
     inputRef.current?.blur();
   };
 
-  const clearRecent = () => setRecentSearches([]);
+  const clearRecent = () => {
+    setRecentSearches([]);
+    removeItem(STORAGE_KEYS.SEARCH_HISTORY);
+  };
 
   const handleFollowPerson = (personId: string, username: string) => {
     const wasFollowing = isFollowing(personId);
@@ -213,8 +265,8 @@ export default function SearchScreen() {
   const filteredPeople = people;
 
   const filteredTags = query
-    ? TRENDING_HASHTAGS.filter((t) => t.tag.toLowerCase().includes(query.toLowerCase()))
-    : TRENDING_HASHTAGS;
+    ? trendingTags.filter((t) => t.tag.toLowerCase().includes(query.toLowerCase()))
+    : trendingTags;
 
   const renderPeopleCard = ({ item, index }: any) => {
     const following = isFollowing(item.id);
@@ -450,7 +502,7 @@ export default function SearchScreen() {
                 <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Trending</Text>
               </View>
               <View style={styles.trendingGrid}>
-                {TRENDING_HASHTAGS.slice(0, 6).map((item, i) => (
+                {trendingTags.slice(0, 6).map((item, i) => (
                   <FadeSlideItem key={item.tag} index={i} delay={100} style={{ width: "31%" }}>
                     <TouchableOpacity
                       onPress={() => selectQuery(item.tag)}
@@ -466,6 +518,9 @@ export default function SearchScreen() {
                   </FadeSlideItem>
                 ))}
               </View>
+              {trendingTags.length === 0 && (
+                <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>No trending tags yet</Text>
+              )}
             </View>
           </FadeSlideItem>
 

@@ -42,7 +42,11 @@ export default function ChatScreen() {
 
   if (!conv) {
     return (
-      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <KeyboardAvoidingView
+        style={{ flex: 1, backgroundColor: colors.background }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 16}
+      >
         <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, backgroundColor: colors.headerBg, borderBottomColor: colors.border }]}>
           <TouchableOpacity onPress={() => router.back()}>
             <Feather name="arrow-left" size={22} color={colors.foreground} />
@@ -72,7 +76,11 @@ export default function ChatScreen() {
   const displayName = conv.isAnonymous && !conv.isRevealed ? "Anonymous" : conv.participantUsername;
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: colors.background }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 16}
+    >
       {/* Header */}
       <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, backgroundColor: colors.headerBg, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()}>
@@ -99,7 +107,7 @@ export default function ChatScreen() {
             </TouchableOpacity>
           )}
           <TouchableOpacity onPress={handleBlock} style={styles.headerBtn}>
-            <Feather name="shield-off" size={18} color={colors.destructive} />
+            <Feather name={conv.isBlocked ? "shield" : "shield-off"} size={18} color={conv.isBlocked ? colors.primary : colors.destructive} />
           </TouchableOpacity>
         </View>
       </View>
@@ -142,17 +150,23 @@ export default function ChatScreen() {
       ) : (
         <View style={[styles.blockedBar, { backgroundColor: colors.muted, paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 4 }]}>
           <Text style={[styles.blockedText, { color: colors.mutedForeground }]}>User is blocked</Text>
+          <TouchableOpacity
+            onPress={() => blockUser(conv.id)}
+            style={[styles.unblockBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+          >
+            <Text style={[styles.unblockBtnText, { color: colors.primary }]}>Unblock</Text>
+          </TouchableOpacity>
         </View>
       )}
 
       <ConfirmModal
         visible={blockModalVisible}
-        title="Block User"
-        message="You won't receive messages from this person. This action cannot be undone."
-        confirmText="Block"
+        title={conv.isBlocked ? "Unblock User" : "Block User"}
+        message={conv.isBlocked ? "You can receive messages from this person again." : "You won't receive messages from this person until you unblock them."}
+        confirmText={conv.isBlocked ? "Unblock" : "Block"}
         cancelText="Cancel"
-        variant="danger"
-        onConfirm={() => { setBlockModalVisible(false); blockUser(conv.id); router.back(); }}
+        variant={conv.isBlocked ? "warning" : "danger"}
+        onConfirm={() => { setBlockModalVisible(false); blockUser(conv.id); }}
         onCancel={() => setBlockModalVisible(false)}
       />
 
@@ -183,6 +197,8 @@ const styles = StyleSheet.create({
   inputBar: { flexDirection: "row", alignItems: "flex-end", gap: 10, paddingHorizontal: 12, paddingTop: 10, borderTopWidth: 1 },
   input: { flex: 1, borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, fontFamily: "Inter_400Regular", maxHeight: 100 },
   sendBtn: { width: 42, height: 42, borderRadius: 21, alignItems: "center", justifyContent: "center", flexShrink: 0 },
-  blockedBar: { padding: 16, alignItems: "center" },
+  blockedBar: { padding: 16, alignItems: "center", gap: 10 },
   blockedText: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  unblockBtn: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
+  unblockBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
 });

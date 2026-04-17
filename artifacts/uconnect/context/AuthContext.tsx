@@ -125,8 +125,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await supabase.auth.signOut();
-    } catch {}
+      await supabase.auth.signOut({ scope: "local" });
+    } catch {
+      try {
+        await supabase.auth.signOut();
+      } catch {}
+    }
     setUser(null);
   };
 
