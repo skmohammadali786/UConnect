@@ -13,7 +13,7 @@ function sanitizeCssIdentifier(value: string): string {
     return IDENTIFIER_FALLBACK
   }
 
-  if (/^[0-9]|^-[0-9]/.test(sanitized)) {
+  if (/^(-?\d)/.test(sanitized)) {
     return `_${sanitized}`
   }
 
@@ -39,7 +39,7 @@ function sanitizeCssValue(value: string): string {
     /[;<>{}"'`\\]/.test(normalized) ||
     lowered.startsWith("--") ||
     /(url|expression)\s*\(/.test(lowered) ||
-    /@import|javascript:|data:|vbscript:/.test(lowered) ||
+    /@import|\b(javascript|data|vbscript):/.test(lowered) ||
     !/^[-#%(),./\s0-9a-zA-Z]+$/.test(normalized)
   ) {
     return ""
