@@ -57,7 +57,7 @@ async function uriToUploadBody(uri: string): Promise<Blob | ArrayBuffer> {
     const res = await fetch(uri);
     return await res.blob();
   }
-  const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+  const base64 = await FileSystem.readAsStringAsync(uri, { encoding: "base64" });
   return base64ToArrayBuffer(base64);
 }
 

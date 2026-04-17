@@ -216,7 +216,7 @@ export default function UserProfileScreen() {
               <View style={styles.nameSection}>
                 <View style={styles.nameRow}>
                   <Text style={[styles.displayName, { color: colors.foreground }]}>{profile.displayName}</Text>
-                  <TouchableOpacity onPress={() => router.push("/scan-connect")} style={[styles.qrBtn, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "30" }]}>
+                  <TouchableOpacity onPress={() => router.push("/scan-connect" as any)} style={[styles.qrBtn, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "30" }]}>
                     <MaterialCommunityIcons name="qrcode" size={14} color={colors.primary} />
                   </TouchableOpacity>
                   {profile.isVerified && (
