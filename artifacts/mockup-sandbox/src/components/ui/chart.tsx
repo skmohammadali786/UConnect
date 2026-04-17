@@ -4,6 +4,10 @@ import * as RechartsPrimitive from "recharts"
 import { cn } from "@/lib/utils"
 
 const THEMES = { light: "", dark: ".dark" } as const
+const HEX_COLOR_PATTERN = /^#(?:[\da-fA-F]{3}|[\da-fA-F]{4}|[\da-fA-F]{6}|[\da-fA-F]{8})$/
+const NAMED_COLOR_PATTERN = /^[a-zA-Z]+$/
+const FUNCTION_COLOR_PATTERN =
+  /^(?:rgb|rgba|hsl|hsla|hwb|lab|lch|oklab|oklch|color|var)\(\s*[-#%(),./\s0-9a-zA-Z]+\s*\)$/
 
 const IDENTIFIER_FALLBACK = "value"
 
@@ -39,13 +43,26 @@ function sanitizeCssValue(value: string): string {
     /[;<>{}"'`\\]/.test(normalized) ||
     lowered.startsWith("--") ||
     /(url|expression)\s*\(/.test(lowered) ||
-    /@import|\b(javascript|data|vbscript):/.test(lowered) ||
-    !/^[-#%(),./\s0-9a-zA-Z]+$/.test(normalized)
+    /@import|\b(javascript|data|vbscript):/.test(lowered)
   ) {
     return ""
   }
 
-  return normalized
+  if (
+    HEX_COLOR_PATTERN.test(normalized) ||
+    FUNCTION_COLOR_PATTERN.test(normalized) ||
+    NAMED_COLOR_PATTERN.test(normalized) ||
+    lowered === "transparent" ||
+    lowered === "currentcolor" ||
+    lowered === "inherit" ||
+    lowered === "initial" ||
+    lowered === "unset" ||
+    lowered === "revert"
+  ) {
+    return normalized
+  }
+
+  return ""
 }
 
 export type ChartConfig = {
