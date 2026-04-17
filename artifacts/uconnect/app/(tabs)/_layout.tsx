@@ -2,8 +2,9 @@ import { BlurView } from "expo-blur";
 import { Tabs, router } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { Animated, Platform, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Animated, Platform, StyleSheet, TouchableOpacity, View, useColorScheme } from "react-native";
 import { useColors } from "@/hooks/useColors";
+import { useTheme } from "@/context/ThemeContext";
 
 const ND = Platform.OS !== "web";
 
@@ -54,8 +55,11 @@ function CreateTabButton() {
 
 export default function TabLayout() {
   const colors = useColors();
+  const { themeMode } = useTheme();
+  const scheme = useColorScheme();
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
+  const isDarkTheme = themeMode === "dark" || (themeMode === "system" && (scheme ?? "dark") === "dark");
 
   return (
     <Tabs
@@ -76,7 +80,7 @@ export default function TabLayout() {
         },
         tabBarBackground: () =>
           isIOS ? (
-            <BlurView intensity={90} tint={colors.background === "#0B1016" ? "dark" : "light"} style={StyleSheet.absoluteFill} />
+            <BlurView intensity={90} tint={isDarkTheme ? "dark" : "light"} style={StyleSheet.absoluteFill} />
           ) : (
             <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]} />
           ),

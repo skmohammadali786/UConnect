@@ -127,9 +127,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await supabase.auth.signOut({ scope: "local" });
     } catch {
+      console.warn("Local sign-out failed, retrying global sign-out");
       try {
         await supabase.auth.signOut();
-      } catch {}
+      } catch {
+        console.error("Global sign-out failed");
+      }
     }
     setUser(null);
   };

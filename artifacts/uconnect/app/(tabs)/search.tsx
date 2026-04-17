@@ -18,6 +18,7 @@ import { supabase } from "@/lib/supabase";
 import { getItem, removeItem, setItem, STORAGE_KEYS } from "@/utils/storage";
 
 const ND = Platform.OS !== "web";
+const MAX_RECENT_SEARCHES = 8;
 
 const SAMPLE_PEOPLE = [
   { id: "user_cs_nerd", username: "cs_nerd", displayName: "CS Nerd", college: "IIT Bombay", branch: "Computer Science", followers: 342, bio: "ICPC World Finalist. Algorithms & Coffee." },
@@ -38,6 +39,7 @@ const DISCOVER = [
 
 type SearchTab = "posts" | "people" | "tags";
 type TrendingTag = { tag: string; posts: number; hot: boolean };
+type SearchPostRow = { tag: string | null; content: string | null };
 
 function extractHashtags(content: string): string[] {
   const out: string[] = [];
@@ -106,27 +108,27 @@ export default function SearchScreen() {
     Animated.spring(headerAnim, { toValue: 1, tension: 90, friction: 14, useNativeDriver: ND }).start();
     (async () => {
       try {
-        const savedSearches = await getItem<string[]>(STORAGE_KEYS.SEARCH_HISTORY);
+        const savedSearches = await getItem<unknown>(STORAGE_KEYS.SEARCH_HISTORY);
         if (Array.isArray(savedSearches)) {
-          setRecentSearches(savedSearches.filter((v) => typeof v === "string").slice(0, 8));
+          setRecentSearches(savedSearches.filter((v): v is string => typeof v === "string").slice(0, MAX_RECENT_SEARCHES));
         }
       } catch {}
 
       try {
         const { data: postRows } = await supabase
           .from("posts")
-          .select("tag, content, created_at")
+          .select("tag, content")
           .order("created_at", { ascending: false })
-          .limit(600);
+          .limit(250);
 
         if (postRows && postRows.length > 0) {
           const tagCounts = new Map<string, number>();
           const hashCounts = new Map<string, number>();
 
-          postRows.forEach((row: any) => {
-            const rowTag = String(row.tag ?? "").trim().toLowerCase().replace(/\s+/g, "");
+          (postRows as SearchPostRow[]).forEach((row) => {
+            const rowTag = (row.tag ?? "").trim().toLowerCase().replace(/\s+/g, "");
             if (rowTag) tagCounts.set(rowTag, (tagCounts.get(rowTag) ?? 0) + 1);
-            extractHashtags(String(row.content ?? "")).forEach((hash) => {
+            extractHashtags(row.content ?? "").forEach((hash) => {
               hashCounts.set(hash, (hashCounts.get(hash) ?? 0) + 1);
             });
           });
@@ -166,7 +168,10 @@ export default function SearchScreen() {
   }, []);
 
   useEffect(() => {
-    setItem(STORAGE_KEYS.SEARCH_HISTORY, recentSearches.slice(0, 8));
+    const timer = setTimeout(() => {
+      setItem(STORAGE_KEYS.SEARCH_HISTORY, recentSearches.slice(0, MAX_RECENT_SEARCHES));
+    }, 200);
+    return () => clearTimeout(timer);
   }, [recentSearches]);
 
   useEffect(() => {
@@ -225,7 +230,7 @@ export default function SearchScreen() {
     setQuery(trimmed);
     setRecentSearches((prev) => {
       const deduped = prev.filter((item) => item.toLowerCase() !== trimmed.toLowerCase());
-      return [trimmed, ...deduped].slice(0, 8);
+      return [trimmed, ...deduped].slice(0, MAX_RECENT_SEARCHES);
     });
     setFocused(false);
     inputRef.current?.blur();

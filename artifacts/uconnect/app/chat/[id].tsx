@@ -72,6 +72,10 @@ export default function ChatScreen() {
 
   const handleReveal = () => setRevealModalVisible(true);
   const handleBlock = () => setBlockModalVisible(true);
+  const handleBlockConfirm = () => {
+    setBlockModalVisible(false);
+    blockUser(conv.id);
+  };
 
   const displayName = conv.isAnonymous && !conv.isRevealed ? "Anonymous" : conv.participantUsername;
 
@@ -166,7 +170,7 @@ export default function ChatScreen() {
         confirmText={conv.isBlocked ? "Unblock" : "Block"}
         cancelText="Cancel"
         variant={conv.isBlocked ? "warning" : "danger"}
-        onConfirm={() => { setBlockModalVisible(false); blockUser(conv.id); }}
+        onConfirm={handleBlockConfirm}
         onCancel={() => setBlockModalVisible(false)}
       />
 

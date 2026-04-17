@@ -113,7 +113,7 @@ export default function SettingsScreen() {
       await logout();
       router.replace("/auth/welcome");
     } catch {
-      router.replace("/auth/welcome");
+      showInfo("Sign out failed", "Please try again.");
     }
   };
 
