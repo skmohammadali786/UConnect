@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import * as FileSystem from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import React, { useState } from "react";
@@ -32,15 +33,33 @@ function getImageFileExtension(image: SelectedImage) {
   return "jpg";
 }
 
-async function uriToBlob(uri: string): Promise<Blob> {
-  return await new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.onerror = () => reject(new TypeError("Failed to read selected image file."));
-    xhr.onload = () => resolve(xhr.response as Blob);
-    xhr.responseType = "blob";
-    xhr.open("GET", uri, true);
-    xhr.send(null);
-  });
+function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  // RN native file URIs are converted via base64 because storage upload expects binary body.
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  const clean = base64.replace(/=+$/, "");
+  let bytes = 0;
+  let buffer = 0;
+  const out: number[] = [];
+  for (let i = 0; i < clean.length; i += 1) {
+    const value = chars.indexOf(clean[i]);
+    if (value < 0) continue;
+    buffer = (buffer << 6) | value;
+    bytes += 6;
+    if (bytes >= 8) {
+      bytes -= 8;
+      out.push((buffer >> bytes) & 0xff);
+    }
+  }
+  return Uint8Array.from(out).buffer;
+}
+
+async function uriToUploadBody(uri: string): Promise<Blob | ArrayBuffer> {
+  if (Platform.OS === "web") {
+    const res = await fetch(uri);
+    return await res.blob();
+  }
+  const base64 = await FileSystem.readAsStringAsync(uri, { encoding: "base64" });
+  return base64ToArrayBuffer(base64);
 }
 
 export default function UploadNotesScreen() {
@@ -92,13 +111,16 @@ export default function UploadNotesScreen() {
     setLoading(true);
     try {
       const imageUrls: string[] = [];
+      const uploadSessionId = Date.now().toString(36);
       for (let imageIndex = 0; imageIndex < images.length; imageIndex += 1) {
         const image = images[imageIndex];
-        const path = `${user.id}/${Date.now()}_${imageIndex}.${getImageFileExtension(image)}`;
+        const extension = getImageFileExtension(image);
+        let path = "";
         let uploadError: unknown = null;
         for (let attempt = 0; attempt < 2; attempt += 1) {
-          const blob = await uriToBlob(image.uri);
-          const { error } = await supabase.storage.from("notes").upload(path, blob, {
+          path = `${user.id}/${uploadSessionId}_${imageIndex}_${attempt}.${extension}`;
+          const fileBody = await uriToUploadBody(image.uri);
+          const { error } = await supabase.storage.from("notes").upload(path, fileBody, {
             contentType: image.mimeType ?? undefined,
             upsert: false,
           });

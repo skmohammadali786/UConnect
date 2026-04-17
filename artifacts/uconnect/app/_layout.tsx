@@ -58,6 +58,7 @@ function RootLayoutNav() {
       <Stack.Screen name="create-post" options={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: colors.background } }} />
       <Stack.Screen name="edit-profile" options={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: colors.background } }} />
       <Stack.Screen name="invite" options={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: colors.background } }} />
+      <Stack.Screen name="scan-connect" options={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: colors.background } }} />
       <Stack.Screen name="user" options={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: colors.background } }} />
       <Stack.Screen name="settings" options={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: colors.background } }} />
       <Stack.Screen name="+not-found" options={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: colors.background } }} />

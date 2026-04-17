@@ -1,4 +1,4 @@
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Animated, FlatList, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -216,6 +216,9 @@ export default function UserProfileScreen() {
               <View style={styles.nameSection}>
                 <View style={styles.nameRow}>
                   <Text style={[styles.displayName, { color: colors.foreground }]}>{profile.displayName}</Text>
+                  <TouchableOpacity onPress={() => router.push("/scan-connect" as any)} style={[styles.qrBtn, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "30" }]}>
+                    <MaterialCommunityIcons name="qrcode" size={14} color={colors.primary} />
+                  </TouchableOpacity>
                   {profile.isVerified && (
                     <View style={[styles.verifiedBadge, { backgroundColor: colors.primary }]}>
                       <Feather name="check" size={10} color="#FFF" />
@@ -305,6 +308,7 @@ const styles = StyleSheet.create({
   editBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   nameSection: { paddingHorizontal: 16, gap: 5, marginBottom: 14 },
   nameRow: { flexDirection: "row", alignItems: "center", gap: 7 },
+  qrBtn: { width: 24, height: 24, borderRadius: 7, alignItems: "center", justifyContent: "center", borderWidth: 1 },
   displayName: { fontSize: 20, fontFamily: "Inter_700Bold" },
   verifiedBadge: { width: 18, height: 18, borderRadius: 9, alignItems: "center", justifyContent: "center" },
   usernameText: { fontSize: 13, fontFamily: "Inter_400Regular" },

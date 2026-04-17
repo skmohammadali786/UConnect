@@ -198,15 +198,6 @@ export default function SettingsScreen() {
             switchValue={settings.showSensitiveContent}
             onSwitchChange={(v: boolean) => { updateSetting("showSensitiveContent", v); showSuccess(v ? "Showing all content" : "Sensitive content hidden"); }}
             colors={colors}
-          />
-          <SettingRow
-            icon="layout"
-            label="Compact Mode"
-            sub="Smaller cards for more content"
-            isSwitch
-            switchValue={settings.compactMode}
-            onSwitchChange={(v: boolean) => { updateSetting("compactMode", v); showSuccess(v ? "Compact mode on" : "Compact mode off"); }}
-            colors={colors}
             last
           />
         </SectionCard>

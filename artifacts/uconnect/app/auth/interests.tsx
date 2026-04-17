@@ -77,7 +77,6 @@ export default function InterestsScreen() {
         push_notifications: true,
         default_anonymous: false,
         show_sensitive_content: false,
-        compact_mode: false,
         updated_at: now,
       });
 

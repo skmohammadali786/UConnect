@@ -7,7 +7,6 @@ interface Settings {
   pushNotifications: boolean;
   defaultAnonymous: boolean;
   showSensitiveContent: boolean;
-  compactMode: boolean;
 }
 
 interface SettingsContextType {
@@ -20,7 +19,6 @@ const DEFAULT_SETTINGS: Settings = {
   pushNotifications: true,
   defaultAnonymous: false,
   showSensitiveContent: false,
-  compactMode: false,
 };
 
 const STORAGE_KEY = "@uconnect_settings";
@@ -50,7 +48,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
               pushNotifications: data.push_notifications,
               defaultAnonymous: data.default_anonymous,
               showSensitiveContent: data.show_sensitive_content,
-              compactMode: data.compact_mode,
             };
             setSettings(remoteSettings);
             await AsyncStorage.setItem(storageKey, JSON.stringify(remoteSettings)).catch(() => {});
@@ -78,7 +75,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
           push_notifications: updated.pushNotifications,
           default_anonymous: updated.defaultAnonymous,
           show_sensitive_content: updated.showSensitiveContent,
-          compact_mode: updated.compactMode,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "user_id" },

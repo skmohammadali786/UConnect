@@ -37,7 +37,6 @@ create table if not exists user_settings (
   push_notifications boolean not null default true,
   default_anonymous boolean not null default false,
   show_sensitive_content boolean not null default false,
-  compact_mode boolean not null default false,
   updated_at timestamptz not null default now()
 );
 alter table user_settings enable row level security;
@@ -435,6 +434,47 @@ create policy "Notes are viewable" on notes for select using (true);
 create policy "Authenticated users can upload notes" on notes for insert with check (auth.uid() = uploader_id);
 create policy "Uploaders can update notes" on notes for update using (auth.uid() = uploader_id);
 create policy "Uploaders can delete notes" on notes for delete using (auth.uid() = uploader_id);
+
+-- Notes storage bucket
+insert into storage.buckets (id, name, public)
+values ('notes', 'notes', true)
+on conflict (id) do update set public = excluded.public;
+
+drop policy if exists "Notes files are public" on storage.objects;
+create policy "Notes files are public" on storage.objects
+  for select
+  using (bucket_id = 'notes');
+
+drop policy if exists "Authenticated users can upload own notes files" on storage.objects;
+create policy "Authenticated users can upload own notes files" on storage.objects
+  for insert
+  to authenticated
+  with check (
+    bucket_id = 'notes'
+    and ((storage.foldername(name))[1] = auth.uid()::text)
+  );
+
+drop policy if exists "Users can update own notes files" on storage.objects;
+create policy "Users can update own notes files" on storage.objects
+  for update
+  to authenticated
+  using (
+    bucket_id = 'notes'
+    and owner = auth.uid()
+  )
+  with check (
+    bucket_id = 'notes'
+    and owner = auth.uid()
+  );
+
+drop policy if exists "Users can delete own notes files" on storage.objects;
+create policy "Users can delete own notes files" on storage.objects
+  for delete
+  to authenticated
+  using (
+    bucket_id = 'notes'
+    and owner = auth.uid()
+  );
 
 -- ─── NOTE SAVES ──────────────────────────────────────────────────────────────
 create table if not exists note_saves (

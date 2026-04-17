@@ -1,12 +1,15 @@
 import { router } from "expo-router";
 import React, { useEffect } from "react";
-import { ActivityIndicator, Image, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, StyleSheet, Text, View, useColorScheme } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 
 export default function SplashScreen() {
   const colors = useColors();
   const { isLoading, isAuthenticated } = useAuth();
+  const { themeMode } = useTheme();
+  const systemTheme = useColorScheme();
 
   useEffect(() => {
     if (!isLoading) {
@@ -21,7 +24,7 @@ export default function SplashScreen() {
     }
   }, [isLoading, isAuthenticated]);
 
-  const isDark = colors.background === "#0A0A0A";
+  const isDark = themeMode === "dark" || (themeMode === "system" && systemTheme === "dark");
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
