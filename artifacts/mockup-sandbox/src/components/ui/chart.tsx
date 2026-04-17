@@ -9,7 +9,15 @@ const IDENTIFIER_FALLBACK = "value"
 
 function sanitizeCssIdentifier(value: string): string {
   const sanitized = value.replace(/[^a-zA-Z0-9_-]/g, "")
-  return sanitized || IDENTIFIER_FALLBACK
+  if (!sanitized) {
+    return IDENTIFIER_FALLBACK
+  }
+
+  if (/^[0-9]|^-[0-9]/.test(sanitized)) {
+    return `_${sanitized}`
+  }
+
+  return sanitized
 }
 
 function sanitizeCssAttributeSelectorValue(value: string): string {
@@ -17,7 +25,8 @@ function sanitizeCssAttributeSelectorValue(value: string): string {
     return CSS.escape(value)
   }
 
-  return value.replace(/[^a-zA-Z0-9_-]/g, "_")
+  const sanitized = value.replace(/[^a-zA-Z0-9_-]/g, "_")
+  return sanitized || "chart"
 }
 
 function sanitizeCssValue(value: string): string {
@@ -28,6 +37,7 @@ function sanitizeCssValue(value: string): string {
     !normalized ||
     /[\n\r\f]/.test(normalized) ||
     /[;<>{}"'`\\]/.test(normalized) ||
+    lowered.startsWith("--") ||
     /(url|expression)\s*\(/.test(lowered) ||
     /@import|javascript:|data:|vbscript:/.test(lowered) ||
     !/^[-#%(),./\s0-9a-zA-Z]+$/.test(normalized)
