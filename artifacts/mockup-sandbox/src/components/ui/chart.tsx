@@ -25,12 +25,8 @@ function sanitizeCssIdentifier(value: string): string {
 }
 
 function sanitizeCssAttributeSelectorValue(value: string): string {
-  const escapedValue =
-    typeof CSS !== "undefined" && typeof CSS.escape === "function"
-      ? CSS.escape(value)
-      : value.replace(/[^a-zA-Z0-9_-]/g, "_") || "chart"
-
-  return escapedValue.replace(/'/g, "\\'")
+  const sanitized = value.replace(/[^a-zA-Z0-9_-]/g, "_")
+  return sanitized || "chart"
 }
 
 function sanitizeCssValue(value: string): string {
@@ -161,7 +157,7 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
         return null
       }
 
-      return `${prefix} [data-chart='${selectorId}'] {\n${declarations}\n}`
+      return `${prefix} [data-chart=${JSON.stringify(selectorId)}] {\n${declarations}\n}`
     })
     .filter((styleBlock): styleBlock is string => styleBlock !== null)
     .join("\n")
