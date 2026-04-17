@@ -81,6 +81,12 @@ export default function ProfileScreen() {
   const joinedDate = new Date(user.joinedAt).toLocaleDateString("en-IN", { month: "long", year: "numeric" });
 
   const totalActivity = appliedInternships.length + rsvpEvents.length + savedNotes.length;
+  const openConnections = useCallback((mode: "followers" | "following") => {
+    router.push({
+      pathname: "/connections",
+      params: { userId: user.id, mode, username: user.username },
+    });
+  }, [user.id, user.username]);
 
   const handleDeletePost = useCallback((id: string) => {
     deletePost(id);
@@ -246,15 +252,22 @@ export default function ProfileScreen() {
         <View style={[styles.statsCard, { backgroundColor: colors.background, borderColor: colors.border, marginHorizontal: 16, marginBottom: 16 }]}>
           {[
             { num: myPosts.length || user.postsCount || 0, label: "Posts" },
-            { num: user.followers, label: "Followers" },
-            { num: followingIds.size || user.following || 0, label: "Following" },
+            { num: user.followers, label: "Followers", mode: "followers" as const },
+            { num: followingIds.size || user.following || 0, label: "Following", mode: "following" as const },
             { num: totalActivity, label: "Activity" },
           ].map((s, i, arr) => (
             <React.Fragment key={s.label}>
-              <View style={styles.statItem}>
-                <Text style={[styles.statNum, { color: colors.primary }]}>{s.num}</Text>
-                <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>{s.label}</Text>
-              </View>
+              {s.mode ? (
+                <TouchableOpacity style={styles.statItem} onPress={() => openConnections(s.mode)} activeOpacity={0.85}>
+                  <Text style={[styles.statNum, { color: colors.primary }]}>{s.num}</Text>
+                  <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>{s.label}</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.statItem}>
+                  <Text style={[styles.statNum, { color: colors.primary }]}>{s.num}</Text>
+                  <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>{s.label}</Text>
+                </View>
+              )}
               {i < arr.length - 1 && <View style={[styles.statDivider, { backgroundColor: colors.border }]} />}
             </React.Fragment>
           ))}
