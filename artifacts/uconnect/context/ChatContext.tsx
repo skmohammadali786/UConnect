@@ -32,7 +32,7 @@ interface ChatContextType {
   startConversation: (participantId: string, participantUsername: string, isAnonymous: boolean) => Promise<string>;
   markRead: (conversationId: string) => void;
   revealIdentity: (conversationId: string) => void;
-  blockUser: (conversationId: string) => Promise<void>;
+  blockUser: (conversationId: string) => Promise<boolean>;
   deleteConversation: (conversationId: string) => void;
 }
 
@@ -253,7 +253,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const blockUser = useCallback(async (conversationId: string) => {
+  const blockUser = useCallback(async (conversationId: string): Promise<boolean> => {
     let nextIsBlocked: boolean | null = null;
     setConversations((prev) =>
       prev.map((c) => {
@@ -263,7 +263,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       })
     );
 
-    if (!user || nextIsBlocked === null) return;
+    if (nextIsBlocked === null) return false;
+    if (!user) return true;
 
     const { error } = await supabase
       .from("conversations")
@@ -275,10 +276,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         prev.map((c) => (c.id === conversationId ? { ...c, isBlocked: !nextIsBlocked } : c))
       );
       console.error(`Failed to update block state for conversation ${conversationId}:`, error.message);
-      return;
+      return false;
     }
 
     await loadConversations();
+    return true;
   }, [user, loadConversations]);
 
   const deleteConversation = (conversationId: string) => {

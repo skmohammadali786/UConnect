@@ -5,11 +5,13 @@ import { FlatList, Image, Platform, StyleSheet, Text, TouchableOpacity, View } f
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useChat } from "@/context/ChatContext";
+import { useToast } from "@/components/Toast";
 
 export default function BlockedUsersScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { conversations, blockUser } = useChat();
+  const { showError } = useToast();
   const blocked = conversations.filter((c) => c.isBlocked);
 
   return (
@@ -41,7 +43,10 @@ export default function BlockedUsersScreen() {
                 <Text style={[styles.sub, { color: colors.mutedForeground }]}>Tap unblock to allow messages again</Text>
               </View>
               <TouchableOpacity
-                onPress={() => blockUser(item.id)}
+                onPress={async () => {
+                  const ok = await blockUser(item.id);
+                  if (!ok) showError("Unblock failed", "Please try again.");
+                }}
                 style={[styles.unblockBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
               >
                 <Text style={[styles.unblockText, { color: colors.primary }]}>Unblock</Text>

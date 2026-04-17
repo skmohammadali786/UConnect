@@ -8,6 +8,7 @@ import { ConfirmModal } from "@/components/ConfirmModal";
 import { useColors } from "@/hooks/useColors";
 import { useChat } from "@/context/ChatContext";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/components/Toast";
 
 export default function ChatScreen() {
   const colors = useColors();
@@ -15,6 +16,7 @@ export default function ChatScreen() {
   const { id, username } = useLocalSearchParams<{ id: string; username?: string }>();
   const { conversations, sendMessage, markRead, revealIdentity, blockUser, startConversation } = useChat();
   const { user } = useAuth();
+  const { showError } = useToast();
   const [message, setMessage] = useState("");
   const [blockModalVisible, setBlockModalVisible] = useState(false);
   const [revealModalVisible, setRevealModalVisible] = useState(false);
@@ -77,9 +79,10 @@ export default function ChatScreen() {
     if (!canViewProfile) return;
     router.push({ pathname: "/user/[username]" as any, params: { username: conv.participantUsername } });
   };
-  const handleBlockConfirm = () => {
+  const handleBlockConfirm = async () => {
     setBlockModalVisible(false);
-    blockUser(conv.id);
+    const ok = await blockUser(conv.id);
+    if (!ok) showError("Action failed", "Please try blocking/unblocking again.");
   };
 
   const displayName = conv.isAnonymous && !conv.isRevealed ? "Anonymous" : conv.participantUsername;
@@ -160,7 +163,10 @@ export default function ChatScreen() {
         <View style={[styles.blockedBar, { backgroundColor: colors.muted, paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 4 }]}>
           <Text style={[styles.blockedText, { color: colors.mutedForeground }]}>User is blocked</Text>
           <TouchableOpacity
-            onPress={() => blockUser(conv.id)}
+            onPress={async () => {
+              const ok = await blockUser(conv.id);
+              if (!ok) showError("Unblock failed", "Please try again.");
+            }}
             style={[styles.unblockBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
           >
             <Text style={[styles.unblockBtnText, { color: colors.primary }]}>Unblock</Text>
