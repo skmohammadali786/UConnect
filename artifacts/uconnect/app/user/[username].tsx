@@ -61,8 +61,8 @@ export default function UserProfileScreen() {
             year: data.year || "",
             bio: data.bio || "",
             interests: data.interests || [],
-            followers: data.followers_count ?? 0,
-            following: data.following_count ?? 0,
+            followers: data.followers ?? 0,
+            following: data.following ?? 0,
             isVerified: false,
             avatar: data.avatar || null,
           });
@@ -123,6 +123,14 @@ export default function UserProfileScreen() {
       const convId = await startConversation(profile.id, profile.username, false);
       router.push({ pathname: "/chat/[id]" as any, params: { id: convId, username: profile.username } });
     } catch {}
+  };
+
+  const openConnections = (mode: "followers" | "following") => {
+    if (!profile) return;
+    router.push({
+      pathname: "/connections",
+      params: { userId: profile.id, mode, username: profile.username },
+    });
   };
 
   if (profileLoading) {
@@ -246,14 +254,21 @@ export default function UserProfileScreen() {
               <View style={[styles.statsRow, { borderColor: colors.border, marginHorizontal: 16, marginBottom: 16 }]}>
                 {[
                   { num: userPosts.length, label: "Posts" },
-                  { num: followerCount, label: "Followers" },
-                  { num: profile.following, label: "Following" },
+                  { num: followerCount, label: "Followers", mode: "followers" as const },
+                  { num: profile.following, label: "Following", mode: "following" as const },
                 ].map((s, i, arr) => (
                   <React.Fragment key={s.label}>
-                    <View style={styles.statItem}>
-                      <Text style={[styles.statNum, { color: colors.primary }]}>{s.num}</Text>
-                      <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>{s.label}</Text>
-                    </View>
+                    {s.mode ? (
+                      <TouchableOpacity style={styles.statItem} onPress={() => openConnections(s.mode)} activeOpacity={0.85}>
+                        <Text style={[styles.statNum, { color: colors.primary }]}>{s.num}</Text>
+                        <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>{s.label}</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={styles.statItem}>
+                        <Text style={[styles.statNum, { color: colors.primary }]}>{s.num}</Text>
+                        <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>{s.label}</Text>
+                      </View>
+                    )}
                     {i < arr.length - 1 && <View style={[styles.statDivider, { backgroundColor: colors.border }]} />}
                   </React.Fragment>
                 ))}

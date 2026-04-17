@@ -96,6 +96,7 @@ export default function SearchScreen() {
   const [people, setPeople] = useState<{ id: string; username: string; displayName: string; college: string; branch: string; followers: number; bio: string }[]>([]);
   const [peopleLoading, setPeopleLoading] = useState(false);
   const [suggestedPeople, setSuggestedPeople] = useState<{ id: string; username: string; displayName: string; college: string; followers: number }[]>([]);
+  const [showPeopleDirectory, setShowPeopleDirectory] = useState(false);
 
   const inputRef = useRef<TextInput>(null);
   const headerAnim = useRef(new Animated.Value(0)).current;
@@ -124,16 +125,24 @@ export default function SearchScreen() {
 
   useEffect(() => {
     const q = query.trim();
-    if (!q) { setPeople([]); return; }
+    if (!q && !showPeopleDirectory) {
+      setPeople([]);
+      setPeopleLoading(false);
+      return;
+    }
     setPeopleLoading(true);
     const timer = setTimeout(async () => {
       try {
-        const { data } = await supabase
+        let request = supabase
           .from("profiles")
           .select("id, username, display_name, college, branch, followers, bio")
-          .or(`username.ilike.%${q}%,display_name.ilike.%${q}%,college.ilike.%${q}%`)
-          .neq("id", user?.id ?? "")
-          .limit(20);
+          .neq("id", user?.id ?? "");
+        if (q) {
+          request = request.or(`username.ilike.%${q}%,display_name.ilike.%${q}%,college.ilike.%${q}%`).limit(20);
+        } else {
+          request = request.order("followers", { ascending: false }).limit(60);
+        }
+        const { data } = await request;
         setPeople((data ?? []).map((r: any) => ({
           id: r.id,
           username: r.username,
@@ -147,7 +156,7 @@ export default function SearchScreen() {
       setPeopleLoading(false);
     }, 300);
     return () => clearTimeout(timer);
-  }, [query, user?.id]);
+  }, [query, showPeopleDirectory, user?.id]);
 
   const onFocus = () => {
     setFocused(true);
@@ -159,10 +168,12 @@ export default function SearchScreen() {
   };
 
   const handleSearch = (text: string) => {
+    setShowPeopleDirectory(false);
     setQuery(text);
   };
 
   const selectQuery = (q: string) => {
+    setShowPeopleDirectory(false);
     setQuery(q);
     if (!recentSearches.includes(q)) {
       setRecentSearches((prev) => [q, ...prev].slice(0, 8));
@@ -287,7 +298,7 @@ export default function SearchScreen() {
     </View>
   );
 
-  const hasQuery = query.length > 0;
+  const hasQuery = query.trim().length > 0 || showPeopleDirectory;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -386,7 +397,11 @@ export default function SearchScreen() {
               renderItem={renderPeopleCard}
               contentContainerStyle={{ padding: 12, gap: 8, paddingBottom: 100 }}
               showsVerticalScrollIndicator={false}
-              ListEmptyComponent={renderEmptySearch()}
+              ListEmptyComponent={peopleLoading ? (
+                <View style={styles.emptyWrap}>
+                  <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>Loading people...</Text>
+                </View>
+              ) : renderEmptySearch()}
             />
           )}
           {activeTab === "tags" && (
@@ -459,7 +474,12 @@ export default function SearchScreen() {
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Text style={[styles.sectionTitle, { color: colors.foreground }]}>People to Follow</Text>
-                <TouchableOpacity onPress={() => { setQuery(" "); switchTab("people"); }}>
+                <TouchableOpacity onPress={() => {
+                  setShowPeopleDirectory(true);
+                  setFocused(false);
+                  inputRef.current?.blur();
+                  switchTab("people");
+                }}>
                   <Text style={[styles.sectionAction, { color: colors.primary }]}>See all</Text>
                 </TouchableOpacity>
               </View>
