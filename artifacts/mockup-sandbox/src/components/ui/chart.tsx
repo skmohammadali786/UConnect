@@ -25,12 +25,12 @@ function sanitizeCssIdentifier(value: string): string {
 }
 
 function sanitizeCssAttributeSelectorValue(value: string): string {
-  if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
-    return CSS.escape(value)
-  }
+  const escapedValue =
+    typeof CSS !== "undefined" && typeof CSS.escape === "function"
+      ? CSS.escape(value)
+      : value.replace(/[^a-zA-Z0-9_-]/g, "_") || "chart"
 
-  const sanitized = value.replace(/[^a-zA-Z0-9_-]/g, "_")
-  return sanitized || "chart"
+  return escapedValue.replace(/'/g, "\\'")
 }
 
 function sanitizeCssValue(value: string): string {
@@ -41,6 +41,7 @@ function sanitizeCssValue(value: string): string {
     !normalized ||
     /[\n\r\f]/.test(normalized) ||
     /[;<>{}"'`\\]/.test(normalized) ||
+    /(\/\*|\*\/)/.test(normalized) ||
     lowered.startsWith("--") ||
     /(url|expression)\s*\(/.test(lowered) ||
     /@import|\b(javascript|data|vbscript):/.test(lowered)
