@@ -5,6 +5,25 @@ import { cn } from "@/lib/utils"
 
 const THEMES = { light: "", dark: ".dark" } as const
 
+const IDENTIFIER_FALLBACK = "value"
+
+function sanitizeCssIdentifier(value: string): string {
+  const sanitized = value.replace(/[^a-zA-Z0-9_-]/g, "")
+  return sanitized || IDENTIFIER_FALLBACK
+}
+
+function sanitizeCssAttributeSelectorValue(value: string): string {
+  if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
+    return CSS.escape(value)
+  }
+
+  return value.replace(/["\\\]\[]/g, "\\$&")
+}
+
+function sanitizeCssValue(value: string): string {
+  return value.replace(/[;<>{}]/g, "").trim()
+}
+
 export type ChartConfig = {
   [k in string]: {
     label?: React.ReactNode
@@ -68,32 +87,49 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   const colorConfig = Object.entries(config).filter(
     ([, config]) => config.theme || config.color
   )
+  const selectorId = sanitizeCssAttributeSelectorValue(id)
 
   if (!colorConfig.length) {
     return null
   }
 
+  const cssText = Object.entries(THEMES)
+    .map(([theme, prefix]) => {
+      const declarations = colorConfig
+        .map(([key, itemConfig]) => {
+          const color =
+            itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
+            itemConfig.color
+          if (!color) {
+            return null
+          }
+
+          const sanitizedColor = sanitizeCssValue(color)
+          if (!sanitizedColor) {
+            return null
+          }
+
+          const sanitizedKey = sanitizeCssIdentifier(key)
+          return `  --color-${sanitizedKey}: ${sanitizedColor};`
+        })
+        .filter((declaration): declaration is string => declaration !== null)
+        .join("\n")
+
+      if (!declarations) {
+        return null
+      }
+
+      return `${prefix} [data-chart="${selectorId}"] {\n${declarations}\n}`
+    })
+    .filter((styleBlock): styleBlock is string => styleBlock !== null)
+    .join("\n")
+
+  if (!cssText) {
+    return null
+  }
+
   return (
-    <style
-      dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(
-            ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
-${colorConfig
-  .map(([key, itemConfig]) => {
-    const color =
-      itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
-      itemConfig.color
-    return color ? `  --color-${key}: ${color};` : null
-  })
-  .join("\n")}
-}
-`
-          )
-          .join("\n"),
-      }}
-    />
+    <style>{cssText}</style>
   )
 }
 
