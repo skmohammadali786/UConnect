@@ -50,9 +50,12 @@ export default function LoginScreen() {
     setLoading(false);
 
     if (authError) {
-      const msg = authError.toLowerCase().includes("invalid login")
+      const lower = authError.toLowerCase();
+      const msg = lower.includes("invalid login")
         ? "Incorrect email or password. Please try again."
-        : authError;
+        : lower.includes("invalid api key") || lower.includes("supabase is not configured")
+          ? "Supabase configuration is invalid. Check EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in your Expo environment."
+          : authError;
       setError(msg);
       shake();
       return;

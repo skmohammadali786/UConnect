@@ -1,8 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+function normalizeEnv(value: string | undefined): string | undefined {
+  const normalized = value?.trim();
+  return normalized ? normalized : undefined;
+}
+
+const SUPABASE_URL = normalizeEnv(process.env.EXPO_PUBLIC_SUPABASE_URL);
+const SUPABASE_ANON_KEY = normalizeEnv(process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY);
 const HAS_SUPABASE_CONFIG = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 
 if (!HAS_SUPABASE_CONFIG) {
