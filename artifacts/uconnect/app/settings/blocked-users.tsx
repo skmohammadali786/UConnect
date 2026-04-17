@@ -10,7 +10,6 @@ export default function BlockedUsersScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { conversations, blockUser } = useChat();
-  const toggleBlockUser = blockUser;
   const blocked = conversations.filter((c) => c.isBlocked);
 
   return (
@@ -42,7 +41,7 @@ export default function BlockedUsersScreen() {
                 <Text style={[styles.sub, { color: colors.mutedForeground }]}>Tap unblock to allow messages again</Text>
               </View>
               <TouchableOpacity
-                onPress={() => toggleBlockUser(item.id)}
+                onPress={() => blockUser(item.id)}
                 style={[styles.unblockBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
               >
                 <Text style={[styles.unblockText, { color: colors.primary }]}>Unblock</Text>

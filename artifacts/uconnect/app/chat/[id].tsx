@@ -72,6 +72,11 @@ export default function ChatScreen() {
 
   const handleReveal = () => setRevealModalVisible(true);
   const handleBlock = () => setBlockModalVisible(true);
+  const canViewProfile = !(conv.isAnonymous && !conv.isRevealed) && !!conv.participantUsername && conv.participantUsername !== "unknown";
+  const handleOpenProfile = () => {
+    if (!canViewProfile) return;
+    router.push({ pathname: "/user/[username]" as any, params: { username: conv.participantUsername } });
+  };
   const handleBlockConfirm = () => {
     setBlockModalVisible(false);
     blockUser(conv.id);
@@ -90,7 +95,7 @@ export default function ChatScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
-        <View style={styles.headerCenter}>
+        <TouchableOpacity style={styles.headerCenter} onPress={handleOpenProfile} activeOpacity={canViewProfile ? 0.75 : 1} disabled={!canViewProfile}>
           {conv.isAnonymous && !conv.isRevealed ? (
             <View style={[styles.avatar, { backgroundColor: colors.muted }]}>
               <Feather name="user-x" size={16} color={colors.mutedForeground} />
@@ -103,7 +108,7 @@ export default function ChatScreen() {
             </View>
           )}
           <Text style={[styles.headerName, { color: colors.foreground }]}>{displayName}</Text>
-        </View>
+        </TouchableOpacity>
         <View style={styles.headerActions}>
           {conv.isAnonymous && !conv.isRevealed && (
             <TouchableOpacity onPress={handleReveal} style={styles.headerBtn}>
