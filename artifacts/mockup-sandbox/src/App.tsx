@@ -128,7 +128,7 @@ function getPreviewPath(): string | null {
   return match ? match[1] : null;
 }
 
-function App() {
+export default function App() {
   const previewPath = getPreviewPath();
 
   if (previewPath) {
@@ -142,5 +142,3 @@ function App() {
 
   return <Gallery />;
 }
-
-export default App;
