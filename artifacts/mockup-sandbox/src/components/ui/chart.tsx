@@ -17,11 +17,25 @@ function sanitizeCssAttributeSelectorValue(value: string): string {
     return CSS.escape(value)
   }
 
-  return value.replace(/["\\\]\[]/g, "\\$&")
+  return value.replace(/[^a-zA-Z0-9_-]/g, "_")
 }
 
 function sanitizeCssValue(value: string): string {
-  return value.replace(/[;<>{}]/g, "").trim()
+  const normalized = value.trim()
+  const lowered = normalized.toLowerCase()
+
+  if (
+    !normalized ||
+    /[\n\r\f]/.test(normalized) ||
+    /[;<>{}"'`\\]/.test(normalized) ||
+    /(url|expression)\s*\(/.test(lowered) ||
+    /@import|javascript:|data:|vbscript:/.test(lowered) ||
+    !/^[-#%(),./\s0-9a-zA-Z]+$/.test(normalized)
+  ) {
+    return ""
+  }
+
+  return normalized
 }
 
 export type ChartConfig = {
