@@ -39,6 +39,17 @@ export default function LoginScreen() {
 
   const validateEmail = (e: string) => e.trim().includes("@") && e.trim().includes(".");
 
+  const mapAuthError = (authError: string) => {
+    const lower = authError.toLowerCase();
+    if (lower.includes("invalid login")) {
+      return "Incorrect email or password. Please try again.";
+    }
+    if (lower.includes("invalid api key") || lower.includes("supabase is not configured")) {
+      return "Authentication service is unavailable right now. Please try again later.";
+    }
+    return authError;
+  };
+
   const handleSignIn = async () => {
     if (!email.trim()) { setError("Please enter your email address"); shake(); return; }
     if (!validateEmail(email)) { setError("Please enter a valid email address"); shake(); return; }
@@ -50,9 +61,7 @@ export default function LoginScreen() {
     setLoading(false);
 
     if (authError) {
-      const msg = authError.toLowerCase().includes("invalid login")
-        ? "Incorrect email or password. Please try again."
-        : authError;
+      const msg = mapAuthError(authError);
       setError(msg);
       shake();
       return;

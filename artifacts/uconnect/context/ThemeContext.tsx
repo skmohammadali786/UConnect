@@ -10,7 +10,7 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType>({
-  themeMode: "light",
+  themeMode: "system",
   themeLoaded: false,
   setThemeMode: async () => {},
 });
@@ -18,7 +18,7 @@ const ThemeContext = createContext<ThemeContextType>({
 const STORAGE_KEY = "@uconnect_theme";
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [themeMode, setThemeModeState] = useState<ThemeMode>("light");
+  const [themeMode, setThemeModeState] = useState<ThemeMode>("system");
   const [themeLoaded, setThemeLoaded] = useState(false);
 
   useEffect(() => {
