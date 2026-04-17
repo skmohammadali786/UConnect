@@ -39,7 +39,6 @@ create table if not exists user_settings (
   show_sensitive_content boolean not null default false,
   updated_at timestamptz not null default now()
 );
-alter table user_settings drop column if exists compact_mode;
 alter table user_settings enable row level security;
 create policy "Users can manage own settings" on user_settings for all using (auth.uid() = user_id);
 

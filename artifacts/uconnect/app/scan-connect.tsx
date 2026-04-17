@@ -11,6 +11,8 @@ import { useColors } from "@/hooks/useColors";
 import { buildScanConnectQrValue, extractUsernameFromScanPayload } from "@/utils/scanConnect";
 
 const ND = Platform.OS !== "web";
+const SCAN_ERROR_COOLDOWN_MS = 1200;
+const SCAN_SUCCESS_COOLDOWN_MS = 1400;
 
 export default function ScanConnectScreen() {
   const colors = useColors();
@@ -23,7 +25,8 @@ export default function ScanConnectScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(14)).current;
 
-  const qrValue = useMemo(() => buildScanConnectQrValue(user?.username || ""), [user?.username]);
+  const username = (user?.username || "").trim().toLowerCase();
+  const qrValue = useMemo(() => (username ? buildScanConnectQrValue(username) : ""), [username]);
 
   useEffect(() => {
     Animated.parallel([
@@ -33,9 +36,9 @@ export default function ScanConnectScreen() {
   }, []);
 
   const onShare = async () => {
-    if (!user?.username) return;
+    if (!username || !qrValue) return;
     await Share.share({
-      title: `Connect with @${user.username} on UConnect`,
+      title: `Connect with @${username} on UConnect`,
       message: `Scan this QR to view my UConnect profile instantly.\n\n${qrValue}`,
       url: qrValue,
     });
@@ -47,11 +50,11 @@ export default function ScanConnectScreen() {
     const username = extractUsernameFromScanPayload(data);
     if (!username) {
       showError("Invalid QR", "This QR code is not a valid UConnect profile.");
-      setTimeout(() => setScanLocked(false), 1200);
+      setTimeout(() => setScanLocked(false), SCAN_ERROR_COOLDOWN_MS);
       return;
     }
     router.push({ pathname: "/user/[username]" as any, params: { username } });
-    setTimeout(() => setScanLocked(false), 1400);
+    setTimeout(() => setScanLocked(false), SCAN_SUCCESS_COOLDOWN_MS);
   };
 
   return (
@@ -78,11 +81,15 @@ export default function ScanConnectScreen() {
       {mode === "my" ? (
         <View style={styles.centerWrap}>
           <View style={[styles.qrCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <QRCode value={qrValue} size={220} backgroundColor="#FFFFFF" color="#111827" />
+            {qrValue ? (
+              <QRCode value={qrValue} size={220} backgroundColor="#FFFFFF" color="#111827" />
+            ) : (
+              <Text style={[styles.helper, { color: colors.mutedForeground }]}>Profile username not available.</Text>
+            )}
           </View>
-          <Text style={[styles.username, { color: colors.foreground }]}>@{user?.username}</Text>
+          <Text style={[styles.username, { color: colors.foreground }]}>@{username || "unknown"}</Text>
           <Text style={[styles.helper, { color: colors.mutedForeground }]}>Let others scan this code to open your profile instantly.</Text>
-          <TouchableOpacity onPress={onShare} style={[styles.shareBtn, { backgroundColor: colors.primary }]}>
+          <TouchableOpacity disabled={!qrValue} onPress={onShare} style={[styles.shareBtn, { backgroundColor: qrValue ? colors.primary : colors.border }]}>
             <Feather name="share-2" size={16} color="#FFF" />
             <Text style={styles.shareText}>Share QR</Text>
           </TouchableOpacity>

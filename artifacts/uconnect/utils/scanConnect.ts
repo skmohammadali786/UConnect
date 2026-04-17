@@ -7,7 +7,13 @@ export function extractUsernameFromScanPayload(payload: string): string | null {
   if (!raw) return null;
 
   const normalize = (candidate: string) => {
-    const clean = decodeURIComponent(candidate.replace(/^@/, "").trim().toLowerCase());
+    let clean = "";
+    try {
+      clean = decodeURIComponent(candidate.replace(/^@/, "").trim().toLowerCase());
+    } catch {
+      return null;
+    }
+    // UConnect usernames: lowercase letters/numbers/underscore, length 3-20.
     if (!/^[a-z0-9_]{3,20}$/.test(clean)) return null;
     return clean;
   };

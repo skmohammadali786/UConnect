@@ -34,6 +34,7 @@ function getImageFileExtension(image: SelectedImage) {
 }
 
 function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  // RN native file URIs are converted via base64 because storage upload expects binary body.
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
   const clean = base64.replace(/=+$/, "");
   let bytes = 0;
@@ -110,15 +111,18 @@ export default function UploadNotesScreen() {
     setLoading(true);
     try {
       const imageUrls: string[] = [];
+      const uploadSessionId = Date.now().toString(36);
       for (let imageIndex = 0; imageIndex < images.length; imageIndex += 1) {
         const image = images[imageIndex];
-        const path = `${user.id}/${Date.now()}_${imageIndex}.${getImageFileExtension(image)}`;
+        const extension = getImageFileExtension(image);
+        let path = "";
         let uploadError: unknown = null;
         for (let attempt = 0; attempt < 2; attempt += 1) {
+          path = `${user.id}/${uploadSessionId}_${imageIndex}_${attempt}.${extension}`;
           const fileBody = await uriToUploadBody(image.uri);
           const { error } = await supabase.storage.from("notes").upload(path, fileBody, {
             contentType: image.mimeType ?? undefined,
-            upsert: true,
+            upsert: false,
           });
           uploadError = error;
           if (!uploadError) break;
