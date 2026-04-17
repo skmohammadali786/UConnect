@@ -1,9 +1,10 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
-import { Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View, useColorScheme } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { useTheme } from "@/context/ThemeContext";
 
 const FEATURES = [
   { icon: "shield", label: "Fully Anonymous", desc: "Post without ever revealing your identity" },
@@ -19,6 +20,9 @@ const TEAM = [
 
 export default function AboutScreen() {
   const colors = useColors();
+  const { themeMode } = useTheme();
+  const scheme = useColorScheme();
+  const isDarkTheme = themeMode === "dark" || (themeMode === "system" && (scheme ?? "dark") === "dark");
   const insets = useSafeAreaInsets();
 
   return (
@@ -33,8 +37,8 @@ export default function AboutScreen() {
 
       <ScrollView contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
         <View style={[styles.hero, { backgroundColor: colors.primary + "10" }]}>
-          <View style={[styles.logoCircle, colors.background === "#0A0A0A" ? { backgroundColor: "#FFFFFF", borderColor: "rgba(255,255,255,0.15)" } : { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" }]}>
-            <Image source={colors.background === "#0A0A0A" ? require("@/assets/images/logo-dark.png") : require("@/assets/images/logo.png")} style={styles.logoImg} resizeMode="contain" />
+          <View style={[styles.logoCircle, isDarkTheme ? { backgroundColor: "#FFFFFF", borderColor: "rgba(255,255,255,0.15)" } : { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" }]}>
+            <Image source={isDarkTheme ? require("@/assets/images/logo-dark.png") : require("@/assets/images/logo.png")} style={styles.logoImg} resizeMode="contain" />
           </View>
           <Text style={[styles.appName, { color: colors.foreground }]}>UConnect</Text>
           <Text style={[styles.tagline, { color: colors.primary }]}>Your college. Your voice.</Text>

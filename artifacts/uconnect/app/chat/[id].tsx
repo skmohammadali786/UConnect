@@ -8,6 +8,7 @@ import { ConfirmModal } from "@/components/ConfirmModal";
 import { useColors } from "@/hooks/useColors";
 import { useChat } from "@/context/ChatContext";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/components/Toast";
 
 export default function ChatScreen() {
   const colors = useColors();
@@ -15,6 +16,7 @@ export default function ChatScreen() {
   const { id, username } = useLocalSearchParams<{ id: string; username?: string }>();
   const { conversations, sendMessage, markRead, revealIdentity, blockUser, startConversation } = useChat();
   const { user } = useAuth();
+  const { showError } = useToast();
   const [message, setMessage] = useState("");
   const [blockModalVisible, setBlockModalVisible] = useState(false);
   const [revealModalVisible, setRevealModalVisible] = useState(false);
@@ -42,7 +44,11 @@ export default function ChatScreen() {
 
   if (!conv) {
     return (
-      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <KeyboardAvoidingView
+        style={{ flex: 1, backgroundColor: colors.background }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 16}
+      >
         <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, backgroundColor: colors.headerBg, borderBottomColor: colors.border }]}>
           <TouchableOpacity onPress={() => router.back()}>
             <Feather name="arrow-left" size={22} color={colors.foreground} />
@@ -68,17 +74,31 @@ export default function ChatScreen() {
 
   const handleReveal = () => setRevealModalVisible(true);
   const handleBlock = () => setBlockModalVisible(true);
+  const canViewProfile = !(conv.isAnonymous && !conv.isRevealed) && !!conv.participantUsername && conv.participantUsername !== "unknown";
+  const handleOpenProfile = () => {
+    if (!canViewProfile) return;
+    router.push({ pathname: "/user/[username]" as any, params: { username: conv.participantUsername } });
+  };
+  const handleBlockConfirm = async () => {
+    setBlockModalVisible(false);
+    const ok = await blockUser(conv.id);
+    if (!ok) showError("Action failed", "Please try blocking/unblocking again.");
+  };
 
   const displayName = conv.isAnonymous && !conv.isRevealed ? "Anonymous" : conv.participantUsername;
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: colors.background }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 16}
+    >
       {/* Header */}
       <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, backgroundColor: colors.headerBg, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()}>
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
-        <View style={styles.headerCenter}>
+        <TouchableOpacity style={styles.headerCenter} onPress={handleOpenProfile} activeOpacity={canViewProfile ? 0.75 : 1} disabled={!canViewProfile}>
           {conv.isAnonymous && !conv.isRevealed ? (
             <View style={[styles.avatar, { backgroundColor: colors.muted }]}>
               <Feather name="user-x" size={16} color={colors.mutedForeground} />
@@ -91,7 +111,7 @@ export default function ChatScreen() {
             </View>
           )}
           <Text style={[styles.headerName, { color: colors.foreground }]}>{displayName}</Text>
-        </View>
+        </TouchableOpacity>
         <View style={styles.headerActions}>
           {conv.isAnonymous && !conv.isRevealed && (
             <TouchableOpacity onPress={handleReveal} style={styles.headerBtn}>
@@ -99,7 +119,7 @@ export default function ChatScreen() {
             </TouchableOpacity>
           )}
           <TouchableOpacity onPress={handleBlock} style={styles.headerBtn}>
-            <Feather name="shield-off" size={18} color={colors.destructive} />
+            <Feather name={conv.isBlocked ? "shield" : "shield-off"} size={18} color={conv.isBlocked ? colors.primary : colors.destructive} />
           </TouchableOpacity>
         </View>
       </View>
@@ -142,17 +162,26 @@ export default function ChatScreen() {
       ) : (
         <View style={[styles.blockedBar, { backgroundColor: colors.muted, paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 4 }]}>
           <Text style={[styles.blockedText, { color: colors.mutedForeground }]}>User is blocked</Text>
+          <TouchableOpacity
+            onPress={async () => {
+              const ok = await blockUser(conv.id);
+              if (!ok) showError("Unblock failed", "Please try again.");
+            }}
+            style={[styles.unblockBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+          >
+            <Text style={[styles.unblockBtnText, { color: colors.primary }]}>Unblock</Text>
+          </TouchableOpacity>
         </View>
       )}
 
       <ConfirmModal
         visible={blockModalVisible}
-        title="Block User"
-        message="You won't receive messages from this person. This action cannot be undone."
-        confirmText="Block"
+        title={conv.isBlocked ? "Unblock User" : "Block User"}
+        message={conv.isBlocked ? "You can receive messages from this person again." : "You won't receive messages from this person until you unblock them."}
+        confirmText={conv.isBlocked ? "Unblock" : "Block"}
         cancelText="Cancel"
-        variant="danger"
-        onConfirm={() => { setBlockModalVisible(false); blockUser(conv.id); router.back(); }}
+        variant={conv.isBlocked ? "warning" : "danger"}
+        onConfirm={handleBlockConfirm}
         onCancel={() => setBlockModalVisible(false)}
       />
 
@@ -183,6 +212,8 @@ const styles = StyleSheet.create({
   inputBar: { flexDirection: "row", alignItems: "flex-end", gap: 10, paddingHorizontal: 12, paddingTop: 10, borderTopWidth: 1 },
   input: { flex: 1, borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, fontFamily: "Inter_400Regular", maxHeight: 100 },
   sendBtn: { width: 42, height: 42, borderRadius: 21, alignItems: "center", justifyContent: "center", flexShrink: 0 },
-  blockedBar: { padding: 16, alignItems: "center" },
+  blockedBar: { padding: 16, alignItems: "center", gap: 10 },
   blockedText: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  unblockBtn: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
+  unblockBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
 });

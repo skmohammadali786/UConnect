@@ -3,10 +3,11 @@ import { router } from "expo-router";
 import React, { useEffect, useRef } from "react";
 import {
   Animated, Dimensions, Easing, Image, Platform,
-  ScrollView, StyleSheet, Text, TouchableOpacity, View,
+  ScrollView, StyleSheet, Text, TouchableOpacity, View, useColorScheme,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { useTheme } from "@/context/ThemeContext";
 
 const { width: W, height: H } = Dimensions.get("window");
 const LOGO_SECTION_H = Math.max(H * 0.30, 180);
@@ -20,6 +21,9 @@ const FEATURES = [
 
 export default function WelcomeScreen() {
   const colors = useColors();
+  const { themeMode } = useTheme();
+  const scheme = useColorScheme();
+  const isDarkTheme = themeMode === "dark" || (themeMode === "system" && (scheme ?? "dark") === "dark");
   const insets = useSafeAreaInsets();
   // Logo
   const logoScale = useRef(new Animated.Value(0)).current;
@@ -153,9 +157,9 @@ export default function WelcomeScreen() {
             transform: [{ scale: Animated.multiply(logoScale, logoPulse) }],
           }}
         >
-          <View style={[styles.logoWrap, colors.background === "#0A0A0A" ? styles.logoWrapDark : styles.logoWrapLight]}>
+          <View style={[styles.logoWrap, isDarkTheme ? styles.logoWrapDark : styles.logoWrapLight]}>
             <Image
-              source={colors.background === "#0A0A0A" ? require("@/assets/images/logo-dark.png") : require("@/assets/images/logo.png")}
+              source={isDarkTheme ? require("@/assets/images/logo-dark.png") : require("@/assets/images/logo.png")}
               style={styles.logoImg}
               resizeMode="contain"
             />

@@ -111,7 +111,10 @@ export default function SettingsScreen() {
     setLogoutConfirm(false);
     try {
       await logout();
-    } catch {}
+      router.replace("/auth/welcome");
+    } catch {
+      showInfo("Sign out failed", "Please try again.");
+    }
   };
 
   const handleDeleteAccount = async () => {
@@ -205,7 +208,7 @@ export default function SettingsScreen() {
         <View style={{ height: 20 }} />
         <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>SAFETY & PRIVACY</Text>
         <SectionCard colors={colors}>
-          <SettingRow icon="slash" label="Blocked Users" onPress={() => showInfo("No blocked users", "You haven't blocked anyone yet.")} colors={colors} />
+          <SettingRow icon="slash" label="Blocked Users" onPress={() => router.push("/settings/blocked-users" as any)} colors={colors} />
           <SettingRow icon="flag" label="My Reports" sub="See posts you've reported and their status" onPress={() => router.push("/settings/reports" as any)} colors={colors} last />
         </SectionCard>
 

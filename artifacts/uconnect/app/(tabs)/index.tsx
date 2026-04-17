@@ -4,7 +4,7 @@ import { router } from "expo-router";
 import React, { useCallback, useRef, useEffect, useState } from "react";
 import {
   Animated, Easing, FlatList, Platform, RefreshControl,
-  ScrollView, StyleSheet, Text, TouchableOpacity, View,
+  ScrollView, StyleSheet, Text, TouchableOpacity, View, useColorScheme,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PostCard } from "@/components/PostCard";
@@ -16,6 +16,7 @@ import { useToast } from "@/components/Toast";
 import { TypewriterText } from "@/components/TypewriterText";
 import { useSocial } from "@/context/SocialContext";
 import { useChat } from "@/context/ChatContext";
+import { useTheme } from "@/context/ThemeContext";
 
 const FILTERS = ["Latest", "Trending", "Following"];
 
@@ -25,7 +26,7 @@ const SHORTCUTS = [
   { icon: "calendar", label: "Events", route: "/events", color: "#F59E0B" },
   { icon: "users", label: "Teams", route: "/teams", color: "#00A86B" },
   { icon: "book-open", label: "Notes", route: "/notes", color: "#3B82F6" },
-  { icon: "send", label: "Chat", route: "/chat", color: "#06B6D4" },
+  { icon: "send", label: "Chats", route: "/chat", color: "#06B6D4" },
 ];
 
 function AnimatedPostCard({ post, index, currentUserId, onDelete }: any) {
@@ -64,6 +65,9 @@ function AnimatedPostCard({ post, index, currentUserId, onDelete }: any) {
 
 export default function HomeScreen() {
   const colors = useColors();
+  const { themeMode } = useTheme();
+  const scheme = useColorScheme();
+  const isDarkTheme = themeMode === "dark" || (themeMode === "system" && (scheme ?? "dark") === "dark");
   const insets = useSafeAreaInsets();
   const { posts, refreshPosts, deletePost } = usePosts();
   const { user } = useAuth();
@@ -146,8 +150,8 @@ export default function HomeScreen() {
         ]}
       >
         <View style={styles.headerLeft}>
-          <View style={[styles.logoSmall, colors.background === "#0A0A0A" ? { backgroundColor: "#FFFFFF", borderColor: "rgba(255,255,255,0.15)" } : { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" }]}>
-            <Image source={colors.background === "#0A0A0A" ? require("@/assets/images/logo-dark.png") : require("@/assets/images/logo.png")} style={styles.logoImg} resizeMode="contain" />
+          <View style={[styles.logoSmall, isDarkTheme ? { backgroundColor: "#FFFFFF", borderColor: "rgba(255,255,255,0.15)" } : { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" }]}>
+            <Image source={isDarkTheme ? require("@/assets/images/logo-dark.png") : require("@/assets/images/logo.png")} style={styles.logoImg} resizeMode="contain" />
           </View>
           <View>
             <TypewriterText
@@ -184,7 +188,7 @@ export default function HomeScreen() {
             <TouchableOpacity key={s.label} onPress={() => router.push(s.route as any)} style={styles.shortcut} activeOpacity={0.7}>
               <View style={[styles.shortcutIcon, { backgroundColor: s.color + "18" }]}>
                 <Feather name={s.icon as any} size={20} color={s.color} />
-                {s.label === "Chat" && totalUnreadMessages > 0 && (
+                {s.label === "Chats" && totalUnreadMessages > 0 && (
                   <View style={[styles.chatBadge, { backgroundColor: colors.primary }]}>
                     <Text style={styles.chatBadgeText}>{totalUnreadMessages > 99 ? "99+" : totalUnreadMessages}</Text>
                   </View>
