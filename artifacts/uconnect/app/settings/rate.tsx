@@ -1,18 +1,22 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useState } from "react";
-import { Animated, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Animated, Image, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useColorScheme } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { useTheme } from "@/context/ThemeContext";
 
 export default function RateScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { showSuccess } = useToast();
   const { user } = useAuth();
+  const { themeMode } = useTheme();
+  const scheme = useColorScheme();
+  const isDarkTheme = themeMode === "dark" || (themeMode === "system" && (scheme ?? "dark") === "dark");
   const [rating, setRating] = useState(0);
   const [hovered, setHovered] = useState(0);
   const [feedback, setFeedback] = useState("");
@@ -88,7 +92,11 @@ export default function RateScreen() {
       <ScrollView contentContainerStyle={{ padding: 24, gap: 24, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
         <View style={{ alignItems: "center", gap: 16 }}>
           <View style={[styles.appIcon, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "30" }]}>
-            <Text style={[styles.appIconChar, { color: colors.primary }]}>U</Text>
+            <Image
+              source={isDarkTheme ? require("@/assets/images/logo-dark.png") : require("@/assets/images/logo.png")}
+              style={styles.appLogo}
+              resizeMode="contain"
+            />
           </View>
           <Text style={[styles.heading, { color: colors.foreground }]}>Enjoying UConnect?</Text>
           <Text style={[styles.subheading, { color: colors.mutedForeground }]}>
@@ -148,7 +156,7 @@ const styles = StyleSheet.create({
   backBtn: { padding: 4 },
   title: { fontSize: 18, fontFamily: "Inter_700Bold" },
   appIcon: { width: 90, height: 90, borderRadius: 24, borderWidth: 2, alignItems: "center", justifyContent: "center" },
-  appIconChar: { fontSize: 48, fontFamily: "Inter_700Bold" },
+  appLogo: { width: 56, height: 56 },
   heading: { fontSize: 24, fontFamily: "Inter_700Bold", textAlign: "center" },
   subheading: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 22 },
   starsContainer: { flexDirection: "row", gap: 10 },

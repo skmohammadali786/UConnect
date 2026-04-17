@@ -28,6 +28,7 @@ export default function EditProfileScreen() {
   const [year, setYear] = useState(user?.year || "");
   const [selectedInterests, setSelectedInterests] = useState<string[]>(user?.interests || []);
   const [avatarUri, setAvatarUri] = useState<string | null>(user?.avatar || null);
+  const [bannerUri, setBannerUri] = useState<string | null>(user?.banner || null);
   const [saving, setSaving] = useState(false);
   const [showYearPicker, setShowYearPicker] = useState(false);
 
@@ -75,13 +76,48 @@ export default function EditProfileScreen() {
     }
   };
 
+  const handlePickBanner = async () => {
+    if (Platform.OS === "web") {
+      showInfo("Banner upload", "Banner picking works best on the mobile app.");
+      return;
+    }
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        showError("Permission denied", "Please allow access to your photo library in Settings.");
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [3, 1],
+        quality: 0.75,
+        base64: true,
+      });
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        setBannerUri(asset.base64 ? `data:${asset.mimeType || "image/jpeg"};base64,${asset.base64}` : asset.uri);
+        showSuccess("Banner selected!", "Save your profile to apply the change.");
+      }
+    } catch {
+      showError("Failed to pick banner", "Please try again.");
+    }
+  };
+
   const handleSave = async () => {
     if (!displayName.trim()) {
       showError("Name required", "Please enter a display name.");
       return;
     }
     setSaving(true);
-    await updateUser({ displayName: displayName.trim(), bio: bio.trim(), year, interests: selectedInterests, avatar: avatarUri });
+    await updateUser({
+      displayName: displayName.trim(),
+      bio: bio.trim(),
+      year,
+      interests: selectedInterests,
+      avatar: avatarUri,
+      banner: bannerUri,
+    });
     setSaving(false);
     showSuccess("Profile updated!", "Your changes have been saved.");
     router.back();
@@ -103,6 +139,17 @@ export default function EditProfileScreen() {
         </View>
 
         <ScrollView contentContainerStyle={{ padding: 20, gap: 20, paddingBottom: 60 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <TouchableOpacity onPress={handlePickBanner} activeOpacity={0.85} style={[styles.bannerPicker, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            {bannerUri ? (
+              <Image source={{ uri: bannerUri }} style={styles.bannerImage} resizeMode="cover" />
+            ) : (
+              <View style={[styles.bannerFallback, { backgroundColor: colors.primary + "16" }]}>
+                <Feather name="image" size={20} color={colors.primary} />
+                <Text style={[styles.bannerText, { color: colors.primary }]}>Add profile banner</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
           <View style={styles.avatarSection}>
             <TouchableOpacity onPress={handlePickPhoto} style={styles.avatarTap} activeOpacity={0.85}>
               {avatarUri ? (
@@ -222,6 +269,10 @@ const styles = StyleSheet.create({
   title: { fontSize: 17, fontFamily: "Inter_700Bold" },
   saveBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8 },
   saveBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  bannerPicker: { borderRadius: 14, borderWidth: 1, overflow: "hidden", height: 120 },
+  bannerImage: { width: "100%", height: "100%" },
+  bannerFallback: { flex: 1, alignItems: "center", justifyContent: "center", gap: 6 },
+  bannerText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   avatarSection: { alignItems: "center", gap: 12 },
   avatarTap: { position: "relative" },
   avatar: { width: 90, height: 90, borderRadius: 45, borderWidth: 2.5, alignItems: "center", justifyContent: "center" },

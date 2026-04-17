@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import * as FileSystem from "expo-file-system/legacy";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useRef, useState } from "react";
@@ -113,13 +114,24 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
 
   const openVideo = async () => {
     if (!post.videoUrl) return;
-    const can = await Linking.canOpenURL(post.videoUrl);
-    if (can) {
+    try {
+      if (post.videoUrl.startsWith("data:video/")) {
+        const base64Index = post.videoUrl.indexOf("base64,");
+        if (base64Index > -1 && FileSystem.cacheDirectory) {
+          const base64 = post.videoUrl.slice(base64Index + "base64,".length);
+          const filePath = `${FileSystem.cacheDirectory}uconnect-video-${post.id}.mp4`;
+          await FileSystem.writeAsStringAsync(filePath, base64, { encoding: "base64" });
+          await Linking.openURL(filePath);
+          return;
+        }
+      }
+
       await Linking.openURL(post.videoUrl);
       return;
+    } catch {
+      setActiveMedia({ type: "video", uri: post.videoUrl });
+      setMediaViewerVisible(true);
     }
-    setActiveMedia({ type: "video", uri: post.videoUrl });
-    setMediaViewerVisible(true);
   };
 
   const handleOpenVideoExternally = async () => {
