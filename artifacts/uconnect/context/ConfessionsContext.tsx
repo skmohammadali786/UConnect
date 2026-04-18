@@ -204,7 +204,7 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
     const persistedComment: ConfessionComment = {
       id: data.id,
       authorId: data.is_anonymous ? "anon" : data.author_id,
-      ownerId: data.author_id,
+      ownerId: data.is_anonymous ? data.author_id : undefined,
       isAnonymous: data.is_anonymous,
       content: data.content,
       upvotes: data.upvotes ?? 0,

@@ -290,24 +290,24 @@ export default function PostDetailScreen() {
     voteComment(post.id, commentId, vote);
   }, [applyVoteToComments, post.id, voteComment]);
 
-  const countCommentTree = useCallback((commentNode: Comment): number => (
-    1 + commentNode.replies.reduce((acc, reply) => acc + countCommentTree(reply), 0)
-  ), []);
+  const countCommentsInTree = (commentNode: Comment): number => (
+    1 + commentNode.replies.reduce((acc, reply) => acc + countCommentsInTree(reply), 0)
+  );
 
-  const removeCommentFromTree = useCallback((comments: Comment[], targetId: string): { next: Comment[]; removedCount: number } => {
+  const removeCommentFromTree = useCallback((comments: Comment[], targetId: string): { updatedComments: Comment[]; removedCount: number } => {
     let removedCount = 0;
-    const next: Comment[] = [];
+    const updatedComments: Comment[] = [];
     for (const c of comments) {
       if (c.id === targetId) {
-        removedCount += countCommentTree(c);
+        removedCount += countCommentsInTree(c);
         continue;
       }
-      const childResult = c.replies.length > 0 ? removeCommentFromTree(c.replies, targetId) : { next: c.replies, removedCount: 0 };
+      const childResult = c.replies.length > 0 ? removeCommentFromTree(c.replies, targetId) : { updatedComments: c.replies, removedCount: 0 };
       removedCount += childResult.removedCount;
-      next.push(childResult.removedCount > 0 ? { ...c, replies: childResult.next } : c);
+      updatedComments.push(childResult.removedCount > 0 ? { ...c, replies: childResult.updatedComments } : c);
     }
-    return { next, removedCount };
-  }, [countCommentTree]);
+    return { updatedComments, removedCount };
+  }, []);
 
   const handleRequestDeleteComment = useCallback((target: Comment) => {
     setCommentToDelete(target);
@@ -320,7 +320,7 @@ export default function PostDetailScreen() {
     const previous = loadedComments;
     const removed = removeCommentFromTree(previous, commentToDelete.id);
     if (removed.removedCount === 0) return;
-    setLoadedComments(removed.next);
+    setLoadedComments(removed.updatedComments);
     if (isLocalId(commentToDelete.id)) {
       showSuccess("Comment deleted");
       setCommentToDelete(null);

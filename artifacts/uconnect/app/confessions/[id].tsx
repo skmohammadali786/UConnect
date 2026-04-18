@@ -89,7 +89,7 @@ export default function ConfessionDetailScreen() {
         const remoteComments = data.map((row: any) => ({
           id: row.id,
           authorId: row.is_anonymous ? "anon" : row.author_id,
-          ownerId: row.author_id,
+          ownerId: row.is_anonymous ? row.author_id : undefined,
           isAnonymous: row.is_anonymous,
           content: row.content,
           upvotes: row.upvotes ?? 0,
@@ -157,7 +157,7 @@ export default function ConfessionDetailScreen() {
     const newComment: ConfessionComment = {
       id: tempCommentId,
       authorId: isAnon ? "anon" : user.id,
-      ownerId: user.id,
+      ownerId: isAnon ? user.id : undefined,
       isAnonymous: isAnon,
       content: message,
       upvotes: 0,
