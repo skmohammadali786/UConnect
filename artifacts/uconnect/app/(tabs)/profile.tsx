@@ -11,18 +11,21 @@ import { PostCard } from "@/components/PostCard";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { usePosts } from "@/context/PostsContext";
+import { useConfessions } from "@/context/ConfessionsContext";
 import { useToast } from "@/components/Toast";
 import { TypewriterText } from "@/components/TypewriterText";
 import { supabase } from "@/lib/supabase";
+import { formatRelativeTime } from "@/utils/time";
 
 
-type TabId = "posts" | "saved" | "reposts" | "activity";
+type TabId = "posts" | "saved" | "reposts" | "confessions" | "activity";
 
 export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
   const { posts, deletePost } = usePosts();
+  const { confessions } = useConfessions();
   const { followingIds } = useSocial();
   const { showSuccess } = useToast();
   const [activeTab, setActiveTab] = useState<TabId>("posts");
@@ -93,6 +96,7 @@ export default function ProfileScreen() {
   }
 
   const myPosts = posts.filter((p) => p.authorId === user.id);
+  const myConfessions = confessions.filter((c) => c.authorId === user.id);
   const savedPosts = posts.filter((p) => p.isBookmarked);
   const joinedDate = new Date(user.joinedAt).toLocaleDateString("en-IN", { month: "long", year: "numeric" });
 
@@ -122,6 +126,7 @@ export default function ProfileScreen() {
 
   const tabItems: { key: TabId; icon: string; label: string; count: number }[] = [
     { key: "posts", icon: "file-text", label: "Posts", count: myPosts.length },
+    { key: "confessions", icon: "message-square", label: "Confessions", count: myConfessions.length },
     { key: "saved", icon: "bookmark", label: "Saved", count: savedPosts.length },
     { key: "reposts", icon: "repeat", label: "Reposted", count: repostedPosts.length },
     { key: "activity", icon: "activity", label: "Activity", count: totalActivity },
@@ -198,6 +203,8 @@ export default function ProfileScreen() {
 
   const listData = activeTab === "posts"
     ? myPosts
+    : activeTab === "confessions"
+      ? myConfessions
     : activeTab === "saved"
       ? savedPosts
       : activeTab === "reposts"
@@ -369,11 +376,38 @@ export default function ProfileScreen() {
         data={listData}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <PostCard
-            post={item}
-            currentUserId={user.id}
-            onDelete={handleDeletePost}
-          />
+          activeTab === "confessions" ? (
+            <TouchableOpacity
+              onPress={() => router.push({ pathname: "/confessions/[id]" as any, params: { id: item.id } })}
+              style={[styles.confessionCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.confessionContent, { color: colors.foreground }]} numberOfLines={4}>
+                {item.content}
+              </Text>
+              <View style={styles.confessionMetaRow}>
+                <Text style={[styles.confessionMetaText, { color: colors.mutedForeground }]}>
+                  {formatRelativeTime(item.createdAt)}
+                </Text>
+                <View style={styles.confessionCounts}>
+                  <View style={styles.confessionCountItem}>
+                    <Feather name="arrow-up" size={14} color={colors.mutedForeground} />
+                    <Text style={[styles.confessionMetaText, { color: colors.mutedForeground }]}>{item.upvotes}</Text>
+                  </View>
+                  <View style={styles.confessionCountItem}>
+                    <Feather name="message-circle" size={14} color={colors.mutedForeground} />
+                    <Text style={[styles.confessionMetaText, { color: colors.mutedForeground }]}>{item.commentCount}</Text>
+                  </View>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ) : (
+            <PostCard
+              post={item}
+              currentUserId={user.id}
+              onDelete={handleDeletePost}
+            />
+          )
         )}
         ListHeaderComponent={ListHeader}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
@@ -382,16 +416,18 @@ export default function ProfileScreen() {
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <View style={[styles.emptyIcon, { backgroundColor: colors.card }]}>
-              <Feather name={activeTab === "posts" ? "file-text" : activeTab === "saved" ? "bookmark" : "repeat"} size={32} color={colors.mutedForeground} />
+              <Feather name={activeTab === "posts" ? "file-text" : activeTab === "saved" ? "bookmark" : activeTab === "confessions" ? "message-square" : "repeat"} size={32} color={colors.mutedForeground} />
             </View>
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-              {activeTab === "posts" ? "No posts yet" : activeTab === "saved" ? "Nothing saved" : "No reposts yet"}
+              {activeTab === "posts" ? "No posts yet" : activeTab === "saved" ? "Nothing saved" : activeTab === "confessions" ? "No confessions yet" : "No reposts yet"}
             </Text>
             <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>
               {activeTab === "posts"
                 ? "Share your thoughts with the campus!"
                 : activeTab === "saved"
                   ? "Bookmark posts to save them here."
+                  : activeTab === "confessions"
+                    ? "Your anonymous confessions will appear here."
                   : "Repost posts to share them with your profile audience."}
             </Text>
             {activeTab === "posts" && (
@@ -454,6 +490,12 @@ const styles = StyleSheet.create({
   tabLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   tabCount: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
   tabCountText: { fontSize: 11, fontFamily: "Inter_700Bold" },
+  confessionCard: { borderRadius: 14, borderWidth: 1, padding: 14, marginHorizontal: 16, marginTop: 10, gap: 10 },
+  confessionContent: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 21 },
+  confessionMetaRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  confessionMetaText: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  confessionCounts: { flexDirection: "row", alignItems: "center", gap: 12 },
+  confessionCountItem: { flexDirection: "row", alignItems: "center", gap: 4 },
   actSection: { fontSize: 13, fontFamily: "Inter_700Bold", marginBottom: 8 },
   actCard: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 12, borderWidth: 1, marginBottom: 8 },
   actIcon: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },

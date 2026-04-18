@@ -15,6 +15,7 @@ export interface ConfessionComment {
 
 export interface Confession {
   id: string;
+  authorId: string | null;
   content: string;
   upvotes: number;
   downvotes: number;
@@ -28,6 +29,7 @@ export interface Confession {
 interface ConfessionsContextType {
   confessions: Confession[];
   addConfession: (content: string, sensitive?: boolean) => Promise<void>;
+  deleteConfession: (id: string) => Promise<boolean>;
   voteConfession: (id: string, vote: "up" | "down") => void;
   addConfessionComment: (confessionId: string, comment: Omit<ConfessionComment, "id" | "createdAt" | "upvotes" | "downvotes" | "userVote">) => Promise<boolean>;
   voteConfessionComment: (confessionId: string, commentId: string, vote: "up" | "down") => void;
@@ -66,12 +68,13 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
 
           const mapped: Confession[] = data.map((row: any) => ({
             id: row.id,
+            authorId: row.author_id ?? null,
             content: row.content,
             upvotes: voteCounts.get(row.id)?.up ?? row.upvotes ?? 0,
             downvotes: voteCounts.get(row.id)?.down ?? row.downvotes ?? 0,
             commentCount: row.comment_count,
             userVote: userVotes.get(row.id) ?? null,
-            hasSensitiveContent: row.has_sensitive_content,
+            hasSensitiveContent: Boolean(row.has_sensitive_content ?? row.is_sensitive_content ?? row.is_sensitive),
             createdAt: row.created_at,
             comments: [],
           }));
@@ -85,20 +88,48 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
 
   const addConfession = useCallback(async (content: string, sensitive = false) => {
     if (!user) {
-      const newC: Confession = { id: "local_" + Date.now(), content, upvotes: 0, downvotes: 0, commentCount: 0, userVote: null, hasSensitiveContent: sensitive, createdAt: new Date().toISOString(), comments: [] };
+      const newC: Confession = { id: "local_" + Date.now(), authorId: null, content, upvotes: 0, downvotes: 0, commentCount: 0, userVote: null, hasSensitiveContent: sensitive, createdAt: new Date().toISOString(), comments: [] };
       setConfessions((prev) => [newC, ...prev]);
       return;
     }
     const { data } = await supabase.from("confessions").insert({
+      author_id: user.id,
       college: user.college || "All",
       content,
       has_sensitive_content: sensitive,
     }).select().single();
     if (data) {
-      const newC: Confession = { id: data.id, content: data.content, upvotes: 0, downvotes: 0, commentCount: 0, userVote: null, hasSensitiveContent: data.has_sensitive_content, createdAt: data.created_at, comments: [] };
+      const newC: Confession = {
+        id: data.id,
+        authorId: data.author_id ?? user.id,
+        content: data.content,
+        upvotes: 0,
+        downvotes: 0,
+        commentCount: 0,
+        userVote: null,
+        hasSensitiveContent: Boolean(data.has_sensitive_content ?? data.is_sensitive_content ?? data.is_sensitive),
+        createdAt: data.created_at,
+        comments: [],
+      };
       setConfessions((prev) => [newC, ...prev]);
     }
   }, [user]);
+
+  const deleteConfession = useCallback(async (id: string) => {
+    if (!user) return false;
+    const previous = confessions;
+    setConfessions((prev) => prev.filter((c) => c.id !== id));
+    const { error } = await supabase
+      .from("confessions")
+      .delete()
+      .eq("id", id)
+      .eq("author_id", user.id);
+    if (error) {
+      setConfessions(previous);
+      return false;
+    }
+    return true;
+  }, [confessions, user]);
 
   const voteConfession = useCallback((id: string, vote: "up" | "down") => {
     setConfessions((prev) => prev.map((c) => {
@@ -204,7 +235,7 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
   }, [user]);
 
   return (
-    <ConfessionsContext.Provider value={{ confessions, addConfession, voteConfession, addConfessionComment, voteConfessionComment }}>
+    <ConfessionsContext.Provider value={{ confessions, addConfession, deleteConfession, voteConfession, addConfessionComment, voteConfessionComment }}>
       {children}
     </ConfessionsContext.Provider>
   );

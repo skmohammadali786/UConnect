@@ -1,4 +1,5 @@
 const DEFAULT_APP_LINK_DOMAIN = "uconnect.app";
+const APP_DEEP_LINK_SCHEME = "uconnect://";
 
 function normalizeDomain(domainInput?: string) {
   const value = (domainInput || "").trim().replace(/^https?:\/\//i, "").replace(/\/+$/, "");
@@ -15,7 +16,11 @@ function decodeSegment(segment: string) {
 
 export function buildPostShareLink(postId: string) {
   const id = encodeURIComponent(postId.trim());
-  const domain = normalizeDomain(process.env.EXPO_PUBLIC_APP_LINK_DOMAIN || process.env.EXPO_PUBLIC_DOMAIN);
+  const configuredDomain = (process.env.EXPO_PUBLIC_APP_LINK_DOMAIN || process.env.EXPO_PUBLIC_DOMAIN || "").trim();
+  if (!configuredDomain) {
+    return `${APP_DEEP_LINK_SCHEME}post/${id}`;
+  }
+  const domain = normalizeDomain(configuredDomain);
   return `https://${domain}/post/${id}`;
 }
 
