@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppButton } from "@/components/AppButton";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -29,6 +30,7 @@ export default function InterestsScreen() {
   const { email, college, username, displayName, branch, year, bio, referralCode } = useLocalSearchParams<Record<string, string>>();
   const [selected, setSelected] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [verifyModalVisible, setVerifyModalVisible] = useState(false);
   const { setUserData } = useAuth();
 
   const toggle = (interest: string) => {
@@ -45,6 +47,7 @@ export default function InterestsScreen() {
 
       if (!userId) {
         setLoading(false);
+        setVerifyModalVisible(true);
         return;
       }
 
@@ -141,6 +144,19 @@ export default function InterestsScreen() {
       </View>
       <Text style={[styles.counter, { color: colors.mutedForeground }]}>{selected.length}/10 selected</Text>
       <AppButton title="Finish Setup" onPress={handleDone} loading={loading} disabled={selected.length === 0 || loading} fullWidth size="lg" />
+      <ConfirmModal
+        visible={verifyModalVisible}
+        title="Account created successfully"
+        message="We’ve sent a verification link to your email. Please verify your email, then sign in to complete setup."
+        confirmText="Go to Sign In"
+        cancelText="Close"
+        variant="info"
+        onConfirm={() => {
+          setVerifyModalVisible(false);
+          router.replace({ pathname: "/auth/login", params: { flow: "signin", email: email || "" } });
+        }}
+        onCancel={() => setVerifyModalVisible(false)}
+      />
     </ScrollView>
   );
 }

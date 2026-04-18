@@ -219,6 +219,7 @@ create table if not exists confession_comments (
 alter table confession_comments enable row level security;
 create policy "Confession comments viewable" on confession_comments for select using (true);
 create policy "Authenticated users can comment on confessions" on confession_comments for insert with check (auth.uid() = author_id);
+create policy "Authors can delete own confession comments" on confession_comments for delete using (auth.uid() = author_id);
 
 create table if not exists confession_comment_votes (
   id uuid primary key default uuid_generate_v4(),

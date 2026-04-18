@@ -9,13 +9,16 @@ interface CommentItemProps {
   comment: Comment;
   postId: string;
   depth?: number;
+  currentUserId?: string;
   onReply?: (comment: Comment) => void;
   onVote?: (commentId: string, vote: "up" | "down") => void;
+  onDelete?: (comment: Comment) => void;
 }
 
-export function CommentItem({ comment, postId, depth = 0, onReply, onVote }: CommentItemProps) {
+export function CommentItem({ comment, postId, depth = 0, currentUserId, onReply, onVote, onDelete }: CommentItemProps) {
   const colors = useColors();
   const [expanded, setExpanded] = useState(true);
+  const canDelete = !!currentUserId && currentUserId === comment.authorId;
 
   return (
     <View style={[styles.container, depth > 0 && { marginLeft: 16, borderLeftWidth: 1.5, borderLeftColor: colors.border, paddingLeft: 12 }]}>
@@ -41,6 +44,12 @@ export function CommentItem({ comment, postId, depth = 0, onReply, onVote }: Com
           <Feather name="corner-down-right" size={13} color={colors.mutedForeground} />
           <Text style={[styles.count, { color: colors.mutedForeground }]}>Reply</Text>
         </TouchableOpacity>
+        {canDelete && (
+          <TouchableOpacity onPress={() => onDelete?.(comment)} style={styles.actionBtn}>
+            <Feather name="trash-2" size={13} color="#EF4444" />
+            <Text style={[styles.count, { color: "#EF4444" }]}>Delete</Text>
+          </TouchableOpacity>
+        )}
         {comment.replies.length > 0 && (
           <TouchableOpacity onPress={() => setExpanded((e) => !e)} style={styles.actionBtn}>
             <Feather name={expanded ? "chevron-up" : "chevron-down"} size={13} color={colors.primary} />
@@ -54,8 +63,10 @@ export function CommentItem({ comment, postId, depth = 0, onReply, onVote }: Com
           comment={reply}
           postId={postId}
           depth={depth + 1}
+          currentUserId={currentUserId}
           onReply={onReply}
           onVote={onVote}
+          onDelete={onDelete}
         />
       ))}
     </View>
