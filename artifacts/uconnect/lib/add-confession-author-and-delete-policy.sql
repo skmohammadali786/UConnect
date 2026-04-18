@@ -1,10 +1,6 @@
 alter table confessions
   add column if not exists author_id uuid references profiles(id) on delete set null;
 
-update confessions
-set author_id = null
-where author_id is null;
-
 drop policy if exists "Authenticated users can confess" on confessions;
 create policy "Authenticated users can confess" on confessions
 for insert

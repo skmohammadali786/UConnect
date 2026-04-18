@@ -12,6 +12,8 @@ import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { usePosts } from "@/context/PostsContext";
 import { useConfessions } from "@/context/ConfessionsContext";
+import type { Post } from "@/context/PostsContext";
+import type { Confession } from "@/context/ConfessionsContext";
 import { useToast } from "@/components/Toast";
 import { TypewriterText } from "@/components/TypewriterText";
 import { supabase } from "@/lib/supabase";
@@ -201,7 +203,7 @@ export default function ProfileScreen() {
     </View>
   );
 
-  const listData: any[] = activeTab === "posts"
+  const listData: Array<Post | Confession> = activeTab === "posts"
     ? myPosts
     : activeTab === "confessions"
       ? myConfessions
@@ -372,9 +374,9 @@ export default function ProfileScreen() {
 
   return (
     <Animated.View style={[{ flex: 1 }, { backgroundColor: colors.background, opacity: fadeAnim }]}>
-      <FlatList<any>
+      <FlatList<Post | Confession>
         data={listData}
-        keyExtractor={(item: any) => item.id}
+        keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           activeTab === "confessions" ? (
             <TouchableOpacity
@@ -403,7 +405,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           ) : (
             <PostCard
-              post={item}
+              post={item as Post}
               currentUserId={user.id}
               onDelete={handleDeletePost}
             />
