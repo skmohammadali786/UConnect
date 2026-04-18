@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   logoWrapLight: { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E5E7EB" },
-  logoWrapDark: { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "rgba(255,255,255,0.15)" },
+  logoWrapDark: { backgroundColor: "transparent", borderWidth: 0, borderColor: "transparent" },
   logoImg: { width: 88, height: 88 },
   appName: { fontSize: 28, fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
   tagline: { fontSize: 14, fontFamily: "Inter_400Regular" },

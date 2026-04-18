@@ -38,7 +38,14 @@ interface ConfessionsContextType {
 const ConfessionsContext = createContext<ConfessionsContextType | undefined>(undefined);
 
 function getSensitiveValue(row: any) {
-  return Boolean(row.has_sensitive_content ?? row.is_sensitive_content ?? row.is_sensitive);
+  return Boolean(
+    row.has_sensitive_content
+    ?? row.hasSensitiveContent
+    ?? row.is_sensitive_content
+    ?? row.is_sensitive
+    ?? row.sensitive_content
+    ?? row.sensitive
+  );
 }
 
 export function ConfessionsProvider({ children }: { children: React.ReactNode }) {

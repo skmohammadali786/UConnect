@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   logoWrapLight: { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" },
-  logoWrapDark: { backgroundColor: "#FFFFFF", borderColor: "rgba(255,255,255,0.2)" },
+  logoWrapDark: { backgroundColor: "transparent", borderColor: "transparent" },
   logoImg: { width: 90, height: 90 },
   textSection: {
     paddingHorizontal: 28,
