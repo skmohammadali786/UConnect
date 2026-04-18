@@ -1,5 +1,12 @@
 alter table confessions
-  add column if not exists author_id uuid references profiles(id) on delete set null;
+  add column if not exists author_id uuid;
+
+alter table confessions
+  drop constraint if exists confessions_author_id_fkey;
+
+alter table confessions
+  add constraint confessions_author_id_fkey
+  foreign key (author_id) references profiles(id) on delete cascade;
 
 alter table confessions
   alter column author_id set default auth.uid();

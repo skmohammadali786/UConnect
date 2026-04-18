@@ -104,7 +104,7 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
     if (data) {
       const newC: Confession = {
         id: data.id,
-        authorId: data.author_id ?? user.id,
+        authorId: data.author_id,
         content: data.content,
         upvotes: 0,
         downvotes: 0,
