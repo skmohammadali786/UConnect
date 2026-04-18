@@ -18,6 +18,7 @@ import { useToast } from "@/components/Toast";
 import { TypewriterText } from "@/components/TypewriterText";
 import { supabase } from "@/lib/supabase";
 import { formatRelativeTime } from "@/utils/time";
+import { useSettings } from "@/context/SettingsContext";
 
 
 type TabId = "posts" | "saved" | "reposts" | "confessions" | "activity";
@@ -29,9 +30,11 @@ export default function ProfileScreen() {
   const { posts, deletePost } = usePosts();
   const { confessions } = useConfessions();
   const { followingIds } = useSocial();
+  const { settings } = useSettings();
   const { showSuccess } = useToast();
   const [activeTab, setActiveTab] = useState<TabId>("posts");
   const [refreshing, setRefreshing] = useState(false);
+  const [revealedConfessionIds, setRevealedConfessionIds] = useState<Set<string>>(new Set());
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const [appliedInternships, setAppliedInternships] = useState<any[]>([]);
@@ -333,7 +336,12 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      <View style={[styles.tabRow, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={[styles.tabRow, { backgroundColor: colors.card, borderBottomColor: colors.border }]}
+        contentContainerStyle={styles.tabRowContent}
+      >
         {tabItems.map((t) => (
           <TouchableOpacity
             key={t.key}
@@ -349,7 +357,7 @@ export default function ProfileScreen() {
             )}
           </TouchableOpacity>
         ))}
-      </View>
+      </ScrollView>
 
       {activeTab === "activity" && renderActivity()}
     </View>
@@ -381,9 +389,28 @@ export default function ProfileScreen() {
               style={[styles.confessionCard, { backgroundColor: colors.card, borderColor: colors.border }]}
               activeOpacity={0.85}
             >
-              <Text style={[styles.confessionContent, { color: colors.foreground }]} numberOfLines={4}>
-                {item.content}
-              </Text>
+              {item.hasSensitiveContent && !settings.showSensitiveContent && !revealedConfessionIds.has(item.id) ? (
+                <View style={styles.sensitiveBlock}>
+                  <View style={[styles.sensitiveIcon, { backgroundColor: "#F59E0B15" }]}>
+                    <Feather name="alert-triangle" size={20} color="#F59E0B" />
+                  </View>
+                  <Text style={[styles.sensitiveTitle, { color: colors.foreground }]}>Sensitive Content</Text>
+                  <TouchableOpacity
+                    onPress={(e) => {
+                      e.stopPropagation?.();
+                      setRevealedConfessionIds((prev) => new Set([...prev, item.id]));
+                    }}
+                    style={[styles.revealBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+                  >
+                    <Feather name="eye" size={13} color={colors.mutedForeground} />
+                    <Text style={[styles.revealText, { color: colors.mutedForeground }]}>Show anyway</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <Text style={[styles.confessionContent, { color: colors.foreground }]} numberOfLines={4}>
+                  {item.content}
+                </Text>
+              )}
               <View style={styles.confessionMetaRow}>
                 <Text style={[styles.confessionMetaText, { color: colors.mutedForeground }]}>
                   {formatRelativeTime(item.createdAt)}
@@ -507,8 +534,9 @@ const styles = StyleSheet.create({
   interestText: { fontSize: 12, fontFamily: "Inter_500Medium" },
   joinedRow: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1 },
   joinedText: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1 },
-  tabRow: { flexDirection: "row", borderBottomWidth: 1 },
-  tabBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 12 },
+  tabRow: { borderBottomWidth: 1 },
+  tabRowContent: { paddingHorizontal: 12 },
+  tabBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 12, paddingHorizontal: 10, minWidth: 92 },
   tabLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   tabCount: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
   tabCountText: { fontSize: 11, fontFamily: "Inter_700Bold" },
@@ -518,6 +546,11 @@ const styles = StyleSheet.create({
   confessionMetaText: { fontSize: 12, fontFamily: "Inter_400Regular" },
   confessionCounts: { flexDirection: "row", alignItems: "center", gap: 12 },
   confessionCountItem: { flexDirection: "row", alignItems: "center", gap: 4 },
+  sensitiveBlock: { alignItems: "center", gap: 8, paddingVertical: 6 },
+  sensitiveIcon: { width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  sensitiveTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  revealBtn: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderRadius: 10, paddingHorizontal: 13, paddingVertical: 7 },
+  revealText: { fontSize: 12, fontFamily: "Inter_500Medium" },
   actSection: { fontSize: 13, fontFamily: "Inter_700Bold", marginBottom: 8 },
   actCard: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 12, borderWidth: 1, marginBottom: 8 },
   actIcon: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },

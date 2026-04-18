@@ -41,7 +41,16 @@ export default function ConfessionDetailScreen() {
   const slideAnim = useRef(new Animated.Value(24)).current;
 
   const confession = confessions.find((c) => c.id === id);
+  const confessionId = confession?.id;
   const isOwner = !!user && confession?.authorId === user.id;
+
+  const goBackSafely = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace("/confessions");
+  }, []);
 
   useEffect(() => {
     Animated.parallel([
@@ -129,7 +138,7 @@ export default function ConfessionDetailScreen() {
     return (
       <View style={[styles.notFound, { backgroundColor: colors.background }]}>
         <Text style={[{ color: colors.mutedForeground, fontSize: 16, fontFamily: "Inter_400Regular" }]}>Confession not found</Text>
-        <TouchableOpacity onPress={() => router.back()} style={[styles.backFallback, { backgroundColor: colors.primary }]}>
+        <TouchableOpacity onPress={goBackSafely} style={[styles.backFallback, { backgroundColor: colors.primary }]}>
           <Text style={{ color: "#FFF", fontFamily: "Inter_600SemiBold", fontSize: 14 }}>Go Back</Text>
         </TouchableOpacity>
       </View>
@@ -179,6 +188,7 @@ export default function ConfessionDetailScreen() {
   ];
 
   const handleVoteConfessionComment = useCallback((commentId: string, vote: "up" | "down") => {
+    if (!confessionId) return;
     setLoadedComments((prev) => prev.map((cm) => {
       if (cm.id !== commentId) return cm;
       const prevVote = cm.userVote;
@@ -192,8 +202,8 @@ export default function ConfessionDetailScreen() {
       return { ...cm, upvotes, downvotes, userVote: nextVote };
     }));
     if (isLocalId(commentId)) return;
-    voteConfessionComment(confession.id, commentId, vote);
-  }, [confession.id, voteConfessionComment]);
+    voteConfessionComment(confessionId, commentId, vote);
+  }, [confessionId, voteConfessionComment]);
 
   const handleDeleteConfession = async () => {
     if (!confession) return;
@@ -204,14 +214,14 @@ export default function ConfessionDetailScreen() {
       return;
     }
     showSuccess("Confession deleted");
-    router.back();
+    router.replace("/confessions");
   };
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={insets.bottom + 56}>
       <Animated.View style={[{ flex: 1, backgroundColor: colors.background }, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
         <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity onPress={goBackSafely}>
             <Feather name="arrow-left" size={22} color={colors.foreground} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.foreground }]}>Confession</Text>
