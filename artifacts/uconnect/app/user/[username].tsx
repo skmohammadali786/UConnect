@@ -128,7 +128,6 @@ export default function UserProfileScreen() {
       Animated.spring(followAnim, { toValue: 1, tension: 200, friction: 8, useNativeDriver: ND }),
     ]).start();
     toggleFollow(profile.id);
-    setProfile((prev: any) => prev ? ({ ...prev, followers: Math.max(0, (prev.followers ?? 0) + (following ? -1 : 1)) }) : prev);
     showSuccess(following ? `Unfollowed @${key}` : `Now following @${key}!`);
   };
 
@@ -169,9 +168,10 @@ export default function UserProfileScreen() {
 
   const followerCount = profile.followers ?? 0;
   const initials = profile.displayName?.charAt(0)?.toUpperCase() || "U";
+  const postsById = new Map(posts.map((p) => [p.id, p]));
   const repostedPosts = repostRows
     .map((r) => {
-      const original = posts.find((p) => p.id === r.post_id);
+      const original = postsById.get(r.post_id);
       if (!original) return null;
       return {
         ...original,

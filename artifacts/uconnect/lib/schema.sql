@@ -752,20 +752,12 @@ $$;
 
 create or replace function refresh_repost_counts()
 returns void language sql security definer as $$
-  with repost_agg as (
-    select post_id, count(*)::int as repost_total
-    from reposts
-    group by post_id
-  )
   update posts p
-  set repost_count = coalesce(r.repost_total, 0)
-  from repost_agg r
-  where p.id = r.post_id;
-
-  update posts
-  set repost_count = 0
-  where id not in (select post_id from reposts);
-end;
+  set repost_count = coalesce((
+    select count(*)::int
+    from reposts r
+    where r.post_id = p.id
+  ), 0);
 $$;
 
 -- RSVP to an event

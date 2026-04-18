@@ -123,7 +123,10 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
       if (base64Index > -1 && FileSystem.cacheDirectory) {
         const base64 = uri.slice(base64Index + "base64,".length);
         const filePath = `${FileSystem.cacheDirectory}uconnect-video-${post.id}.mp4`;
-        await FileSystem.writeAsStringAsync(filePath, base64, { encoding: "base64" });
+        const fileInfo = await FileSystem.getInfoAsync(filePath);
+        if (!fileInfo.exists) {
+          await FileSystem.writeAsStringAsync(filePath, base64, { encoding: "base64" });
+        }
         return filePath;
       }
     }
