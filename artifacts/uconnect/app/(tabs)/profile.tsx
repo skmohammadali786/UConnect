@@ -3,7 +3,7 @@ import { router } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated, FlatList, Image, Platform, RefreshControl, ScrollView,
-  StyleSheet, Text, TouchableOpacity, View,
+  StyleSheet, Text, TouchableOpacity, View, GestureResponderEvent,
 } from "react-native";
 import { useSocial } from "@/context/SocialContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -22,6 +22,7 @@ import { useSettings } from "@/context/SettingsContext";
 
 
 type TabId = "posts" | "saved" | "reposts" | "confessions" | "activity";
+const PROFILE_TAB_MIN_WIDTH = 92;
 
 export default function ProfileScreen() {
   const colors = useColors();
@@ -396,8 +397,8 @@ export default function ProfileScreen() {
                   </View>
                   <Text style={[styles.sensitiveTitle, { color: colors.foreground }]}>Sensitive Content</Text>
                   <TouchableOpacity
-                    onPress={(e) => {
-                      e.stopPropagation?.();
+                    onPress={(e: GestureResponderEvent) => {
+                      e.stopPropagation();
                       setRevealedConfessionIds((prev) => new Set([...prev, item.id]));
                     }}
                     style={[styles.revealBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}
@@ -536,7 +537,7 @@ const styles = StyleSheet.create({
   joinedText: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1 },
   tabRow: { borderBottomWidth: 1 },
   tabRowContent: { paddingHorizontal: 12 },
-  tabBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 12, paddingHorizontal: 10, minWidth: 92 },
+  tabBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 12, paddingHorizontal: 10, minWidth: PROFILE_TAB_MIN_WIDTH },
   tabLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   tabCount: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
   tabCountText: { fontSize: 11, fontFamily: "Inter_700Bold" },

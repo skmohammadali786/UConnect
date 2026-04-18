@@ -44,13 +44,13 @@ export default function ConfessionDetailScreen() {
   const confessionId = confession?.id;
   const isOwner = !!user && confession?.authorId === user.id;
 
-  const goBackSafely = useCallback(() => {
+  const goBackSafely = () => {
     if (router.canGoBack()) {
       router.back();
       return;
     }
     router.replace("/confessions");
-  }, []);
+  };
 
   useEffect(() => {
     Animated.parallel([
@@ -188,7 +188,7 @@ export default function ConfessionDetailScreen() {
   ];
 
   const handleVoteConfessionComment = useCallback((commentId: string, vote: "up" | "down") => {
-    if (!confessionId) return;
+    if (!confession || !confessionId) return;
     setLoadedComments((prev) => prev.map((cm) => {
       if (cm.id !== commentId) return cm;
       const prevVote = cm.userVote;
@@ -203,7 +203,7 @@ export default function ConfessionDetailScreen() {
     }));
     if (isLocalId(commentId)) return;
     voteConfessionComment(confessionId, commentId, vote);
-  }, [confessionId, voteConfessionComment]);
+  }, [confession, confessionId, voteConfessionComment]);
 
   const handleDeleteConfession = async () => {
     if (!confession) return;
