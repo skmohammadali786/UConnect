@@ -196,6 +196,7 @@ export default function ConfessionDetailScreen() {
   }, [confession.id, voteConfessionComment]);
 
   const handleDeleteConfession = async () => {
+    if (!confession) return;
     setDeleteConfirmVisible(false);
     const ok = await deleteConfession(confession.id);
     if (!ok) {

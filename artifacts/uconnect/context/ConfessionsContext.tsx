@@ -120,8 +120,11 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
 
   const deleteConfession = useCallback(async (id: string) => {
     if (!user) return false;
-    const previous = confessions;
-    setConfessions((prev) => prev.filter((c) => c.id !== id));
+    let previous: Confession[] = [];
+    setConfessions((prev) => {
+      previous = prev;
+      return prev.filter((c) => c.id !== id);
+    });
     const { error } = await supabase
       .from("confessions")
       .delete()
@@ -131,7 +134,7 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
       return false;
     }
     return true;
-  }, [confessions, user]);
+  }, [user]);
 
   const voteConfession = useCallback((id: string, vote: "up" | "down") => {
     setConfessions((prev) => prev.map((c) => {
