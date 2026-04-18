@@ -201,7 +201,7 @@ export default function ProfileScreen() {
     </View>
   );
 
-  const listData = activeTab === "posts"
+  const listData: any[] = activeTab === "posts"
     ? myPosts
     : activeTab === "confessions"
       ? myConfessions
@@ -372,9 +372,9 @@ export default function ProfileScreen() {
 
   return (
     <Animated.View style={[{ flex: 1 }, { backgroundColor: colors.background, opacity: fadeAnim }]}>
-      <FlatList
+      <FlatList<any>
         data={listData}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item: any) => item.id}
         renderItem={({ item }) => (
           activeTab === "confessions" ? (
             <TouchableOpacity
