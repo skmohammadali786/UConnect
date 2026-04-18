@@ -30,6 +30,8 @@ export default function UserProfileScreen() {
 
   const [profile, setProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"posts" | "reposts">("posts");
+  const [repostRows, setRepostRows] = useState<{ post_id: string; created_at: string }[]>([]);
 
   const key = username?.toLowerCase() || "";
 
@@ -52,6 +54,12 @@ export default function UserProfileScreen() {
           .maybeSingle();
 
         if (data) {
+          const { data: repostData } = await supabase
+            .from("reposts")
+            .select("post_id, created_at")
+            .eq("user_id", data.id)
+            .order("created_at", { ascending: false });
+
           setProfile({
             id: data.id,
             displayName: data.display_name || data.username,
@@ -67,6 +75,7 @@ export default function UserProfileScreen() {
             avatar: data.avatar || null,
             banner: data.banner || null,
           });
+          setRepostRows((repostData ?? []) as { post_id: string; created_at: string }[]);
         } else {
           setProfile({
             id: "user_" + key,
@@ -82,6 +91,7 @@ export default function UserProfileScreen() {
             isVerified: false,
             banner: null,
           });
+          setRepostRows([]);
         }
       } catch {
         setProfile({
@@ -98,6 +108,7 @@ export default function UserProfileScreen() {
           isVerified: false,
           banner: null,
         });
+        setRepostRows([]);
       }
       setProfileLoading(false);
     })();
@@ -117,6 +128,7 @@ export default function UserProfileScreen() {
       Animated.spring(followAnim, { toValue: 1, tension: 200, friction: 8, useNativeDriver: ND }),
     ]).start();
     toggleFollow(profile.id);
+    setProfile((prev: any) => prev ? ({ ...prev, followers: Math.max(0, (prev.followers ?? 0) + (following ? -1 : 1)) }) : prev);
     showSuccess(following ? `Unfollowed @${key}` : `Now following @${key}!`);
   };
 
@@ -155,13 +167,25 @@ export default function UserProfileScreen() {
 
   if (!profile) return null;
 
-  const followerCount = profile.followers + (following ? 1 : 0);
+  const followerCount = profile.followers ?? 0;
   const initials = profile.displayName?.charAt(0)?.toUpperCase() || "U";
+  const repostedPosts = repostRows
+    .map((r) => {
+      const original = posts.find((p) => p.id === r.post_id);
+      if (!original) return null;
+      return {
+        ...original,
+        repostedByUsername: profile.username,
+        repostedAt: r.created_at,
+      };
+    })
+    .filter(Boolean) as typeof posts;
+  const listData = activeTab === "posts" ? userPosts : repostedPosts;
 
   return (
     <Animated.View style={[{ flex: 1, backgroundColor: colors.background }, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
       <FlatList
-        data={userPosts}
+        data={listData}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <PostCard post={item} currentUserId={me?.id || ""} />}
         showsVerticalScrollIndicator={false}
@@ -293,18 +317,24 @@ export default function UserProfileScreen() {
             </View>
 
             <View style={[styles.tabRow, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-              <View style={[styles.tabBtn, { borderBottomColor: colors.primary, borderBottomWidth: 2.5 }]}>
-                <Feather name="file-text" size={15} color={colors.primary} />
-                <Text style={[styles.tabLabel, { color: colors.primary }]}>Posts ({userPosts.length})</Text>
-              </View>
+              <TouchableOpacity onPress={() => setActiveTab("posts")} style={[styles.tabBtn, activeTab === "posts" && { borderBottomColor: colors.primary, borderBottomWidth: 2.5 }]}>
+                <Feather name="file-text" size={15} color={activeTab === "posts" ? colors.primary : colors.mutedForeground} />
+                <Text style={[styles.tabLabel, { color: activeTab === "posts" ? colors.primary : colors.mutedForeground }]}>Posts ({userPosts.length})</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setActiveTab("reposts")} style={[styles.tabBtn, activeTab === "reposts" && { borderBottomColor: colors.primary, borderBottomWidth: 2.5 }]}>
+                <Feather name="repeat" size={15} color={activeTab === "reposts" ? colors.primary : colors.mutedForeground} />
+                <Text style={[styles.tabLabel, { color: activeTab === "reposts" ? colors.primary : colors.mutedForeground }]}>Reposts ({repostedPosts.length})</Text>
+              </TouchableOpacity>
             </View>
           </View>
         }
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Feather name="file-text" size={32} color={colors.mutedForeground} />
-            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No posts yet</Text>
-            <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>This user hasn't posted anything publicly yet.</Text>
+            <Feather name={activeTab === "posts" ? "file-text" : "repeat"} size={32} color={colors.mutedForeground} />
+            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{activeTab === "posts" ? "No posts yet" : "No reposts yet"}</Text>
+            <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>
+              {activeTab === "posts" ? "This user hasn't posted anything publicly yet." : "This user hasn't reposted any posts yet."}
+            </Text>
           </View>
         }
       />

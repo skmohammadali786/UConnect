@@ -58,6 +58,7 @@ create table if not exists posts (
   upvotes int not null default 0,
   downvotes int not null default 0,
   comment_count int not null default 0,
+  repost_count int not null default 0,
   auto_delete_at timestamptz,
   created_at timestamptz not null default now()
 );
@@ -90,6 +91,18 @@ create table if not exists bookmarks (
 );
 alter table bookmarks enable row level security;
 create policy "Users can manage own bookmarks" on bookmarks for all using (auth.uid() = user_id);
+
+-- ─── REPOSTS ──────────────────────────────────────────────────────────────────
+create table if not exists reposts (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid not null references profiles(id) on delete cascade,
+  post_id uuid not null references posts(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique(user_id, post_id)
+);
+alter table reposts enable row level security;
+create policy "Reposts are viewable" on reposts for select using (true);
+create policy "Users can manage own reposts" on reposts for all using (auth.uid() = user_id);
 
 -- ─── COMMENTS ────────────────────────────────────────────────────────────────
 create table if not exists comments (
@@ -662,20 +675,96 @@ $$;
 -- Update follower/following counts
 create or replace function follow_user(p_follower_id uuid, p_following_id uuid)
 returns void language plpgsql security definer as $$
+declare
+  inserted_count int := 0;
 begin
   insert into following(follower_id, following_id) values (p_follower_id, p_following_id)
     on conflict do nothing;
-  update profiles set following = following + 1 where id = p_follower_id;
-  update profiles set followers = followers + 1 where id = p_following_id;
+  get diagnostics inserted_count = row_count;
+
+  if inserted_count > 0 then
+    update profiles set following = following + 1 where id = p_follower_id;
+    update profiles set followers = followers + 1 where id = p_following_id;
+  end if;
 end;
 $$;
 
 create or replace function unfollow_user(p_follower_id uuid, p_following_id uuid)
 returns void language plpgsql security definer as $$
+declare
+  deleted_count int := 0;
 begin
   delete from following where follower_id = p_follower_id and following_id = p_following_id;
-  update profiles set following = greatest(0, following - 1) where id = p_follower_id;
-  update profiles set followers = greatest(0, followers - 1) where id = p_following_id;
+  get diagnostics deleted_count = row_count;
+
+  if deleted_count > 0 then
+    update profiles set following = greatest(0, following - 1) where id = p_follower_id;
+    update profiles set followers = greatest(0, followers - 1) where id = p_following_id;
+  end if;
+end;
+$$;
+
+-- Repost management
+create or replace function repost_post(p_user_id uuid, p_post_id uuid)
+returns void language plpgsql security definer as $$
+declare
+  inserted_count int := 0;
+begin
+  insert into reposts(user_id, post_id) values (p_user_id, p_post_id)
+    on conflict do nothing;
+  get diagnostics inserted_count = row_count;
+
+  if inserted_count > 0 then
+    update posts set repost_count = repost_count + 1 where id = p_post_id;
+  end if;
+end;
+$$;
+
+create or replace function undo_repost_post(p_user_id uuid, p_post_id uuid)
+returns void language plpgsql security definer as $$
+declare
+  deleted_count int := 0;
+begin
+  delete from reposts where user_id = p_user_id and post_id = p_post_id;
+  get diagnostics deleted_count = row_count;
+
+  if deleted_count > 0 then
+    update posts set repost_count = greatest(0, repost_count - 1) where id = p_post_id;
+  end if;
+end;
+$$;
+
+-- Reconcile counters
+create or replace function refresh_follow_counts()
+returns void language sql security definer as $$
+  update profiles p
+  set following = coalesce((
+      select count(*)::int
+      from following f
+      where f.follower_id = p.id
+    ), 0),
+    followers = coalesce((
+      select count(*)::int
+      from following f
+      where f.following_id = p.id
+    ), 0);
+$$;
+
+create or replace function refresh_repost_counts()
+returns void language sql security definer as $$
+  with repost_agg as (
+    select post_id, count(*)::int as repost_total
+    from reposts
+    group by post_id
+  )
+  update posts p
+  set repost_count = coalesce(r.repost_total, 0)
+  from repost_agg r
+  where p.id = r.post_id;
+
+  update posts
+  set repost_count = 0
+  where id not in (select post_id from reposts);
 end;
 $$;
 

@@ -1,12 +1,14 @@
 import { Feather } from "@expo/vector-icons";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Haptics from "expo-haptics";
+import * as Clipboard from "expo-clipboard";
+import * as ExpoLinking from "expo-linking";
 import { router } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
   Animated,
   Image,
-  Linking,
+  Linking as RNLinking,
   Modal,
   Platform,
   ScrollView,
@@ -65,11 +67,12 @@ function renderHashtags(content: string, primaryColor: string, foregroundColor: 
 
 export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardProps) {
   const colors = useColors();
-  const { votePost, bookmarkPost } = usePosts();
+  const { votePost, bookmarkPost, toggleRepost, hasReposted } = usePosts();
   const { hasReported } = useSocial();
   const [reportVisible, setReportVisible] = useState(false);
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
   const [mediaViewerVisible, setMediaViewerVisible] = useState(false);
+  const [shareOptionsVisible, setShareOptionsVisible] = useState(false);
   const [activeMedia, setActiveMedia] = useState<{ type: "image" | "video"; uri: string } | null>(null);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const upAnim = useRef(new Animated.Value(1)).current;
@@ -112,21 +115,32 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
     setMediaViewerVisible(true);
   };
 
+  const getPostLink = () => ExpoLinking.createURL(`/post/${post.id}`);
+
+  const resolveVideoUri = async (uri: string) => {
+    if (uri.startsWith("data:video/")) {
+      const base64Index = uri.indexOf("base64,");
+      if (base64Index > -1 && FileSystem.cacheDirectory) {
+        const base64 = uri.slice(base64Index + "base64,".length);
+        const filePath = `${FileSystem.cacheDirectory}uconnect-video-${post.id}.mp4`;
+        await FileSystem.writeAsStringAsync(filePath, base64, { encoding: "base64" });
+        return filePath;
+      }
+    }
+    return uri;
+  };
+
   const openVideo = async () => {
     if (!post.videoUrl) return;
     try {
-      if (post.videoUrl.startsWith("data:video/")) {
-        const base64Index = post.videoUrl.indexOf("base64,");
-        if (base64Index > -1 && FileSystem.cacheDirectory) {
-          const base64 = post.videoUrl.slice(base64Index + "base64,".length);
-          const filePath = `${FileSystem.cacheDirectory}uconnect-video-${post.id}.mp4`;
-          await FileSystem.writeAsStringAsync(filePath, base64, { encoding: "base64" });
-          await Linking.openURL(filePath);
-          return;
-        }
+      const targetUri = await resolveVideoUri(post.videoUrl);
+      const canOpen = await RNLinking.canOpenURL(targetUri);
+      if (canOpen) {
+        await RNLinking.openURL(targetUri);
+      } else {
+        setActiveMedia({ type: "video", uri: post.videoUrl });
+        setMediaViewerVisible(true);
       }
-
-      await Linking.openURL(post.videoUrl);
       return;
     } catch {
       setActiveMedia({ type: "video", uri: post.videoUrl });
@@ -136,10 +150,22 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
 
   const handleOpenVideoExternally = async () => {
     if (!activeMedia?.uri) return;
-    const can = await Linking.canOpenURL(activeMedia.uri);
+    const targetUri = await resolveVideoUri(activeMedia.uri);
+    const can = await RNLinking.canOpenURL(targetUri);
     if (can) {
-      await Linking.openURL(activeMedia.uri);
+      await RNLinking.openURL(targetUri);
+      setMediaViewerVisible(false);
     }
+  };
+
+  const handleCopyPostLink = async () => {
+    await Clipboard.setStringAsync(getPostLink());
+    setShareOptionsVisible(false);
+  };
+
+  const handleToggleRepost = async () => {
+    await toggleRepost(post.id);
+    setShareOptionsVisible(false);
   };
 
   const handlePressIn = () => {
@@ -166,6 +192,7 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
   const initials = post.authorUsername?.charAt(0)?.toUpperCase() || "U";
   const hasMedia = post.mediaUrls && post.mediaUrls.length > 0;
   const hasVideo = !!post.videoUrl;
+  const isReposted = hasReposted(post.id);
 
   const autoDeleteLabel = post.autoDeleteAt ? (() => {
     const diff = new Date(post.autoDeleteAt).getTime() - Date.now();
@@ -225,6 +252,15 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
           </View>
         </View>
 
+        {post.repostedByUsername ? (
+          <View style={[styles.repostedBadge, { backgroundColor: colors.secondary }]}>
+            <Feather name="repeat" size={12} color={colors.mutedForeground} />
+            <Text style={[styles.repostedBadgeText, { color: colors.mutedForeground }]}>
+              Reposted by @{post.repostedByUsername}
+            </Text>
+          </View>
+        ) : null}
+
         <Text style={[styles.content, { color: colors.foreground }]} numberOfLines={5}>
           {renderHashtags(post.content, colors.primary, colors.foreground)}
         </Text>
@@ -283,6 +319,15 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
             </Animated.View>
           </TouchableOpacity>
 
+          <TouchableOpacity onPress={() => toggleRepost(post.id)} style={styles.actionBtn}>
+            <Feather name="repeat" size={16} color={isReposted ? colors.primary : colors.mutedForeground} />
+            <Text style={[styles.actionText, { color: isReposted ? colors.primary : colors.mutedForeground }]}>{post.repostCount}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => setShareOptionsVisible(true)} style={styles.actionBtn}>
+            <Feather name="share-2" size={16} color={colors.mutedForeground} />
+          </TouchableOpacity>
+
           {isOwner ? (
             <TouchableOpacity onPress={handleDelete} style={styles.actionBtn}>
               <Animated.View style={{ transform: [{ scale: deleteAnim }] }}>
@@ -330,12 +375,28 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
             <View style={[styles.videoModalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <Feather name="video" size={28} color={colors.primary} />
               <Text style={[styles.videoModalTitle, { color: colors.foreground }]}>Open video</Text>
-              <Text style={[styles.videoModalText, { color: colors.mutedForeground }]} numberOfLines={2}>{activeMedia?.uri}</Text>
               <TouchableOpacity onPress={handleOpenVideoExternally} style={[styles.videoOpenBtn, { backgroundColor: colors.primary }]}>
                 <Text style={styles.videoOpenText}>Open Video</Text>
               </TouchableOpacity>
             </View>
           )}
+        </View>
+      </Modal>
+      <Modal visible={shareOptionsVisible} transparent animationType="fade" onRequestClose={() => setShareOptionsVisible(false)}>
+        <View style={[styles.mediaModalOverlay, { backgroundColor: colors.overlay }]}>
+          <TouchableOpacity style={styles.mediaCloseBtn} onPress={() => setShareOptionsVisible(false)}>
+            <Feather name="x" size={24} color="#FFF" />
+          </TouchableOpacity>
+          <View style={[styles.videoModalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Feather name="share-2" size={28} color={colors.primary} />
+            <Text style={[styles.videoModalTitle, { color: colors.foreground }]}>Share post</Text>
+            <TouchableOpacity onPress={handleCopyPostLink} style={[styles.videoOpenBtn, { backgroundColor: colors.primary, width: "100%", alignItems: "center" }]}>
+              <Text style={styles.videoOpenText}>Copy link</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleToggleRepost} style={[styles.videoOpenBtn, { backgroundColor: colors.secondary, width: "100%", alignItems: "center" }]}>
+              <Text style={[styles.videoOpenText, { color: colors.foreground }]}>{isReposted ? "Remove repost" : "Repost"}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
     </Animated.View>
@@ -372,6 +433,8 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   tagText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  repostedBadge: { flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, marginBottom: 10 },
+  repostedBadgeText: { fontSize: 12, fontFamily: "Inter_500Medium" },
   content: { fontSize: 15, lineHeight: 22, marginBottom: 12 },
   mediaRow: { marginBottom: 12 },
   mediaThumb: { width: 120, height: 120, borderRadius: 10 },
@@ -405,7 +468,6 @@ const styles = StyleSheet.create({
   mediaModalImage: { width: "100%", height: "80%", borderRadius: 12 },
   videoModalCard: { width: "100%", maxWidth: 420, borderWidth: 1, borderRadius: 16, padding: 18, alignItems: "center", gap: 10 },
   videoModalTitle: { fontSize: 16, fontFamily: "Inter_700Bold" },
-  videoModalText: { fontSize: 12, fontFamily: "Inter_400Regular", textAlign: "center" },
   videoOpenBtn: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, marginTop: 4 },
   videoOpenText: { color: "#FFF", fontSize: 13, fontFamily: "Inter_700Bold" },
 });
