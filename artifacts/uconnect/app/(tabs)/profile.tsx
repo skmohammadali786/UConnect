@@ -203,15 +203,11 @@ export default function ProfileScreen() {
     </View>
   );
 
-  const listData: Array<Post | Confession> = activeTab === "posts"
+  const postListData: Post[] = activeTab === "posts"
     ? myPosts
-    : activeTab === "confessions"
-      ? myConfessions
     : activeTab === "saved"
       ? savedPosts
-      : activeTab === "reposts"
-        ? repostedPosts
-        : [];
+      : repostedPosts;
 
   const ListHeader = (
     <View>
@@ -372,15 +368,15 @@ export default function ProfileScreen() {
     );
   }
 
-  return (
-    <Animated.View style={[{ flex: 1 }, { backgroundColor: colors.background, opacity: fadeAnim }]}>
-      <FlatList<Post | Confession>
-        data={listData}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          activeTab === "confessions" ? (
+  if (activeTab === "confessions") {
+    return (
+      <Animated.View style={[{ flex: 1 }, { backgroundColor: colors.background, opacity: fadeAnim }]}>
+        <FlatList<Confession>
+          data={myConfessions}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
             <TouchableOpacity
-              onPress={() => router.push({ pathname: "/confessions/[id]" as any, params: { id: item.id } })}
+              onPress={() => router.push(`/confessions/${item.id}`)}
               style={[styles.confessionCard, { backgroundColor: colors.card, borderColor: colors.border }]}
               activeOpacity={0.85}
             >
@@ -403,13 +399,38 @@ export default function ProfileScreen() {
                 </View>
               </View>
             </TouchableOpacity>
-          ) : (
-            <PostCard
-              post={item as Post}
-              currentUserId={user.id}
-              onDelete={handleDeletePost}
-            />
-          )
+          )}
+          ListHeaderComponent={ListHeader}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <View style={[styles.emptyIcon, { backgroundColor: colors.card }]}>
+                <Feather name="message-square" size={32} color={colors.mutedForeground} />
+              </View>
+              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No confessions yet</Text>
+              <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>
+                Your anonymous confessions will appear here.
+              </Text>
+            </View>
+          }
+        />
+      </Animated.View>
+    );
+  }
+
+  return (
+    <Animated.View style={[{ flex: 1 }, { backgroundColor: colors.background, opacity: fadeAnim }]}>
+      <FlatList<Post>
+        data={postListData}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <PostCard
+            post={item}
+            currentUserId={user.id}
+            onDelete={handleDeletePost}
+          />
         )}
         ListHeaderComponent={ListHeader}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
@@ -418,18 +439,16 @@ export default function ProfileScreen() {
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <View style={[styles.emptyIcon, { backgroundColor: colors.card }]}>
-              <Feather name={activeTab === "posts" ? "file-text" : activeTab === "saved" ? "bookmark" : activeTab === "confessions" ? "message-square" : "repeat"} size={32} color={colors.mutedForeground} />
+              <Feather name={activeTab === "posts" ? "file-text" : activeTab === "saved" ? "bookmark" : "repeat"} size={32} color={colors.mutedForeground} />
             </View>
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-              {activeTab === "posts" ? "No posts yet" : activeTab === "saved" ? "Nothing saved" : activeTab === "confessions" ? "No confessions yet" : "No reposts yet"}
+              {activeTab === "posts" ? "No posts yet" : activeTab === "saved" ? "Nothing saved" : "No reposts yet"}
             </Text>
             <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>
               {activeTab === "posts"
                 ? "Share your thoughts with the campus!"
                 : activeTab === "saved"
                   ? "Bookmark posts to save them here."
-                  : activeTab === "confessions"
-                    ? "Your anonymous confessions will appear here."
                   : "Repost posts to share them with your profile audience."}
             </Text>
             {activeTab === "posts" && (
