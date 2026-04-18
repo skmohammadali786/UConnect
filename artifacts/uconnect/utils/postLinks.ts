@@ -1,7 +1,7 @@
 const DEFAULT_APP_LINK_DOMAIN = "uconnect.app";
 
-function normalizeDomain(raw?: string) {
-  const value = (raw || "").trim().replace(/^https?:\/\//i, "").replace(/\/+$/, "");
+function normalizeDomain(domainInput?: string) {
+  const value = (domainInput || "").trim().replace(/^https?:\/\//i, "").replace(/\/+$/, "");
   return value || DEFAULT_APP_LINK_DOMAIN;
 }
 
