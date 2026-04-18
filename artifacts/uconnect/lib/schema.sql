@@ -177,7 +177,7 @@ create policy "Users can view own reports" on reports for select using (auth.uid
 -- ─── CONFESSIONS ─────────────────────────────────────────────────────────────
 create table if not exists confessions (
   id uuid primary key default uuid_generate_v4(),
-  author_id uuid not null default auth.uid() references profiles(id) on delete cascade,
+  author_id uuid default auth.uid() references profiles(id) on delete cascade,
   college text not null default 'All',
   content text not null,
   upvotes int not null default 0,
