@@ -88,7 +88,8 @@ export default function ConfessionDetailScreen() {
         }
         const remoteComments = data.map((row: any) => ({
           id: row.id,
-          authorId: row.author_id,
+          authorId: row.is_anonymous ? "anon" : row.author_id,
+          ownerId: row.author_id,
           isAnonymous: row.is_anonymous,
           content: row.content,
           upvotes: row.upvotes ?? 0,
@@ -155,7 +156,8 @@ export default function ConfessionDetailScreen() {
     const tempCommentId = LOCAL_ID_PREFIX + Date.now();
     const newComment: ConfessionComment = {
       id: tempCommentId,
-      authorId: user.id,
+      authorId: isAnon ? "anon" : user.id,
+      ownerId: user.id,
       isAnonymous: isAnon,
       content: message,
       upvotes: 0,
@@ -344,7 +346,7 @@ export default function ConfessionDetailScreen() {
                         <Feather name="arrow-down" size={12} color={c.userVote === "down" ? "#EF4444" : colors.mutedForeground} />
                         <Text style={[styles.upvoteText, { color: c.userVote === "down" ? "#EF4444" : colors.mutedForeground }]}>{c.downvotes}</Text>
                       </TouchableOpacity>
-                      {user?.id === c.authorId && (
+                      {user?.id === (c.ownerId ?? c.authorId) && (
                         <TouchableOpacity
                           onPress={() => handleRequestDeleteComment(c)}
                           style={styles.commentVoteBtn}

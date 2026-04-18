@@ -290,12 +290,16 @@ export default function PostDetailScreen() {
     voteComment(post.id, commentId, vote);
   }, [applyVoteToComments, post.id, voteComment]);
 
+  const countCommentTree = useCallback((commentNode: Comment): number => (
+    1 + commentNode.replies.reduce((acc, reply) => acc + countCommentTree(reply), 0)
+  ), []);
+
   const removeCommentFromTree = useCallback((comments: Comment[], targetId: string): { next: Comment[]; removedCount: number } => {
     let removedCount = 0;
     const next: Comment[] = [];
     for (const c of comments) {
       if (c.id === targetId) {
-        removedCount += 1 + c.replies.reduce((acc, r) => acc + 1 + r.replies.length, 0);
+        removedCount += countCommentTree(c);
         continue;
       }
       const childResult = c.replies.length > 0 ? removeCommentFromTree(c.replies, targetId) : { next: c.replies, removedCount: 0 };
@@ -303,7 +307,7 @@ export default function PostDetailScreen() {
       next.push(childResult.removedCount > 0 ? { ...c, replies: childResult.next } : c);
     }
     return { next, removedCount };
-  }, []);
+  }, [countCommentTree]);
 
   const handleRequestDeleteComment = useCallback((target: Comment) => {
     setCommentToDelete(target);

@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 export interface ConfessionComment {
   id: string;
   authorId: string;
+  ownerId?: string;
   isAnonymous: boolean;
   content: string;
   upvotes: number;
@@ -202,7 +203,8 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
 
     const persistedComment: ConfessionComment = {
       id: data.id,
-      authorId: data.author_id,
+      authorId: data.is_anonymous ? "anon" : data.author_id,
+      ownerId: data.author_id,
       isAnonymous: data.is_anonymous,
       content: data.content,
       upvotes: data.upvotes ?? 0,
@@ -260,7 +262,7 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
       previous = prev;
       const targetConfession = prev.find((c) => c.id === confessionId);
       const targetComment = targetConfession?.comments.find((cm) => cm.id === commentId);
-      canDelete = !!targetComment && targetComment.authorId === user.id;
+      canDelete = !!targetComment && (targetComment.ownerId ?? targetComment.authorId) === user.id;
       if (!canDelete) return prev;
       return prev.map((c) => {
         if (c.id !== confessionId) return c;
