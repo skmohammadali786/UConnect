@@ -3,6 +3,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as Haptics from "expo-haptics";
 import * as Clipboard from "expo-clipboard";
 import * as ExpoLinking from "expo-linking";
+import * as WebBrowser from "expo-web-browser";
 import { router } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
@@ -133,19 +134,31 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
     return uri;
   };
 
+  const normalizePlayableUri = (uri: string) => {
+    if (!uri) return uri;
+    if (/^[a-z][a-z0-9+.-]*:/i.test(uri)) return uri;
+    return `file://${uri}`;
+  };
+
+  const playVideoUri = async (uri: string) => {
+    const targetUri = normalizePlayableUri(await resolveVideoUri(uri));
+    if (!targetUri) return false;
+    try {
+      if (targetUri.startsWith("http://") || targetUri.startsWith("https://")) {
+        await WebBrowser.openBrowserAsync(targetUri);
+      } else {
+        await RNLinking.openURL(targetUri);
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const openVideo = async () => {
     if (!post.videoUrl) return;
-    try {
-      const targetUri = await resolveVideoUri(post.videoUrl);
-      const canOpen = await RNLinking.canOpenURL(targetUri);
-      if (canOpen) {
-        await RNLinking.openURL(targetUri);
-      } else {
-        setActiveMedia({ type: "video", uri: post.videoUrl });
-        setMediaViewerVisible(true);
-      }
-      return;
-    } catch {
+    const opened = await playVideoUri(post.videoUrl);
+    if (!opened) {
       setActiveMedia({ type: "video", uri: post.videoUrl });
       setMediaViewerVisible(true);
     }
@@ -153,10 +166,8 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
 
   const handleOpenVideoExternally = async () => {
     if (!activeMedia?.uri) return;
-    const targetUri = await resolveVideoUri(activeMedia.uri);
-    const can = await RNLinking.canOpenURL(targetUri);
-    if (can) {
-      await RNLinking.openURL(targetUri);
+    const opened = await playVideoUri(activeMedia.uri);
+    if (opened) {
       setMediaViewerVisible(false);
     }
   };
