@@ -43,7 +43,9 @@ export interface Post {
   comments: Comment[];
   autoDeleteAt?: string;
   repostedByUsername?: string;
+  repostedByUserId?: string;
   repostedAt?: string;
+  feedItemKey?: string;
 }
 
 export interface Draft {

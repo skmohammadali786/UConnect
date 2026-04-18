@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { Image } from "react-native";
 import { router } from "expo-router";
-import React, { useCallback, useRef, useEffect, useState } from "react";
+import React, { useCallback, useMemo, useRef, useEffect, useState } from "react";
 import {
   Animated, Easing, FlatList, Platform, RefreshControl,
   ScrollView, StyleSheet, Text, TouchableOpacity, View, useColorScheme,
@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PostCard } from "@/components/PostCard";
 import { useColors } from "@/hooks/useColors";
 import { usePosts } from "@/context/PostsContext";
+import type { Post } from "@/context/PostsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useToast } from "@/components/Toast";
@@ -17,6 +18,7 @@ import { TypewriterText } from "@/components/TypewriterText";
 import { useSocial } from "@/context/SocialContext";
 import { useChat } from "@/context/ChatContext";
 import { useTheme } from "@/context/ThemeContext";
+import { supabase } from "@/lib/supabase";
 
 const FILTERS = ["Latest", "Trending", "Following"];
 
@@ -28,6 +30,11 @@ const SHORTCUTS = [
   { icon: "book-open", label: "Notes", route: "/notes", color: "#3B82F6" },
   { icon: "send", label: "Chats", route: "/chat", color: "#06B6D4" },
 ];
+
+interface ProfileRow {
+  id: string;
+  username: string;
+}
 
 function AnimatedPostCard({ post, index, currentUserId, onDelete }: any) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -76,6 +83,7 @@ export default function HomeScreen() {
   const { showSuccess } = useToast();
   const [activeFilter, setActiveFilter] = useState("Latest");
   const [refreshing, setRefreshing] = useState(false);
+  const [feedReposts, setFeedReposts] = useState<Array<{ post_id: string; user_id: string; created_at: string; username?: string }>>([]);
   const totalUnreadMessages = conversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
 
   const headerSlide = useRef(new Animated.Value(-60)).current;
@@ -111,24 +119,67 @@ export default function HomeScreen() {
     });
   }, []);
 
+  const loadFeedReposts = useCallback(async () => {
+    try {
+      const { data } = await supabase
+        .from("reposts")
+        .select("post_id, user_id, created_at")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      const repostRows = (data ?? []) as { post_id: string; user_id: string; created_at: string }[];
+      const userIds = Array.from(new Set(repostRows.map((r) => r.user_id)));
+      const { data: profileRows } = userIds.length > 0
+        ? await supabase.from("profiles").select("id,username").in("id", userIds)
+        : { data: [] as ProfileRow[] };
+      const userMap = new Map((profileRows ?? []).map((p) => [p.id, p.username]));
+      setFeedReposts(repostRows.map((r) => ({ ...r, username: userMap.get(r.user_id) ?? "unknown" })));
+    } catch {
+      setFeedReposts([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadFeedReposts();
+  }, [loadFeedReposts]);
+
   const { followingIds } = useSocial();
 
-  const filteredPosts = posts.filter((p) => {
+  const postsById = useMemo(() => new Map(posts.map((p) => [p.id, p])), [posts]);
+  const repostFeedPosts: Post[] = feedReposts
+    .map((r) => {
+      const original = postsById.get(r.post_id);
+      if (!original) return null;
+      return {
+        ...original,
+        repostedByUserId: r.user_id,
+        repostedByUsername: r.username,
+        repostedAt: r.created_at,
+        feedItemKey: `repost:${r.user_id}:${r.post_id}`,
+      };
+    })
+    .filter(Boolean) as Post[];
+  const combinedPosts = [...posts, ...repostFeedPosts];
+
+  const filteredPosts = combinedPosts.filter((p) => {
     if (!settings.showSensitiveContent && p.tag === "Confession" && p.isAnonymous) return false;
-    if (activeFilter === "Following") return followingIds.has(p.authorId);
+    if (activeFilter === "Following") {
+      return followingIds.has(p.authorId) || (!!p.repostedByUserId && followingIds.has(p.repostedByUserId));
+    }
     return true;
   });
 
+  const getFeedTimestamp = (post: Post) => new Date(post.repostedAt ?? post.createdAt).getTime();
+
   const sortedPosts = [...filteredPosts].sort((a, b) => {
     if (activeFilter === "Trending") return (b.upvotes + b.commentCount) - (a.upvotes + a.commentCount);
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    return getFeedTimestamp(b) - getFeedTimestamp(a);
   });
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refreshPosts();
+    await Promise.all([refreshPosts(), loadFeedReposts()]);
     setTimeout(() => setRefreshing(false), 600);
-  }, [refreshPosts]);
+  }, [refreshPosts, loadFeedReposts]);
 
   const handleDelete = useCallback((id: string) => {
     deletePost(id);
@@ -223,7 +274,7 @@ export default function HomeScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <FlatList
         data={sortedPosts}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.feedItemKey ?? item.id}
         renderItem={({ item, index }) => (
           <AnimatedPostCard
             post={item}
