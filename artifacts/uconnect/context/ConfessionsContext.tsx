@@ -33,6 +33,7 @@ interface ConfessionsContextType {
   voteConfession: (id: string, vote: "up" | "down") => void;
   addConfessionComment: (confessionId: string, comment: Omit<ConfessionComment, "id" | "createdAt" | "upvotes" | "downvotes" | "userVote">) => Promise<boolean>;
   voteConfessionComment: (confessionId: string, commentId: string, vote: "up" | "down") => void;
+  deleteConfessionComment: (confessionId: string, commentId: string) => Promise<boolean>;
 }
 
 const ConfessionsContext = createContext<ConfessionsContextType | undefined>(undefined);
@@ -201,7 +202,7 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
 
     const persistedComment: ConfessionComment = {
       id: data.id,
-      authorId: data.is_anonymous ? "anon" : data.author_id,
+      authorId: data.author_id,
       isAnonymous: data.is_anonymous,
       content: data.content,
       upvotes: data.upvotes ?? 0,
@@ -251,8 +252,41 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
       });
   }, [user]);
 
+  const deleteConfessionComment = useCallback(async (confessionId: string, commentId: string) => {
+    if (!user) return false;
+    let previous: Confession[] = [];
+    let canDelete = false;
+    setConfessions((prev) => {
+      previous = prev;
+      const targetConfession = prev.find((c) => c.id === confessionId);
+      const targetComment = targetConfession?.comments.find((cm) => cm.id === commentId);
+      canDelete = !!targetComment && targetComment.authorId === user.id;
+      if (!canDelete) return prev;
+      return prev.map((c) => {
+        if (c.id !== confessionId) return c;
+        return {
+          ...c,
+          commentCount: Math.max(0, c.commentCount - 1),
+          comments: c.comments.filter((cm) => cm.id !== commentId),
+        };
+      });
+    });
+    if (!canDelete) return false;
+    if (commentId.startsWith("local_")) return true;
+    const { error } = await supabase
+      .from("confession_comments")
+      .delete()
+      .eq("id", commentId)
+      .eq("author_id", user.id);
+    if (error) {
+      setConfessions(previous);
+      return false;
+    }
+    return true;
+  }, [user]);
+
   return (
-    <ConfessionsContext.Provider value={{ confessions, addConfession, deleteConfession, voteConfession, addConfessionComment, voteConfessionComment }}>
+    <ConfessionsContext.Provider value={{ confessions, addConfession, deleteConfession, voteConfession, addConfessionComment, voteConfessionComment, deleteConfessionComment }}>
       {children}
     </ConfessionsContext.Provider>
   );

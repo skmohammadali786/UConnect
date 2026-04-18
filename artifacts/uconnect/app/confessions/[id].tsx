@@ -27,7 +27,7 @@ export default function ConfessionDetailScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { confessions, voteConfession, addConfessionComment, voteConfessionComment, deleteConfession } = useConfessions();
+  const { confessions, voteConfession, addConfessionComment, voteConfessionComment, deleteConfession, deleteConfessionComment } = useConfessions();
   const { settings } = useSettings();
   const { user } = useAuth();
   const { showError, showSuccess } = useToast();
@@ -37,6 +37,8 @@ export default function ConfessionDetailScreen() {
   const [loadedComments, setLoadedComments] = useState<ConfessionComment[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(true);
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
+  const [deleteCommentConfirmVisible, setDeleteCommentConfirmVisible] = useState(false);
+  const [commentToDelete, setCommentToDelete] = useState<ConfessionComment | null>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(24)).current;
 
@@ -86,7 +88,7 @@ export default function ConfessionDetailScreen() {
         }
         const remoteComments = data.map((row: any) => ({
           id: row.id,
-          authorId: row.is_anonymous ? "anon" : row.author_id,
+          authorId: row.author_id,
           isAnonymous: row.is_anonymous,
           content: row.content,
           upvotes: row.upvotes ?? 0,
@@ -153,7 +155,7 @@ export default function ConfessionDetailScreen() {
     const tempCommentId = LOCAL_ID_PREFIX + Date.now();
     const newComment: ConfessionComment = {
       id: tempCommentId,
-      authorId: isAnon ? "anon" : user.id,
+      authorId: user.id,
       isAnonymous: isAnon,
       content: message,
       upvotes: 0,
@@ -216,6 +218,28 @@ export default function ConfessionDetailScreen() {
     showSuccess("Confession deleted");
     router.replace("/confessions");
   };
+
+  const handleRequestDeleteComment = useCallback((target: ConfessionComment) => {
+    setCommentToDelete(target);
+    setDeleteCommentConfirmVisible(true);
+  }, []);
+
+  const handleDeleteComment = useCallback(async () => {
+    if (!confession || !commentToDelete) return;
+    setDeleteCommentConfirmVisible(false);
+    const ok = await deleteConfessionComment(confession.id, commentToDelete.id);
+    if (!ok) {
+      showError("Failed to delete comment", "Please try again");
+      setCommentToDelete(null);
+      return;
+    }
+    setLoadedComments((prev) => prev.filter((c) => c.id !== commentToDelete.id));
+    setCommentToDelete(null);
+    showSuccess("Comment deleted");
+    if (!isLocalId(confession.id)) {
+      loadComments();
+    }
+  }, [commentToDelete, confession, deleteConfessionComment, loadComments, showError, showSuccess]);
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={insets.bottom + 56}>
@@ -320,6 +344,15 @@ export default function ConfessionDetailScreen() {
                         <Feather name="arrow-down" size={12} color={c.userVote === "down" ? "#EF4444" : colors.mutedForeground} />
                         <Text style={[styles.upvoteText, { color: c.userVote === "down" ? "#EF4444" : colors.mutedForeground }]}>{c.downvotes}</Text>
                       </TouchableOpacity>
+                      {user?.id === c.authorId && (
+                        <TouchableOpacity
+                          onPress={() => handleRequestDeleteComment(c)}
+                          style={styles.commentVoteBtn}
+                        >
+                          <Feather name="trash-2" size={12} color="#EF4444" />
+                          <Text style={[styles.upvoteText, { color: "#EF4444" }]}>Delete</Text>
+                        </TouchableOpacity>
+                      )}
                     </View>
                   </View>
                   <Text style={[styles.commentContent, { color: colors.foreground }]}>{c.content}</Text>
@@ -360,6 +393,19 @@ export default function ConfessionDetailScreen() {
           variant="danger"
           onConfirm={handleDeleteConfession}
           onCancel={() => setDeleteConfirmVisible(false)}
+        />
+        <ConfirmModal
+          visible={deleteCommentConfirmVisible}
+          title="Delete comment"
+          message="Are you sure you want to delete this comment? This action cannot be undone."
+          confirmText="Delete"
+          cancelText="Cancel"
+          variant="danger"
+          onConfirm={handleDeleteComment}
+          onCancel={() => {
+            setDeleteCommentConfirmVisible(false);
+            setCommentToDelete(null);
+          }}
         />
       </Animated.View>
     </KeyboardAvoidingView>

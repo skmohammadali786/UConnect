@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Animated, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppButton } from "@/components/AppButton";
@@ -11,7 +11,7 @@ import { useAuth } from "@/context/AuthContext";
 export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { flow, ref, referralCode } = useLocalSearchParams<{ flow: string; ref?: string; referralCode?: string }>();
+  const { flow, ref, referralCode, email: incomingEmail } = useLocalSearchParams<{ flow: string; ref?: string; referralCode?: string; email?: string }>();
   const { signIn, signUp } = useAuth();
   const isSignIn = flow === "signin";
   const incomingReferralCode = (referralCode || ref || "").trim().toUpperCase();
@@ -26,6 +26,10 @@ export default function LoginScreen() {
   const [error, setError] = useState("");
 
   const shakeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (incomingEmail) setEmail(String(incomingEmail));
+  }, [incomingEmail]);
 
   const shake = () => {
     Animated.sequence([

@@ -9,6 +9,7 @@ import { useColors } from "@/hooks/useColors";
 import { usePosts } from "@/context/PostsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/Toast";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { supabase } from "@/lib/supabase";
 import type { Comment } from "@/context/PostsContext";
 
@@ -57,6 +58,8 @@ export default function PostDetailScreen() {
   const [isAnon, setIsAnon] = useState(false);
   const [loadedComments, setLoadedComments] = useState<Comment[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(true);
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
+  const [commentToDelete, setCommentToDelete] = useState<Comment | null>(null);
   const newLocalIds = useRef<Set<string>>(new Set());
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(24)).current;
@@ -287,6 +290,54 @@ export default function PostDetailScreen() {
     voteComment(post.id, commentId, vote);
   }, [applyVoteToComments, post.id, voteComment]);
 
+  const removeCommentFromTree = useCallback((comments: Comment[], targetId: string): { next: Comment[]; removedCount: number } => {
+    let removedCount = 0;
+    const next: Comment[] = [];
+    for (const c of comments) {
+      if (c.id === targetId) {
+        removedCount += 1 + c.replies.reduce((acc, r) => acc + 1 + r.replies.length, 0);
+        continue;
+      }
+      const childResult = c.replies.length > 0 ? removeCommentFromTree(c.replies, targetId) : { next: c.replies, removedCount: 0 };
+      removedCount += childResult.removedCount;
+      next.push(childResult.removedCount > 0 ? { ...c, replies: childResult.next } : c);
+    }
+    return { next, removedCount };
+  }, []);
+
+  const handleRequestDeleteComment = useCallback((target: Comment) => {
+    setCommentToDelete(target);
+    setDeleteConfirmVisible(true);
+  }, []);
+
+  const handleDeleteComment = useCallback(async () => {
+    if (!post || !commentToDelete || !user) return;
+    setDeleteConfirmVisible(false);
+    const previous = loadedComments;
+    const removed = removeCommentFromTree(previous, commentToDelete.id);
+    if (removed.removedCount === 0) return;
+    setLoadedComments(removed.next);
+    if (isLocalId(commentToDelete.id)) {
+      showSuccess("Comment deleted");
+      setCommentToDelete(null);
+      return;
+    }
+    const { error } = await supabase
+      .from("comments")
+      .delete()
+      .eq("id", commentToDelete.id)
+      .eq("author_id", user.id);
+    if (error) {
+      setLoadedComments(previous);
+      showError("Failed to delete comment", "Please try again");
+      setCommentToDelete(null);
+      return;
+    }
+    showSuccess("Comment deleted");
+    setCommentToDelete(null);
+    loadComments();
+  }, [commentToDelete, loadedComments, loadComments, post, removeCommentFromTree, showError, showSuccess, user]);
+
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={Platform.OS === "ios" ? insets.bottom + 56 : 0}>
       <Animated.View style={{ flex: 1, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
@@ -321,8 +372,10 @@ export default function PostDetailScreen() {
                   key={c.id}
                   comment={c}
                   postId={post.id}
+                  currentUserId={user?.id}
                   onReply={(cm) => setReplyTo(cm)}
                   onVote={handleVoteComment}
+                  onDelete={handleRequestDeleteComment}
                 />
               ))
             )}
@@ -355,6 +408,19 @@ export default function PostDetailScreen() {
             </TouchableOpacity>
           </View>
         </View>
+        <ConfirmModal
+          visible={deleteConfirmVisible}
+          title="Delete comment"
+          message="Are you sure you want to delete this comment? This action cannot be undone."
+          confirmText="Delete"
+          cancelText="Cancel"
+          variant="danger"
+          onConfirm={handleDeleteComment}
+          onCancel={() => {
+            setDeleteConfirmVisible(false);
+            setCommentToDelete(null);
+          }}
+        />
       </Animated.View>
     </KeyboardAvoidingView>
   );
