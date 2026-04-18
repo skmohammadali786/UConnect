@@ -97,7 +97,6 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
       return;
     }
     const { data } = await supabase.from("confessions").insert({
-      author_id: user.id,
       college: user.college || "All",
       content,
       has_sensitive_content: sensitive,
@@ -126,8 +125,7 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
     const { error } = await supabase
       .from("confessions")
       .delete()
-      .eq("id", id)
-      .eq("author_id", user.id);
+      .eq("id", id);
     if (error) {
       setConfessions(previous);
       return false;
