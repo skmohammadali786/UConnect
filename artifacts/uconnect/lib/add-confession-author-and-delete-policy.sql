@@ -18,6 +18,6 @@ with check (auth.role() = 'authenticated' and auth.uid() = author_id);
 
 create policy "Users can delete own confessions" on confessions
 for delete
-using (auth.uid() = author_id);
+using (author_id is not null and auth.uid() = author_id);
 
 create index if not exists idx_confessions_author_id_created_at on confessions(author_id, created_at desc);

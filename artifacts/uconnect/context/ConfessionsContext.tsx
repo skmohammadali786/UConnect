@@ -121,10 +121,15 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
   const deleteConfession = useCallback(async (id: string) => {
     if (!user) return false;
     let previous: Confession[] = [];
+    let canDelete = false;
     setConfessions((prev) => {
       previous = prev;
+      const target = prev.find((c) => c.id === id);
+      canDelete = !!target && target.authorId === user.id;
+      if (!canDelete) return prev;
       return prev.filter((c) => c.id !== id);
     });
+    if (!canDelete) return false;
     const { error } = await supabase
       .from("confessions")
       .delete()
