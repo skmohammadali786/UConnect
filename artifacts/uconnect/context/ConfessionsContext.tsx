@@ -37,6 +37,10 @@ interface ConfessionsContextType {
 
 const ConfessionsContext = createContext<ConfessionsContextType | undefined>(undefined);
 
+function getSensitiveValue(row: any) {
+  return Boolean(row.has_sensitive_content ?? row.is_sensitive_content ?? row.is_sensitive);
+}
+
 export function ConfessionsProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [confessions, setConfessions] = useState<Confession[]>([]);
@@ -74,7 +78,7 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
             downvotes: voteCounts.get(row.id)?.down ?? row.downvotes ?? 0,
             commentCount: row.comment_count,
             userVote: userVotes.get(row.id) ?? null,
-            hasSensitiveContent: Boolean(row.has_sensitive_content ?? row.is_sensitive_content ?? row.is_sensitive),
+            hasSensitiveContent: getSensitiveValue(row),
             createdAt: row.created_at,
             comments: [],
           }));
@@ -107,7 +111,7 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
         downvotes: 0,
         commentCount: 0,
         userVote: null,
-        hasSensitiveContent: Boolean(data.has_sensitive_content ?? data.is_sensitive_content ?? data.is_sensitive),
+        hasSensitiveContent: getSensitiveValue(data),
         createdAt: data.created_at,
         comments: [],
       };

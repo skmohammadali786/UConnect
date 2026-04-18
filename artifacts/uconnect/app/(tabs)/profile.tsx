@@ -203,11 +203,12 @@ export default function ProfileScreen() {
     </View>
   );
 
-  const postListData: Post[] = activeTab === "posts"
-    ? myPosts
-    : activeTab === "saved"
-      ? savedPosts
-      : repostedPosts;
+  const postListData: Post[] = (() => {
+    if (activeTab === "posts") return myPosts;
+    if (activeTab === "saved") return savedPosts;
+    if (activeTab === "reposts") return repostedPosts;
+    return [];
+  })();
 
   const ListHeader = (
     <View>
