@@ -35,12 +35,15 @@ export interface Post {
   videoUrl: string | null;
   upvotes: number;
   downvotes: number;
+  repostCount: number;
   userVote: "up" | "down" | null;
   commentCount: number;
   isBookmarked: boolean;
   createdAt: string;
   comments: Comment[];
   autoDeleteAt?: string;
+  repostedByUsername?: string;
+  repostedAt?: string;
 }
 
 export interface Draft {
@@ -56,7 +59,7 @@ interface PostsContextType {
   savedPosts: Post[];
   drafts: Draft[];
   isLoading: boolean;
-  createPost: (post: Omit<Post, "id" | "upvotes" | "downvotes" | "userVote" | "commentCount" | "isBookmarked" | "createdAt" | "comments">) => Promise<void>;
+  createPost: (post: Omit<Post, "id" | "upvotes" | "downvotes" | "repostCount" | "userVote" | "commentCount" | "isBookmarked" | "createdAt" | "comments" | "repostedByUsername" | "repostedAt">) => Promise<void>;
   votePost: (postId: string, vote: "up" | "down") => void;
   bookmarkPost: (postId: string) => void;
   deletePost: (postId: string) => void;
@@ -66,6 +69,8 @@ interface PostsContextType {
   saveDraft: (draft: Omit<Draft, "id" | "savedAt">) => Promise<void>;
   deleteDraft: (draftId: string) => Promise<void>;
   refreshPosts: () => Promise<void>;
+  toggleRepost: (postId: string) => Promise<void>;
+  hasReposted: (postId: string) => boolean;
 }
 
 const PostsContext = createContext<PostsContextType | undefined>(undefined);
@@ -84,6 +89,7 @@ function rowToPost(row: any, userVote: "up" | "down" | null = null, isBookmarked
     videoUrl: row.video_url ?? null,
     upvotes: row.upvotes ?? 0,
     downvotes: row.downvotes ?? 0,
+    repostCount: row.repost_count ?? 0,
     userVote,
     commentCount: row.comment_count ?? 0,
     isBookmarked,
@@ -116,6 +122,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [repostedPostIds, setRepostedPostIds] = useState<Set<string>>(new Set());
   const postsRef = useRef<Post[]>([]);
 
   const applyPosts = useCallback((list: Post[]) => {
@@ -126,7 +133,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
   const fetchPosts = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [postsRes, votesRes, bookmarksRes] = await Promise.all([
+      const [postsRes, votesRes, bookmarksRes, repostsRes] = await Promise.all([
         supabase
           .from("posts")
           .select("*")
@@ -139,12 +146,16 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
         user
           ? supabase.from("bookmarks").select("post_id").eq("user_id", user.id)
           : Promise.resolve({ data: [] }),
+        user
+          ? supabase.from("reposts").select("post_id").eq("user_id", user.id)
+          : Promise.resolve({ data: [] }),
       ]);
 
       if (postsRes.data && postsRes.data.length > 0) {
         const voteMap = new Map<string, "up" | "down">();
         (votesRes.data ?? []).forEach((v: any) => voteMap.set(v.post_id, v.vote));
         const bookmarkSet = new Set<string>((bookmarksRes.data ?? []).map((b: any) => b.post_id));
+        setRepostedPostIds(new Set<string>((repostsRes.data ?? []).map((r: any) => r.post_id)));
         const authorIds = Array.from(new Set(postsRes.data.filter((row: any) => !row.is_anonymous).map((row: any) => row.author_id)));
         const { data: authorProfiles } = authorIds.length > 0
           ? await supabase.from("profiles").select("id,username,avatar").in("id", authorIds)
@@ -167,6 +178,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
         applyPosts(mapped);
       } else {
         applyPosts([]);
+        setRepostedPostIds(new Set());
       }
 
       // Fetch drafts
@@ -196,7 +208,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
     fetchPosts();
   }, [user?.id]);
 
-  const createPost = useCallback(async (postData: Omit<Post, "id" | "upvotes" | "downvotes" | "userVote" | "commentCount" | "isBookmarked" | "createdAt" | "comments">) => {
+  const createPost = useCallback(async (postData: Omit<Post, "id" | "upvotes" | "downvotes" | "repostCount" | "userVote" | "commentCount" | "isBookmarked" | "createdAt" | "comments" | "repostedByUsername" | "repostedAt">) => {
     if (!user) {
       // Demo mode: local only
       const newPost: Post = {
@@ -204,6 +216,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
         id: "local_" + Date.now(),
         upvotes: 0,
         downvotes: 0,
+        repostCount: 0,
         userVote: null,
         commentCount: 0,
         isBookmarked: false,
@@ -448,10 +461,50 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
     await fetchPosts();
   }, [fetchPosts]);
 
+  const hasReposted = useCallback((postId: string) => repostedPostIds.has(postId), [repostedPostIds]);
+
+  const toggleRepost = useCallback(async (postId: string) => {
+    if (!user) return;
+    const isReposted = repostedPostIds.has(postId);
+
+    setRepostedPostIds((prev) => {
+      const next = new Set(prev);
+      if (isReposted) next.delete(postId);
+      else next.add(postId);
+      return next;
+    });
+
+    applyPosts(
+      postsRef.current.map((p) =>
+        p.id === postId
+          ? { ...p, repostCount: Math.max(0, p.repostCount + (isReposted ? -1 : 1)) }
+          : p
+      )
+    );
+
+    if (isReposted) {
+      const { error } = await supabase.rpc("undo_repost_post", { p_user_id: user.id, p_post_id: postId });
+      if (error) {
+        setRepostedPostIds((prev) => new Set(prev).add(postId));
+        applyPosts(postsRef.current.map((p) => (p.id === postId ? { ...p, repostCount: p.repostCount + 1 } : p)));
+      }
+    } else {
+      const { error } = await supabase.rpc("repost_post", { p_user_id: user.id, p_post_id: postId });
+      if (error) {
+        setRepostedPostIds((prev) => {
+          const next = new Set(prev);
+          next.delete(postId);
+          return next;
+        });
+        applyPosts(postsRef.current.map((p) => (p.id === postId ? { ...p, repostCount: Math.max(0, p.repostCount - 1) } : p)));
+      }
+    }
+  }, [user, repostedPostIds, applyPosts]);
+
   const savedPosts = posts.filter((p) => p.isBookmarked);
 
   return (
-    <PostsContext.Provider value={{ posts, savedPosts, drafts, isLoading, createPost, votePost, bookmarkPost, deletePost, addComment, voteComment, reportPost, saveDraft, deleteDraft, refreshPosts }}>
+    <PostsContext.Provider value={{ posts, savedPosts, drafts, isLoading, createPost, votePost, bookmarkPost, deletePost, addComment, voteComment, reportPost, saveDraft, deleteDraft, refreshPosts, toggleRepost, hasReposted }}>
       {children}
     </PostsContext.Provider>
   );

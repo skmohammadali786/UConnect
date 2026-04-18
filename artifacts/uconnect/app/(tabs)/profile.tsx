@@ -16,7 +16,7 @@ import { TypewriterText } from "@/components/TypewriterText";
 import { supabase } from "@/lib/supabase";
 
 
-type TabId = "posts" | "saved" | "activity";
+type TabId = "posts" | "saved" | "reposts" | "activity";
 
 export default function ProfileScreen() {
   const colors = useColors();
@@ -32,6 +32,7 @@ export default function ProfileScreen() {
   const [appliedInternships, setAppliedInternships] = useState<any[]>([]);
   const [rsvpEvents, setRsvpEvents] = useState<any[]>([]);
   const [savedNotes, setSavedNotes] = useState<any[]>([]);
+  const [repostRows, setRepostRows] = useState<{ post_id: string; created_at: string }[]>([]);
 
   useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: Platform.OS !== "web" }).start();
@@ -51,13 +52,28 @@ export default function ProfileScreen() {
     } catch {}
   }, [user?.id]);
 
-  useEffect(() => { loadActivity(); }, [loadActivity]);
+  const loadReposts = useCallback(async () => {
+    if (!user) return;
+    try {
+      const { data } = await supabase
+        .from("reposts")
+        .select("post_id, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      setRepostRows((data ?? []) as { post_id: string; created_at: string }[]);
+    } catch {
+      setRepostRows([]);
+    }
+  }, [user?.id]);
+
+  useEffect(() => { loadActivity(); loadReposts(); }, [loadActivity, loadReposts]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadActivity();
+    await loadReposts();
     setRefreshing(false);
-  }, [loadActivity]);
+  }, [loadActivity, loadReposts]);
 
   if (!user) {
     return (
@@ -81,6 +97,17 @@ export default function ProfileScreen() {
   const joinedDate = new Date(user.joinedAt).toLocaleDateString("en-IN", { month: "long", year: "numeric" });
 
   const totalActivity = appliedInternships.length + rsvpEvents.length + savedNotes.length;
+  const repostedPosts = repostRows
+    .map((r) => {
+      const original = posts.find((p) => p.id === r.post_id);
+      if (!original) return null;
+      return {
+        ...original,
+        repostedByUsername: user.username,
+        repostedAt: r.created_at,
+      };
+    })
+    .filter(Boolean) as typeof posts;
   const openConnections = useCallback((mode: "followers" | "following") => {
     router.push({
       pathname: "/connections",
@@ -96,6 +123,7 @@ export default function ProfileScreen() {
   const tabItems: { key: TabId; icon: string; label: string; count: number }[] = [
     { key: "posts", icon: "file-text", label: "Posts", count: myPosts.length },
     { key: "saved", icon: "bookmark", label: "Saved", count: savedPosts.length },
+    { key: "reposts", icon: "repeat", label: "Reposted", count: repostedPosts.length },
     { key: "activity", icon: "activity", label: "Activity", count: totalActivity },
   ];
 
@@ -168,7 +196,13 @@ export default function ProfileScreen() {
     </View>
   );
 
-  const listData = activeTab === "posts" ? myPosts : activeTab === "saved" ? savedPosts : [];
+  const listData = activeTab === "posts"
+    ? myPosts
+    : activeTab === "saved"
+      ? savedPosts
+      : activeTab === "reposts"
+        ? repostedPosts
+        : [];
 
   const ListHeader = (
     <View>
@@ -348,13 +382,17 @@ export default function ProfileScreen() {
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <View style={[styles.emptyIcon, { backgroundColor: colors.card }]}>
-              <Feather name={activeTab === "posts" ? "file-text" : "bookmark"} size={32} color={colors.mutedForeground} />
+              <Feather name={activeTab === "posts" ? "file-text" : activeTab === "saved" ? "bookmark" : "repeat"} size={32} color={colors.mutedForeground} />
             </View>
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-              {activeTab === "posts" ? "No posts yet" : "Nothing saved"}
+              {activeTab === "posts" ? "No posts yet" : activeTab === "saved" ? "Nothing saved" : "No reposts yet"}
             </Text>
             <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>
-              {activeTab === "posts" ? "Share your thoughts with the campus!" : "Bookmark posts to save them here."}
+              {activeTab === "posts"
+                ? "Share your thoughts with the campus!"
+                : activeTab === "saved"
+                  ? "Bookmark posts to save them here."
+                  : "Repost posts to share them with your profile audience."}
             </Text>
             {activeTab === "posts" && (
               <TouchableOpacity onPress={() => router.push("/create-post")} style={[styles.createBtn, { backgroundColor: colors.primary }]}>
