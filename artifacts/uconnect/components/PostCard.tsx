@@ -2,7 +2,6 @@ import { Feather } from "@expo/vector-icons";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Haptics from "expo-haptics";
 import * as Clipboard from "expo-clipboard";
-import * as ExpoLinking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import { router } from "expo-router";
 import React, { useRef, useState } from "react";
@@ -25,6 +24,7 @@ import { useSocial } from "@/context/SocialContext";
 import { ReportModal } from "@/components/ReportModal";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { formatRelativeTime } from "@/utils/time";
+import { buildPostShareLink } from "@/utils/postLinks";
 
 const ND = Platform.OS !== "web";
 const URI_PROTOCOL_REGEX = /^[a-z][a-z0-9+.-]*:/i;
@@ -117,7 +117,7 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
     setMediaViewerVisible(true);
   };
 
-  const getPostLink = () => ExpoLinking.createURL(`/post/${post.id}`);
+  const getPostLink = () => buildPostShareLink(post.id);
 
   const resolveVideoUri = async (uri: string) => {
     if (uri.startsWith("data:video/")) {

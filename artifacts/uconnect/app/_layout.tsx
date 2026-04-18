@@ -11,6 +11,7 @@ import * as SplashScreen from "expo-splash-screen";
 import React, { useCallback, useEffect } from "react";
 import { View } from "react-native";
 import { supabase } from "@/lib/supabase";
+import { extractPostIdFromLink } from "@/utils/postLinks";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -36,7 +37,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isLoading) return;
     const inAuth = segments[0] === "auth";
-    if (!user && !inAuth) {
+    const inPublicPostRoute = segments[0] === "post";
+    if (!user && !inAuth && !inPublicPostRoute) {
       router.replace("/auth/welcome");
     }
   }, [user, isLoading, segments]);
@@ -82,6 +84,11 @@ export default function RootLayout() {
   }, [fontsLoaded, fontError]);
 
   const handleDeepLink = useCallback(async (url: string) => {
+    const postId = extractPostIdFromLink(url);
+    if (postId) {
+      router.push({ pathname: "/post/[id]" as any, params: { id: postId } });
+      return;
+    }
     if (!url.includes("auth/callback")) return;
     // Hash fragment flow: #access_token=...&refresh_token=...
     const hash = url.split("#")[1];
