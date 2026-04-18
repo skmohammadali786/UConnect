@@ -337,7 +337,7 @@ The workspace enforces a minimum package release age for supply-chain safety (se
 
 - Workspace enforces pnpm usage at install time (`preinstall` guard).
 - `pnpm-workspace.yaml` includes:
-  - `minimumReleaseAge: 1440` (1-day release age gate)
+  - `minimumReleaseAge: 1440` (24-hour release age gate)
   - controlled allowlist support (`minimumReleaseAgeExclude`)
   - curated dependency overrides for platform pruning and security updates
 
