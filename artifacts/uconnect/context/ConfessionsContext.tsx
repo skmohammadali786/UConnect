@@ -15,6 +15,7 @@ export interface ConfessionComment {
 
 export interface Confession {
   id: string;
+  authorId: string | null;
   content: string;
   upvotes: number;
   downvotes: number;
@@ -28,12 +29,17 @@ export interface Confession {
 interface ConfessionsContextType {
   confessions: Confession[];
   addConfession: (content: string, sensitive?: boolean) => Promise<void>;
+  deleteConfession: (id: string) => Promise<boolean>;
   voteConfession: (id: string, vote: "up" | "down") => void;
   addConfessionComment: (confessionId: string, comment: Omit<ConfessionComment, "id" | "createdAt" | "upvotes" | "downvotes" | "userVote">) => Promise<boolean>;
   voteConfessionComment: (confessionId: string, commentId: string, vote: "up" | "down") => void;
 }
 
 const ConfessionsContext = createContext<ConfessionsContextType | undefined>(undefined);
+
+function getSensitiveValue(row: any) {
+  return Boolean(row.has_sensitive_content ?? row.is_sensitive_content ?? row.is_sensitive);
+}
 
 export function ConfessionsProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -66,12 +72,13 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
 
           const mapped: Confession[] = data.map((row: any) => ({
             id: row.id,
+            authorId: row.author_id ?? null,
             content: row.content,
             upvotes: voteCounts.get(row.id)?.up ?? row.upvotes ?? 0,
             downvotes: voteCounts.get(row.id)?.down ?? row.downvotes ?? 0,
             commentCount: row.comment_count,
             userVote: userVotes.get(row.id) ?? null,
-            hasSensitiveContent: row.has_sensitive_content,
+            hasSensitiveContent: getSensitiveValue(row),
             createdAt: row.created_at,
             comments: [],
           }));
@@ -85,7 +92,7 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
 
   const addConfession = useCallback(async (content: string, sensitive = false) => {
     if (!user) {
-      const newC: Confession = { id: "local_" + Date.now(), content, upvotes: 0, downvotes: 0, commentCount: 0, userVote: null, hasSensitiveContent: sensitive, createdAt: new Date().toISOString(), comments: [] };
+      const newC: Confession = { id: "local_" + Date.now(), authorId: null, content, upvotes: 0, downvotes: 0, commentCount: 0, userVote: null, hasSensitiveContent: sensitive, createdAt: new Date().toISOString(), comments: [] };
       setConfessions((prev) => [newC, ...prev]);
       return;
     }
@@ -95,9 +102,43 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
       has_sensitive_content: sensitive,
     }).select().single();
     if (data) {
-      const newC: Confession = { id: data.id, content: data.content, upvotes: 0, downvotes: 0, commentCount: 0, userVote: null, hasSensitiveContent: data.has_sensitive_content, createdAt: data.created_at, comments: [] };
+      const newC: Confession = {
+        id: data.id,
+        authorId: data.author_id,
+        content: data.content,
+        upvotes: 0,
+        downvotes: 0,
+        commentCount: 0,
+        userVote: null,
+        hasSensitiveContent: getSensitiveValue(data),
+        createdAt: data.created_at,
+        comments: [],
+      };
       setConfessions((prev) => [newC, ...prev]);
     }
+  }, [user]);
+
+  const deleteConfession = useCallback(async (id: string) => {
+    if (!user) return false;
+    let previous: Confession[] = [];
+    let canDelete = false;
+    setConfessions((prev) => {
+      previous = prev;
+      const target = prev.find((c) => c.id === id);
+      canDelete = !!target && target.authorId === user.id;
+      if (!canDelete) return prev;
+      return prev.filter((c) => c.id !== id);
+    });
+    if (!canDelete) return false;
+    const { error } = await supabase
+      .from("confessions")
+      .delete()
+      .eq("id", id);
+    if (error) {
+      setConfessions(previous);
+      return false;
+    }
+    return true;
   }, [user]);
 
   const voteConfession = useCallback((id: string, vote: "up" | "down") => {
@@ -204,7 +245,7 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
   }, [user]);
 
   return (
-    <ConfessionsContext.Provider value={{ confessions, addConfession, voteConfession, addConfessionComment, voteConfessionComment }}>
+    <ConfessionsContext.Provider value={{ confessions, addConfession, deleteConfession, voteConfession, addConfessionComment, voteConfessionComment }}>
       {children}
     </ConfessionsContext.Provider>
   );

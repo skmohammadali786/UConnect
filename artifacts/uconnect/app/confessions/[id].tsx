@@ -11,6 +11,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useConfessions } from "@/context/ConfessionsContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useToast } from "@/components/Toast";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { supabase } from "@/lib/supabase";
 import { formatRelativeTime } from "@/utils/time";
 import type { ConfessionComment } from "@/context/ConfessionsContext";
@@ -26,19 +27,21 @@ export default function ConfessionDetailScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { confessions, voteConfession, addConfessionComment, voteConfessionComment } = useConfessions();
+  const { confessions, voteConfession, addConfessionComment, voteConfessionComment, deleteConfession } = useConfessions();
   const { settings } = useSettings();
   const { user } = useAuth();
-  const { showError } = useToast();
+  const { showError, showSuccess } = useToast();
   const [comment, setComment] = useState("");
   const [isAnon, setIsAnon] = useState(true);
   const [revealed, setRevealed] = useState(false);
   const [loadedComments, setLoadedComments] = useState<ConfessionComment[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(true);
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(24)).current;
 
   const confession = confessions.find((c) => c.id === id);
+  const isOwner = !!user && confession?.authorId === user.id;
 
   useEffect(() => {
     Animated.parallel([
@@ -192,6 +195,18 @@ export default function ConfessionDetailScreen() {
     voteConfessionComment(confession.id, commentId, vote);
   }, [confession.id, voteConfessionComment]);
 
+  const handleDeleteConfession = async () => {
+    if (!confession) return;
+    setDeleteConfirmVisible(false);
+    const ok = await deleteConfession(confession.id);
+    if (!ok) {
+      showError("Failed to delete confession", "Please try again");
+      return;
+    }
+    showSuccess("Confession deleted");
+    router.back();
+  };
+
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={insets.bottom + 56}>
       <Animated.View style={[{ flex: 1, backgroundColor: colors.background }, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
@@ -200,7 +215,13 @@ export default function ConfessionDetailScreen() {
             <Feather name="arrow-left" size={22} color={colors.foreground} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.foreground }]}>Confession</Text>
-          <View style={{ width: 38 }} />
+          {isOwner ? (
+            <TouchableOpacity onPress={() => setDeleteConfirmVisible(true)} style={styles.deleteBtn}>
+              <Feather name="trash-2" size={18} color="#EF4444" />
+            </TouchableOpacity>
+          ) : (
+            <View style={{ width: 38 }} />
+          )}
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -320,6 +341,16 @@ export default function ConfessionDetailScreen() {
             <Feather name="send" size={16} color={comment.trim() && user ? "#FFF" : colors.mutedForeground} />
           </TouchableOpacity>
         </View>
+        <ConfirmModal
+          visible={deleteConfirmVisible}
+          title="Delete confession"
+          message="Are you sure you want to delete this confession? This action cannot be undone."
+          confirmText="Delete"
+          cancelText="Cancel"
+          variant="danger"
+          onConfirm={handleDeleteConfession}
+          onCancel={() => setDeleteConfirmVisible(false)}
+        />
       </Animated.View>
     </KeyboardAvoidingView>
   );
@@ -328,6 +359,7 @@ export default function ConfessionDetailScreen() {
 const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: 1 },
   headerTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  deleteBtn: { width: 38, height: 30, alignItems: "center", justifyContent: "center" },
   notFound: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16 },
   backFallback: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10 },
   confessionCard: { margin: 16, borderRadius: 18, borderWidth: 1, padding: 20, gap: 14 },
