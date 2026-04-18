@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { Image } from "react-native";
 import { router } from "expo-router";
-import React, { useCallback, useRef, useEffect, useState } from "react";
+import React, { useCallback, useMemo, useRef, useEffect, useState } from "react";
 import {
   Animated, Easing, FlatList, Platform, RefreshControl,
   ScrollView, StyleSheet, Text, TouchableOpacity, View, useColorScheme,
@@ -30,6 +30,11 @@ const SHORTCUTS = [
   { icon: "book-open", label: "Notes", route: "/notes", color: "#3B82F6" },
   { icon: "send", label: "Chats", route: "/chat", color: "#06B6D4" },
 ];
+
+interface ProfileRow {
+  id: string;
+  username: string;
+}
 
 function AnimatedPostCard({ post, index, currentUserId, onDelete }: any) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -125,9 +130,9 @@ export default function HomeScreen() {
       const userIds = Array.from(new Set(repostRows.map((r) => r.user_id)));
       const { data: profileRows } = userIds.length > 0
         ? await supabase.from("profiles").select("id,username").in("id", userIds)
-        : { data: [] as any[] };
-      const userMap = new Map((profileRows ?? []).map((p: any) => [p.id, p.username as string]));
-      setFeedReposts(repostRows.map((r) => ({ ...r, username: userMap.get(r.user_id) })));
+        : { data: [] as ProfileRow[] };
+      const userMap = new Map((profileRows ?? []).map((p) => [p.id, p.username]));
+      setFeedReposts(repostRows.map((r) => ({ ...r, username: userMap.get(r.user_id) ?? "unknown" })));
     } catch {
       setFeedReposts([]);
     }
@@ -139,7 +144,7 @@ export default function HomeScreen() {
 
   const { followingIds } = useSocial();
 
-  const postsById = new Map(posts.map((p) => [p.id, p]));
+  const postsById = useMemo(() => new Map(posts.map((p) => [p.id, p])), [posts]);
   const repostFeedPosts: Post[] = feedReposts
     .map((r) => {
       const original = postsById.get(r.post_id);
@@ -149,7 +154,6 @@ export default function HomeScreen() {
         repostedByUserId: r.user_id,
         repostedByUsername: r.username,
         repostedAt: r.created_at,
-        createdAt: r.created_at,
         feedItemKey: `repost:${r.user_id}:${r.post_id}`,
       };
     })
@@ -164,9 +168,11 @@ export default function HomeScreen() {
     return true;
   });
 
+  const getFeedTimestamp = (post: Post) => new Date(post.repostedAt ?? post.createdAt).getTime();
+
   const sortedPosts = [...filteredPosts].sort((a, b) => {
     if (activeFilter === "Trending") return (b.upvotes + b.commentCount) - (a.upvotes + a.commentCount);
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    return getFeedTimestamp(b) - getFeedTimestamp(a);
   });
 
   const onRefresh = useCallback(async () => {

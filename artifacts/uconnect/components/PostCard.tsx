@@ -27,6 +27,7 @@ import { ConfirmModal } from "@/components/ConfirmModal";
 import { formatRelativeTime } from "@/utils/time";
 
 const ND = Platform.OS !== "web";
+const URI_PROTOCOL_REGEX = /^[a-z][a-z0-9+.-]*:/i;
 
 const TAG_COLORS: Record<string, string> = {
   General: "#6B7280",
@@ -136,7 +137,7 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
 
   const normalizePlayableUri = (uri: string) => {
     if (!uri) return uri;
-    if (/^[a-z][a-z0-9+.-]*:/i.test(uri)) return uri;
+    if (URI_PROTOCOL_REGEX.test(uri)) return uri;
     return `file://${uri}`;
   };
 
