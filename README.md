@@ -164,7 +164,7 @@ Optional for static build/deploy scripts:
 
 ## Workspace commands
 
-## Root
+### Root
 
 ```bash
 pnpm run typecheck:libs   # tsc build for shared projects
@@ -172,7 +172,7 @@ pnpm run typecheck        # typecheck shared + artifacts + scripts
 pnpm run build            # typecheck + package builds
 ```
 
-## Mobile app (`@workspace/uconnect`)
+### Mobile app (`@workspace/uconnect`)
 
 ```bash
 pnpm --filter @workspace/uconnect run dev
@@ -186,7 +186,7 @@ pnpm --filter @workspace/uconnect run build:ios:preview
 pnpm --filter @workspace/uconnect run build:ios:production
 ```
 
-## API server (`@workspace/api-server`)
+### API server (`@workspace/api-server`)
 
 ```bash
 pnpm --filter @workspace/api-server run dev
@@ -199,7 +199,7 @@ Current route surface includes:
 
 - `GET /api/healthz` → `{ status: "ok" }`
 
-## Sandbox app (`@workspace/mockup-sandbox`)
+### Sandbox app (`@workspace/mockup-sandbox`)
 
 ```bash
 pnpm --filter @workspace/mockup-sandbox run dev
@@ -208,20 +208,20 @@ pnpm --filter @workspace/mockup-sandbox run preview
 pnpm --filter @workspace/mockup-sandbox run typecheck
 ```
 
-## DB package (`@workspace/db`)
+### DB package (`@workspace/db`)
 
 ```bash
 DATABASE_URL=<postgres-url> pnpm --filter @workspace/db run push
 DATABASE_URL=<postgres-url> pnpm --filter @workspace/db run push-force
 ```
 
-## API spec package (`@workspace/api-spec`)
+### API spec package (`@workspace/api-spec`)
 
 ```bash
 pnpm --filter @workspace/api-spec run codegen
 ```
 
-## Utility scripts package (`@workspace/scripts`)
+### Utility scripts package (`@workspace/scripts`)
 
 ```bash
 pnpm --filter @workspace/scripts run hello
