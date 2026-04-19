@@ -50,7 +50,7 @@ export default function PostDetailScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { posts, addComment, voteComment, deletePost } = usePosts();
+  const { posts, addComment, voteComment, deletePost, adjustCommentCount } = usePosts();
   const { user } = useAuth();
   const { showError, showSuccess } = useToast();
   const [comment, setComment] = useState("");
@@ -322,6 +322,7 @@ export default function PostDetailScreen() {
     if (removed.removedCount === 0) return;
     setLoadedComments(removed.updatedComments);
     if (isLocalId(commentToDelete.id)) {
+      adjustCommentCount(post.id, -removed.removedCount);
       showSuccess("Comment deleted");
       setCommentToDelete(null);
       return;
@@ -337,10 +338,16 @@ export default function PostDetailScreen() {
       setCommentToDelete(null);
       return;
     }
+    adjustCommentCount(post.id, -removed.removedCount);
+    const { error: decrementError } = await supabase.rpc("decrement_comment_count", { p_post_id: post.id, p_decrement_by: removed.removedCount });
+    if (decrementError) {
+      console.error("Failed to decrement post comment count:", decrementError.message);
+      adjustCommentCount(post.id, removed.removedCount);
+    }
     showSuccess("Comment deleted");
     setCommentToDelete(null);
     loadComments();
-  }, [commentToDelete, loadedComments, loadComments, post, removeCommentFromTree, showError, showSuccess, user]);
+  }, [adjustCommentCount, commentToDelete, loadedComments, loadComments, post, removeCommentFromTree, showError, showSuccess, user]);
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={Platform.OS === "ios" ? insets.bottom + 56 : 0}>
