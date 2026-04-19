@@ -341,6 +341,7 @@ export default function PostDetailScreen() {
     adjustCommentCount(post.id, -removed.removedCount);
     const { error: decrementError } = await supabase.rpc("decrement_comment_count", { p_post_id: post.id, p_decrement_by: removed.removedCount });
     if (decrementError) {
+      console.error("Failed to decrement post comment count:", decrementError.message);
       adjustCommentCount(post.id, removed.removedCount);
     }
     showSuccess("Comment deleted");
