@@ -671,7 +671,7 @@ $$;
 create or replace function decrement_comment_count(p_post_id uuid, p_decrement_by integer default 1)
 returns void language plpgsql security definer as $$
 declare
-  safe_decrement integer := greatest(1, coalesce(p_decrement_by, 1));
+  safe_decrement integer := greatest(0, coalesce(p_decrement_by, 1));
 begin
   update posts
   set comment_count = greatest(0, comment_count - safe_decrement)
@@ -690,7 +690,7 @@ $$;
 create or replace function decrement_confession_comment_count(p_confession_id uuid, p_decrement_by integer default 1)
 returns void language plpgsql security definer as $$
 declare
-  safe_decrement integer := greatest(1, coalesce(p_decrement_by, 1));
+  safe_decrement integer := greatest(0, coalesce(p_decrement_by, 1));
 begin
   update confessions
   set comment_count = greatest(0, comment_count - safe_decrement)

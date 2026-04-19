@@ -50,7 +50,7 @@ export default function PostDetailScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { posts, addComment, voteComment, deletePost, adjustCommentCount, refreshPosts } = usePosts();
+  const { posts, addComment, voteComment, deletePost, adjustCommentCount } = usePosts();
   const { user } = useAuth();
   const { showError, showSuccess } = useToast();
   const [comment, setComment] = useState("");
@@ -342,8 +342,8 @@ export default function PostDetailScreen() {
     await supabase.rpc("decrement_comment_count", { p_post_id: post.id, p_decrement_by: removed.removedCount });
     showSuccess("Comment deleted");
     setCommentToDelete(null);
-    await Promise.all([loadComments(), refreshPosts()]);
-  }, [adjustCommentCount, commentToDelete, loadedComments, loadComments, post, refreshPosts, removeCommentFromTree, showError, showSuccess, user]);
+    loadComments();
+  }, [adjustCommentCount, commentToDelete, loadedComments, loadComments, post, removeCommentFromTree, showError, showSuccess, user]);
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={Platform.OS === "ios" ? insets.bottom + 56 : 0}>
