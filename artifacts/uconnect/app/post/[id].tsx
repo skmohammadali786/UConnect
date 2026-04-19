@@ -339,7 +339,10 @@ export default function PostDetailScreen() {
       return;
     }
     adjustCommentCount(post.id, -removed.removedCount);
-    await supabase.rpc("decrement_comment_count", { p_post_id: post.id, p_decrement_by: removed.removedCount });
+    const { error: decrementError } = await supabase.rpc("decrement_comment_count", { p_post_id: post.id, p_decrement_by: removed.removedCount });
+    if (decrementError) {
+      adjustCommentCount(post.id, removed.removedCount);
+    }
     showSuccess("Comment deleted");
     setCommentToDelete(null);
     loadComments();
