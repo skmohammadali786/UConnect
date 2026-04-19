@@ -73,6 +73,7 @@ interface PostsContextType {
   refreshPosts: () => Promise<void>;
   toggleRepost: (postId: string) => Promise<void>;
   hasReposted: (postId: string) => boolean;
+  adjustCommentCount: (postId: string, delta: number) => void;
 }
 
 const PostsContext = createContext<PostsContextType | undefined>(undefined);
@@ -429,6 +430,15 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
       });
   }, [applyPosts, user]);
 
+  const adjustCommentCount = useCallback((postId: string, delta: number) => {
+    if (delta === 0) return;
+    applyPosts(postsRef.current.map((p) => (
+      p.id === postId
+        ? { ...p, commentCount: Math.max(0, p.commentCount + delta) }
+        : p
+    )));
+  }, [applyPosts]);
+
   const reportPost = useCallback((postId: string, reason: string) => {
     if (!user) return;
     supabase.from("reports").insert({ reporter_id: user.id, post_id: postId, reason }).then(() => {});
@@ -506,7 +516,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
   const savedPosts = posts.filter((p) => p.isBookmarked);
 
   return (
-    <PostsContext.Provider value={{ posts, savedPosts, drafts, isLoading, createPost, votePost, bookmarkPost, deletePost, addComment, voteComment, reportPost, saveDraft, deleteDraft, refreshPosts, toggleRepost, hasReposted }}>
+    <PostsContext.Provider value={{ posts, savedPosts, drafts, isLoading, createPost, votePost, bookmarkPost, deletePost, addComment, voteComment, reportPost, saveDraft, deleteDraft, refreshPosts, toggleRepost, hasReposted, adjustCommentCount }}>
       {children}
     </PostsContext.Provider>
   );

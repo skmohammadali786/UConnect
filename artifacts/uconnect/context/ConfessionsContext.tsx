@@ -284,6 +284,7 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
       setConfessions(previous);
       return false;
     }
+    await supabase.rpc("decrement_confession_comment_count", { p_confession_id: confessionId });
     return true;
   }, [user]);
 
