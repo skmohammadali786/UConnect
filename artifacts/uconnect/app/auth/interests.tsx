@@ -146,8 +146,8 @@ export default function InterestsScreen() {
       <AppButton title="Finish Setup" onPress={handleDone} loading={loading} disabled={selected.length === 0 || loading} fullWidth size="lg" />
       <ConfirmModal
         visible={verifyModalVisible}
-        title="Account created successfully"
-        message="We’ve sent a verification link to your email. Please verify your email, then sign in to complete setup."
+        title="Sign in required"
+        message="Your session has expired. Please sign in again to complete your onboarding."
         confirmText="Go to Sign In"
         cancelText="Close"
         variant="info"
