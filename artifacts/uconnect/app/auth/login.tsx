@@ -198,9 +198,14 @@ export default function LoginScreen() {
             </Text>
             <Pressable onPress={() => {
               setError(""); setPassword(""); setConfirmPassword("");
+              const trimmedEmail = email.trim();
               router.replace({
                 pathname: "/auth/login",
-                params: { flow: isSignIn ? "signup" : "signin", email: email.trim(), referralCode: incomingReferralCode },
+                params: {
+                  flow: isSignIn ? "signup" : "signin",
+                  ...(trimmedEmail ? { email: trimmedEmail } : {}),
+                  ...(incomingReferralCode ? { referralCode: incomingReferralCode } : {}),
+                },
               });
             }}>
               <Text style={[styles.switchLink, { color: colors.primary }]}>
@@ -228,9 +233,14 @@ export default function LoginScreen() {
         variant="info"
         onConfirm={() => {
           setVerifyModalVisible(false);
+          const trimmedEmail = email.trim();
           router.replace({
             pathname: "/auth/login",
-            params: { flow: "signin", email: email.trim(), referralCode: incomingReferralCode },
+            params: {
+              flow: "signin",
+              ...(trimmedEmail ? { email: trimmedEmail } : {}),
+              ...(incomingReferralCode ? { referralCode: incomingReferralCode } : {}),
+            },
           });
         }}
         onCancel={() => setVerifyModalVisible(false)}
