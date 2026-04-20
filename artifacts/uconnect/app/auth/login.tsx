@@ -5,6 +5,7 @@ import { Animated, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleS
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppButton } from "@/components/AppButton";
 import { AppInput } from "@/components/AppInput";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 
@@ -24,6 +25,7 @@ export default function LoginScreen() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [verifyModalVisible, setVerifyModalVisible] = useState(false);
 
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
@@ -99,7 +101,7 @@ export default function LoginScreen() {
       return;
     }
 
-    router.replace({ pathname: "/auth/college-select", params: { email: email.trim(), referralCode: incomingReferralCode } });
+    setVerifyModalVisible(true);
   };
 
   return (
@@ -196,7 +198,10 @@ export default function LoginScreen() {
             </Text>
             <Pressable onPress={() => {
               setError(""); setPassword(""); setConfirmPassword("");
-              router.replace({ pathname: "/auth/login", params: { flow: isSignIn ? "signup" : "signin" } });
+              router.replace({
+                pathname: "/auth/login",
+                params: { flow: isSignIn ? "signup" : "signin", email: email.trim(), referralCode: incomingReferralCode },
+              });
             }}>
               <Text style={[styles.switchLink, { color: colors.primary }]}>
                 {isSignIn ? "Sign Up" : "Sign In"}
@@ -214,6 +219,22 @@ export default function LoginScreen() {
           )}
         </View>
       </ScrollView>
+      <ConfirmModal
+        visible={verifyModalVisible}
+        title="Account created successfully"
+        message="We’ve sent a verification link to your email. Please verify your email, then sign in to continue setup."
+        confirmText="Go to Sign In"
+        cancelText="Close"
+        variant="info"
+        onConfirm={() => {
+          setVerifyModalVisible(false);
+          router.replace({
+            pathname: "/auth/login",
+            params: { flow: "signin", email: email.trim(), referralCode: incomingReferralCode },
+          });
+        }}
+        onCancel={() => setVerifyModalVisible(false)}
+      />
     </KeyboardAvoidingView>
   );
 }
