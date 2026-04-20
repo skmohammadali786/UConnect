@@ -147,7 +147,7 @@ export default function InterestsScreen() {
       <ConfirmModal
         visible={verifyModalVisible}
         title="Sign in required"
-        message="Your session expired before setup could be fully saved. Please sign in again to finish onboarding."
+        message="Your session has expired. Please sign in again to complete your onboarding."
         confirmText="Go to Sign In"
         cancelText="Close"
         variant="info"
