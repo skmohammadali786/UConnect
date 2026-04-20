@@ -1,40 +1,44 @@
 {
-"cli": {
-"version": ">= 13.5.0",
-"appVersionSource": "remote"
-},
-"build": {
-"development": {
-"developmentClient": true,
-"distribution": "internal",
-"android": {
-"buildType": "apk"
-},
-"ios": {
-"simulator": false
-}
-},
-"preview": {
-"extends": "internal"
-},
-"internal": {
-"distribution": "internal",
-"pnpm": "9.15.0",
-"android": {
-"buildType": "apk"
-},
-"ios": {
-"simulator": false
-}
-},
-"production": {
-"pnpm": "9.15.0",
-"android": {
-"buildType": "app-bundle"
-},
-"ios": {
-"simulator": false
-}
-}
-}
+  "cli": {
+    "version": ">= 13.5.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "channel": "development",
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "simulator": false
+      }
+    },
+    "preview": {
+      "extends": "internal",
+      "channel": "preview"
+    },
+    "internal": {
+      "distribution": "internal",
+      "pnpm": "9.15.0",
+      "channel": "preview",
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "simulator": false
+      }
+    },
+    "production": {
+      "pnpm": "9.15.0",
+      "channel": "production",
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "ios": {
+        "simulator": false
+      }
+    }
+  }
 }

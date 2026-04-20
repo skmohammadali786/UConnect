@@ -7,15 +7,18 @@
     "development": {
       "extends": "internal",
       "developmentClient": true,
-      "environment": "development"
+      "environment": "development",
+      "channel": "development"
     },
     "preview": {
-      "extends": "internal"
+      "extends": "internal",
+      "channel": "preview"
     },
     "production": {
       "node": "20.0.0",
       "pnpm": "9.15.0",
       "environment": "production",
+      "channel": "production",
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://lyrntcjjcigvsueyszom.supabase.co"
       },
@@ -32,6 +35,7 @@
       "node": "20.0.0",
       "pnpm": "9.15.0",
       "environment": "preview",
+      "channel": "preview",
       "android": {
         "image": "latest",
         "buildType": "apk"
