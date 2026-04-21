@@ -44,7 +44,7 @@ export default function InviteScreen() {
       const { data } = await supabase.from("invite_codes").select("*").eq("user_id", user.id).maybeSingle();
       if (data?.code) {
         setInviteCode(data.code);
-        setInvitedCount(data.total_shares ?? 0);
+        setInvitedCount(data.total_joins ?? 0);
         setJoinedCount(data.total_joins ?? 0);
       } else {
         const code = fallbackCode;
@@ -63,8 +63,8 @@ export default function InviteScreen() {
 
   const trackShare = async () => {
     if (!user || !inviteCode) return;
-    const next = invitedCount + 1;
-    setInvitedCount(next);
+    const { data } = await supabase.from("invite_codes").select("total_shares").eq("user_id", user.id).maybeSingle();
+    const next = (data?.total_shares ?? 0) + 1;
     await supabase.from("invite_codes").update({ total_shares: next, updated_at: new Date().toISOString() }).eq("user_id", user.id).then(() => {});
   };
 

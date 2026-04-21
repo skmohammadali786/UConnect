@@ -17,7 +17,7 @@ export default function RateScreen() {
   const { themeMode } = useTheme();
   const scheme = useColorScheme();
   const { width } = useWindowDimensions();
-  const isDarkTheme = themeMode === "dark" || (themeMode === "system" && (scheme ?? "dark") === "dark");
+  const isDarkTheme = themeMode === "dark" || (themeMode === "system" && (scheme ?? "light") === "dark");
   const horizontalPadding = width >= 768 ? 28 : 20;
   const contentWidth = Math.min(560, Math.max(320, width - horizontalPadding * 2));
   const [rating, setRating] = useState(0);
@@ -94,7 +94,7 @@ export default function RateScreen() {
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: horizontalPadding, paddingVertical: 24, gap: 24, paddingBottom: 60, alignItems: "center" }} keyboardShouldPersistTaps="handled">
         <View style={{ alignItems: "center", gap: 16, width: contentWidth }}>
-          <View style={[styles.appIcon, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "30" }]}>
+          <View style={[styles.appIcon, isDarkTheme ? { backgroundColor: "#111827", borderColor: "#374151" } : { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" }]}>
             <Image
               source={isDarkTheme ? require("@/assets/images/logo-dark.png") : require("@/assets/images/logo.png")}
               style={styles.appLogo}
@@ -158,8 +158,8 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: 1 },
   backBtn: { padding: 4 },
   title: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  appIcon: { width: 90, height: 90, borderRadius: 45, borderWidth: 2, alignItems: "center", justifyContent: "center", overflow: "hidden" },
-  appLogo: { width: 60, height: 60, borderRadius: 30 },
+  appIcon: { width: 88, height: 88, borderRadius: 44, borderWidth: 1.5, alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  appLogo: { width: 78, height: 78 },
   heading: { fontSize: 24, fontFamily: "Inter_700Bold", textAlign: "center" },
   subheading: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 22 },
   starsContainer: { flexDirection: "row", gap: 10 },
