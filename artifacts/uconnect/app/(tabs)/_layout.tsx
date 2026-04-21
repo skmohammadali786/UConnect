@@ -5,6 +5,7 @@ import React from "react";
 import { Animated, Platform, StyleSheet, TouchableOpacity, View, useColorScheme, useWindowDimensions } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import { useTheme } from "@/context/ThemeContext";
+import { TABLET_BREAKPOINT, getResponsiveContentMaxWidth } from "@/utils/responsiveLayout";
 
 const ND = Platform.OS !== "web";
 
@@ -60,9 +61,9 @@ export default function TabLayout() {
   const scheme = useColorScheme();
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
-  const contentMaxWidth = width >= 1400 ? 1080 : width >= 1024 ? 920 : width >= 768 ? 760 : undefined;
-  const tabBarHeight = isWeb ? (width >= 1024 ? 88 : 74) : 70;
-  const tabBarBottomPadding = isWeb ? (width >= 1024 ? 12 : 6) : 12;
+  const contentMaxWidth = getResponsiveContentMaxWidth(width);
+  const tabBarHeight = isWeb ? (width >= TABLET_BREAKPOINT ? 88 : 74) : 70;
+  const tabBarBottomPadding = isWeb ? (width >= TABLET_BREAKPOINT ? 12 : 6) : 12;
   const isDarkTheme = themeMode === "dark" || (themeMode === "system" && (scheme ?? "dark") === "dark");
 
   return (

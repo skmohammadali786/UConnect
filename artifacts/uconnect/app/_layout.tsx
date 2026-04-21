@@ -12,6 +12,7 @@ import React, { useCallback, useEffect } from "react";
 import { View, useWindowDimensions } from "react-native";
 import { supabase } from "@/lib/supabase";
 import { extractPostIdFromLink } from "@/utils/postLinks";
+import { getResponsiveContentMaxWidth } from "@/utils/responsiveLayout";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -50,7 +51,7 @@ function RootLayoutNav() {
   const { width } = useWindowDimensions();
   const colors = useColors();
   const { themeLoaded } = useTheme();
-  const contentMaxWidth = width >= 1400 ? 1080 : width >= 1024 ? 920 : width >= 768 ? 760 : undefined;
+  const contentMaxWidth = getResponsiveContentMaxWidth(width);
   const responsiveContentStyle = {
     backgroundColor: colors.background,
     width: "100%" as const,
