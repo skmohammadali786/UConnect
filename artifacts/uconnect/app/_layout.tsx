@@ -11,7 +11,7 @@ import * as SplashScreen from "expo-splash-screen";
 import React, { useCallback, useEffect } from "react";
 import { View, useWindowDimensions } from "react-native";
 import { supabase } from "@/lib/supabase";
-import { extractPostIdFromLink, extractReferralCodeFromLink } from "@/utils/postLinks";
+import { extractEventIdFromLink, extractPostIdFromLink, extractReferralCodeFromLink } from "@/utils/postLinks";
 import { getResponsiveContentMaxWidth } from "@/utils/responsiveLayout";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -96,6 +96,12 @@ export default function RootLayout() {
     const postId = extractPostIdFromLink(url);
     if (postId) {
       router.push({ pathname: "/post/[id]" as any, params: { id: postId } });
+      return;
+    }
+
+    const eventId = extractEventIdFromLink(url);
+    if (eventId) {
+      router.push({ pathname: "/events/[id]" as any, params: { id: eventId } });
       return;
     }
 

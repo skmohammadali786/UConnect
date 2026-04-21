@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, FlatList, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, FlatList, Image, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useChat } from "@/context/ChatContext";
@@ -13,6 +13,7 @@ interface Profile {
   username: string;
   college: string;
   displayName: string;
+  avatar: string | null;
 }
 
 export default function NewChatScreen() {
@@ -31,7 +32,7 @@ export default function NewChatScreen() {
       try {
         let query = supabase
           .from("profiles")
-          .select("id, username, display_name, college")
+          .select("id, username, display_name, college, avatar")
           .neq("id", user?.id ?? "")
           .limit(25);
         if (q) {
@@ -45,6 +46,7 @@ export default function NewChatScreen() {
           username: r.username,
           displayName: r.display_name,
           college: r.college,
+          avatar: r.avatar ?? null,
         })));
       } catch { setProfiles([]); }
       setLoading(false);
@@ -100,14 +102,22 @@ export default function NewChatScreen() {
             }}
             style={[styles.userItem, { borderBottomColor: colors.separator }]}
           >
-            <View style={[styles.avatar, { backgroundColor: colors.primary + "20" }]}>
-              <Text style={[styles.avatarText, { color: colors.primary }]}>
-                {(item.displayName ?? item.username).charAt(0).toUpperCase()}
-              </Text>
-            </View>
+            {item.avatar ? (
+              <Image source={{ uri: item.avatar }} style={styles.avatarImage} />
+            ) : (
+              <View style={[styles.avatar, { backgroundColor: colors.primary + "20" }]}>
+                <Text style={[styles.avatarText, { color: colors.primary }]}>
+                  {(item.displayName ?? item.username).charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
             <View style={{ flex: 1 }}>
-              <Text style={[styles.username, { color: colors.foreground }]}>{item.displayName}</Text>
-              <Text style={[styles.college, { color: colors.mutedForeground }]}>@{item.username} · {item.college}</Text>
+              <Text style={[styles.username, { color: colors.foreground }]} numberOfLines={1}>
+                {item.displayName || item.username}
+              </Text>
+              <Text style={[styles.college, { color: colors.mutedForeground }]} numberOfLines={1}>
+                @{item.username} · {item.college}
+              </Text>
             </View>
             <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
           </TouchableOpacity>
@@ -126,6 +136,7 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular" },
   userItem: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1 },
   avatar: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
+  avatarImage: { width: 44, height: 44, borderRadius: 22 },
   avatarText: { fontSize: 18, fontFamily: "Inter_700Bold" },
   username: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   college: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },

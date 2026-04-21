@@ -1,7 +1,8 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import * as Clipboard from "expo-clipboard";
+import { ActivityIndicator, Platform, ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppButton } from "@/components/AppButton";
 import { useColors } from "@/hooks/useColors";
@@ -9,6 +10,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/Toast";
 import { supabase } from "@/lib/supabase";
 import { safeInsertNotification } from "@/utils/notifications";
+import { buildEventShareLink } from "@/utils/postLinks";
 
 interface EventDetail {
   id: string;
@@ -136,6 +138,20 @@ export default function EventDetailScreen() {
     loadAttendees();
   }, [id, isHost]);
 
+  const handleShare = async () => {
+    if (!event?.id) return;
+    const shareLink = buildEventShareLink(event.id);
+    const message = `Check out this event on UConnect: ${event.title}\n${shareLink}`;
+    try {
+      const result = await Share.share({ title: event.title, message, url: shareLink });
+      if (result.action === Share.dismissedAction) return;
+      showSuccess("Share ready", "Event link shared.");
+    } catch {
+      await Clipboard.setStringAsync(shareLink);
+      showInfo("Copied to clipboard", "Share link copied.");
+    }
+  };
+
   const handleRSVP = async () => {
     if (!event || !id || loading) return;
     const hasRsvp = !!rsvpStatus;
@@ -247,7 +263,7 @@ export default function EventDetailScreen() {
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
         <Text style={[styles.title, { color: colors.foreground }]}>Event Details</Text>
-        <TouchableOpacity onPress={() => Alert.alert("Share", "Share link copied!")}>
+        <TouchableOpacity onPress={handleShare}>
           <Feather name="share-2" size={20} color={colors.primary} />
         </TouchableOpacity>
       </View>

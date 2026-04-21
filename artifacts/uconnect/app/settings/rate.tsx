@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useState } from "react";
-import { Animated, Image, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useColorScheme } from "react-native";
+import { Animated, Image, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useColorScheme, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useToast } from "@/components/Toast";
@@ -16,7 +16,10 @@ export default function RateScreen() {
   const { user } = useAuth();
   const { themeMode } = useTheme();
   const scheme = useColorScheme();
+  const { width } = useWindowDimensions();
   const isDarkTheme = themeMode === "dark" || (themeMode === "system" && (scheme ?? "dark") === "dark");
+  const horizontalPadding = width >= 768 ? 28 : 20;
+  const contentWidth = Math.min(560, Math.max(320, width - horizontalPadding * 2));
   const [rating, setRating] = useState(0);
   const [hovered, setHovered] = useState(0);
   const [feedback, setFeedback] = useState("");
@@ -89,8 +92,8 @@ export default function RateScreen() {
         <View style={{ width: 38 }} />
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 24, gap: 24, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
-        <View style={{ alignItems: "center", gap: 16 }}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: horizontalPadding, paddingVertical: 24, gap: 24, paddingBottom: 60, alignItems: "center" }} keyboardShouldPersistTaps="handled">
+        <View style={{ alignItems: "center", gap: 16, width: contentWidth }}>
           <View style={[styles.appIcon, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "30" }]}>
             <Image
               source={isDarkTheme ? require("@/assets/images/logo-dark.png") : require("@/assets/images/logo.png")}
@@ -104,7 +107,7 @@ export default function RateScreen() {
           </Text>
         </View>
 
-        <View style={{ alignItems: "center", gap: 16 }}>
+        <View style={{ alignItems: "center", gap: 16, width: contentWidth }}>
           <View style={styles.starsContainer}>
             {[1, 2, 3, 4, 5].map((star) => (
               <Animated.View key={star} style={{ transform: [{ scale: scaleAnims[star - 1] }] }}>
@@ -123,7 +126,7 @@ export default function RateScreen() {
           )}
         </View>
 
-        <View style={[styles.feedbackBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={[styles.feedbackBox, { backgroundColor: colors.card, borderColor: colors.border, width: contentWidth }]}>
           <Text style={[styles.feedbackLabel, { color: colors.foreground }]}>Leave a comment (optional)</Text>
           <TextInput
             value={feedback}
@@ -140,7 +143,7 @@ export default function RateScreen() {
         <TouchableOpacity
           onPress={handleSubmit}
           disabled={rating === 0}
-          style={[styles.submitBtn, { backgroundColor: rating > 0 ? colors.primary : colors.secondary, opacity: rating > 0 ? 1 : 0.5 }]}
+          style={[styles.submitBtn, { backgroundColor: rating > 0 ? colors.primary : colors.secondary, opacity: rating > 0 ? 1 : 0.5, width: contentWidth }]}
         >
           <Feather name="star" size={18} color={rating > 0 ? "#FFF" : colors.mutedForeground} />
           <Text style={[styles.submitText, { color: rating > 0 ? "#FFF" : colors.mutedForeground }]}>Submit Rating</Text>
@@ -155,8 +158,8 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: 1 },
   backBtn: { padding: 4 },
   title: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  appIcon: { width: 90, height: 90, borderRadius: 45, borderWidth: 2, alignItems: "center", justifyContent: "center" },
-  appLogo: { width: 56, height: 56 },
+  appIcon: { width: 90, height: 90, borderRadius: 45, borderWidth: 2, alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  appLogo: { width: 60, height: 60, borderRadius: 30 },
   heading: { fontSize: 24, fontFamily: "Inter_700Bold", textAlign: "center" },
   subheading: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 22 },
   starsContainer: { flexDirection: "row", gap: 10 },
