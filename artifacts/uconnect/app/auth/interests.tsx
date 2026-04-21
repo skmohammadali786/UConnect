@@ -7,22 +7,7 @@ import { ConfirmModal } from "@/components/ConfirmModal";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
-
-const INTERESTS = [
-  "Coding", "Machine Learning", "Web Dev", "App Dev", "Competitive Programming",
-  "Open Source", "Startups", "Finance", "Design", "Photography",
-  "Music", "Sports", "Gaming", "Anime", "Movies",
-  "Writing", "Research", "Robotics", "Cybersecurity", "Cloud Computing",
-  "Blockchain", "AR/VR", "Data Science", "Quant Finance", "Product Management",
-  "UI/UX", "Graphic Design", "Public Speaking", "Debating", "Drama",
-  "Singing", "Dancing", "Fitness", "Cricket", "Football",
-  "Basketball", "Badminton", "Chess", "Travel", "Cooking",
-  "Entrepreneurship", "Hackathons", "Case Competitions", "Consulting", "Marketing",
-  "Stock Market", "Economics", "Psychology", "Biology", "Chemistry",
-  "Physics", "Mathematics", "Electrical Engineering", "Mechanical Engineering", "Civil Engineering",
-  "Electronics", "MBA", "BSc Research", "AI Ethics", "Content Creation",
-  "Video Editing", "Community Building", "Event Management", "Volunteering", "Social Impact",
-];
+import { ALL_INTERESTS } from "@/constants/interests";
 
 export default function InterestsScreen() {
   const colors = useColors();
@@ -133,7 +118,7 @@ export default function InterestsScreen() {
       <Text style={[styles.title, { color: colors.foreground }]}>What are you{"\n"}into?</Text>
       <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>Select up to 10 interests. We'll personalize your feed.</Text>
       <View style={styles.chips}>
-        {INTERESTS.map((interest) => {
+        {ALL_INTERESTS.map((interest) => {
           const isSelected = selected.includes(interest);
           return (
             <TouchableOpacity

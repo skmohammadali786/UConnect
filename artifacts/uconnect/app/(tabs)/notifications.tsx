@@ -5,27 +5,37 @@ import { Animated, Easing, FlatList, Platform, StyleSheet, Text, TouchableOpacit
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useNotifications } from "@/context/NotificationsContext";
-import type { Notification, NotificationType } from "@/context/NotificationsContext";
+import type { Notification } from "@/context/NotificationsContext";
 import { formatRelativeTime } from "@/utils/time";
 import { TypewriterText } from "@/components/TypewriterText";
 
-const NOTIFICATION_ICONS: Record<NotificationType, keyof typeof Feather.glyphMap> = {
+const NOTIFICATION_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
   reply: "message-circle",
   mention: "at-sign",
   upvote: "arrow-up",
   follow: "user-plus",
   message: "send",
   event: "calendar",
+  team: "users",
+  internship: "briefcase",
+  confession: "message-square",
+  note: "file-text",
+  invite: "gift",
   system: "info",
 };
 
-const NOTIFICATION_COLORS: Record<NotificationType, string> = {
+const NOTIFICATION_COLORS: Record<string, string> = {
   reply: "#3B82F6",
   mention: "#8B5CF6",
   upvote: "#00A86B",
   follow: "#F59E0B",
   message: "#06B6D4",
   event: "#F97316",
+  team: "#8B5CF6",
+  internship: "#14B8A6",
+  confession: "#6366F1",
+  note: "#10B981",
+  invite: "#F59E0B",
   system: "#6B7280",
 };
 
@@ -107,7 +117,11 @@ export default function NotificationsScreen() {
             style={[styles.item, { backgroundColor: item.isRead ? colors.background : colors.primary + "08", borderBottomColor: colors.separator }]}
           >
             <View style={[styles.iconWrap, { backgroundColor: (NOTIFICATION_COLORS[item.type] || "#6B7280") + "20" }]}>
-              <Feather name={NOTIFICATION_ICONS[item.type]} size={18} color={NOTIFICATION_COLORS[item.type] || colors.mutedForeground} />
+              <Feather
+                name={NOTIFICATION_ICONS[item.type] || "bell"}
+                size={18}
+                color={NOTIFICATION_COLORS[item.type] || colors.mutedForeground}
+              />
             </View>
             <View style={styles.textWrap}>
               <Text style={[styles.itemTitle, { color: colors.foreground }]}>{item.title}</Text>
