@@ -34,7 +34,7 @@ export function ChatBubble({ message, isMe }: ChatBubbleProps) {
           {formatRelativeTime(message.createdAt)}
         </Text>
         {isMe && (
-          <Text style={[styles.status, { color: message.isRead ? "#10B981" : colors.mutedForeground }]}>
+          <Text style={[styles.status, { color: message.isRead ? colors.success : colors.mutedForeground }]}>
             {message.isRead ? "Seen" : "Unseen"}
           </Text>
         )}
