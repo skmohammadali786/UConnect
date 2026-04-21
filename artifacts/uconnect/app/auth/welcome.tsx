@@ -31,7 +31,6 @@ const HEADLINE_SIZE_RATIO = 0.09;
 const HEADLINE_MIN_SIZE = 28;
 const HEADLINE_MAX_SIZE = 38;
 const HEADLINE_LINE_HEIGHT_OFFSET = 8;
-const LOGO_BORDER_RADIUS_RATIO = 0.23;
 
 export default function WelcomeScreen() {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
@@ -195,7 +194,7 @@ export default function WelcomeScreen() {
             transform: [{ scale: Animated.multiply(logoScale, logoPulse) }],
           }}
         >
-          <View style={[styles.logoWrap, { width: logoSize, height: logoSize, borderRadius: Math.round(logoSize * LOGO_BORDER_RADIUS_RATIO) }, isDarkTheme ? styles.logoWrapDark : styles.logoWrapLight]}>
+          <View style={[styles.logoWrap, { width: logoSize, height: logoSize, borderRadius: Math.round(logoSize * 0.5) }, isDarkTheme ? styles.logoWrapDark : styles.logoWrapLight]}>
             <Image
               source={isDarkTheme ? require("@/assets/images/logo-dark.png") : require("@/assets/images/logo.png")}
               style={{ width: logoImageSize, height: logoImageSize }}
@@ -312,7 +311,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   logoWrapLight: { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" },
-  logoWrapDark: { backgroundColor: "transparent", borderColor: "transparent" },
+  logoWrapDark: { backgroundColor: "#111827", borderColor: "#374151" },
   textSection: {
     paddingHorizontal: 28,
     paddingTop: 8,

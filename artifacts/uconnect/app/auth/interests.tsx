@@ -74,15 +74,23 @@ export default function InterestsScreen() {
         joined_at: now,
       };
 
-      await supabase.from("profiles").upsert(profile);
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .upsert(profile, { onConflict: "id" });
+      if (profileError) {
+        throw new Error(profileError.message);
+      }
 
-      await supabase.from("user_settings").upsert({
+      const { error: settingsError } = await supabase.from("user_settings").upsert({
         user_id: userId,
         push_notifications: true,
         default_anonymous: false,
         show_sensitive_content: false,
         updated_at: now,
-      });
+      }, { onConflict: "user_id" });
+      if (settingsError) {
+        throw new Error(settingsError.message);
+      }
 
       const code = (referralCode || "").trim().toUpperCase();
       if (code) {

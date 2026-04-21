@@ -126,6 +126,14 @@ const server = http.createServer((req, res) => {
     }
   }
 
+  if (
+    pathname === "/join" ||
+    pathname.startsWith("/join/") ||
+    pathname.startsWith("/post/")
+  ) {
+    return serveLandingPage(req, res, landingPageTemplate, appName);
+  }
+
   serveStaticFile(pathname, res);
 });
 
