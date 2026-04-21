@@ -27,10 +27,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Install EAS CLI
-        run: pnpm add -g eas-cli
-
       - name: Publish update
-        run: npx eas update --branch preview --non-interactive
+        run: pnpm dlx eas-cli@latest update --branch preview --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
