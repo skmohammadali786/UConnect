@@ -2,15 +2,12 @@ import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useEffect, useRef } from "react";
 import {
-  Animated, Dimensions, Easing, Image, Platform,
-  ScrollView, StyleSheet, Text, TouchableOpacity, View, useColorScheme,
+  Animated, Easing, Image, Platform,
+  ScrollView, StyleSheet, Text, TouchableOpacity, View, useColorScheme, useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useTheme } from "@/context/ThemeContext";
-
-const { width: W, height: H } = Dimensions.get("window");
-const LOGO_SECTION_H = Math.max(H * 0.30, 180);
 
 const FEATURES = [
   { icon: "shield", text: "Post anonymously, no judgement" },
@@ -20,6 +17,7 @@ const FEATURES = [
 ];
 
 export default function WelcomeScreen() {
+  const { width: W, height: H } = useWindowDimensions();
   const colors = useColors();
   const { themeMode } = useTheme();
   const scheme = useColorScheme();
@@ -51,6 +49,13 @@ export default function WelcomeScreen() {
   // Buttons
   const btnFade = useRef(new Animated.Value(0)).current;
   const btnY = useRef(new Animated.Value(30)).current;
+  const logoSectionHeight = Math.max(H * 0.30, 180);
+  const blobSize = W * 1.2;
+  const glowSize = Math.min(Math.max(W * 0.34, 120), 150);
+  const logoSize = Math.min(Math.max(W * 0.26, 92), 114);
+  const logoImageSize = logoSize - 14;
+  const headlineFontSize = Math.min(Math.max(W * 0.09, 28), 38);
+  const headlineLineHeight = headlineFontSize + 8;
 
   useEffect(() => {
     const ease = Easing.out(Easing.cubic);
@@ -133,17 +138,27 @@ export default function WelcomeScreen() {
       <Animated.View
         style={[
           styles.blob,
-          { backgroundColor: colors.primary, opacity: blobOpacity },
+          {
+            width: blobSize,
+            height: blobSize,
+            borderRadius: blobSize * 0.5,
+            top: -W * 0.35,
+            backgroundColor: colors.primary,
+            opacity: blobOpacity,
+          },
         ]}
       />
 
       {/* ── LOGO SECTION ─────────────────── */}
-      <View style={[styles.logoSection, { height: LOGO_SECTION_H, paddingTop: insets.top }]}>
+      <View style={[styles.logoSection, { height: logoSectionHeight, paddingTop: insets.top }]}>
         {/* Glow ring */}
         <Animated.View
           style={[
             styles.glowRing,
             {
+              width: glowSize,
+              height: glowSize,
+              borderRadius: glowSize * 0.5,
               borderColor: colors.primary,
               opacity: glowOpacity,
               transform: [{ scale: glowScale }],
@@ -157,10 +172,10 @@ export default function WelcomeScreen() {
             transform: [{ scale: Animated.multiply(logoScale, logoPulse) }],
           }}
         >
-          <View style={[styles.logoWrap, isDarkTheme ? styles.logoWrapDark : styles.logoWrapLight]}>
+          <View style={[styles.logoWrap, { width: logoSize, height: logoSize, borderRadius: Math.round(logoSize * 0.23) }, isDarkTheme ? styles.logoWrapDark : styles.logoWrapLight]}>
             <Image
               source={isDarkTheme ? require("@/assets/images/logo-dark.png") : require("@/assets/images/logo.png")}
-              style={styles.logoImg}
+              style={[styles.logoImg, { width: logoImageSize, height: logoImageSize }]}
               resizeMode="contain"
             />
           </View>
@@ -175,7 +190,7 @@ export default function WelcomeScreen() {
           UCONNECT
         </Animated.Text>
         <Animated.Text
-          style={[styles.headline, { color: colors.foreground, opacity: headFade, transform: [{ translateY: headY }] }]}
+          style={[styles.headline, { fontSize: headlineFontSize, lineHeight: headlineLineHeight, color: colors.foreground, opacity: headFade, transform: [{ translateY: headY }] }]}
         >
           Your college.{"\n"}Your voice.
         </Animated.Text>
@@ -256,10 +271,6 @@ const styles = StyleSheet.create({
   container: { flexGrow: 1 },
   blob: {
     position: "absolute",
-    width: W * 1.2,
-    height: W * 1.2,
-    borderRadius: W * 0.6,
-    top: -W * 0.35,
     alignSelf: "center",
   },
   logoSection: {
@@ -269,15 +280,9 @@ const styles = StyleSheet.create({
   },
   glowRing: {
     position: "absolute",
-    width: 136,
-    height: 136,
-    borderRadius: 68,
     borderWidth: 1.5,
   },
   logoWrap: {
-    width: 104,
-    height: 104,
-    borderRadius: 24,
     borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
@@ -285,7 +290,7 @@ const styles = StyleSheet.create({
   },
   logoWrapLight: { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" },
   logoWrapDark: { backgroundColor: "transparent", borderColor: "transparent" },
-  logoImg: { width: 90, height: 90 },
+  logoImg: {},
   textSection: {
     paddingHorizontal: 28,
     paddingTop: 8,
@@ -294,8 +299,8 @@ const styles = StyleSheet.create({
   },
   brand: { fontSize: 11, fontFamily: "Inter_700Bold", letterSpacing: 5 },
   headline: {
-    fontSize: 34, fontFamily: "Inter_700Bold",
-    textAlign: "center", lineHeight: 42, letterSpacing: -0.8,
+    fontFamily: "Inter_700Bold",
+    textAlign: "center", letterSpacing: -0.8,
   },
   subtitle: {
     fontSize: 14, fontFamily: "Inter_400Regular",
