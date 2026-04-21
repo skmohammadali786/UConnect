@@ -17,17 +17,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18
+          cache: 'pnpm'
 
-      - name: Install EAS CLI manually
-        run: npm install -g eas-cli
+      - name: Install pnpm
+        run: npm install -g pnpm
 
       - name: Install dependencies
-        run: npm install
+        run: pnpm install
 
-      - name: Login to Expo
-        run: npx eas whoami
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      - name: Install EAS CLI
+        run: pnpm add -g eas-cli
 
       - name: Publish update
         run: npx eas update --branch preview --non-interactive
