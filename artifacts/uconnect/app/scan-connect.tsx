@@ -1,6 +1,6 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Platform, Share, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -18,6 +18,10 @@ export default function ScanConnectScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { username: usernameParam, allowScan: allowScanParam } = useLocalSearchParams<{
+    username?: string;
+    allowScan?: string;
+  }>();
   const { showError } = useToast();
   const [permission, requestPermission] = useCameraPermissions();
   const [mode, setMode] = useState<"my" | "scan">("my");
@@ -25,8 +29,11 @@ export default function ScanConnectScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(14)).current;
 
-  const username = (user?.username || "").trim().toLowerCase();
-  const qrValue = useMemo(() => (username ? buildScanConnectQrValue(username) : ""), [username]);
+  const myUsername = (user?.username || "").trim().toLowerCase();
+  const targetUsername = (usernameParam || "").trim().toLowerCase();
+  const qrUsername = targetUsername || myUsername;
+  const allowScan = allowScanParam !== "0";
+  const qrValue = useMemo(() => (qrUsername ? buildScanConnectQrValue(qrUsername) : ""), [qrUsername]);
 
   useEffect(() => {
     Animated.parallel([
@@ -35,10 +42,14 @@ export default function ScanConnectScreen() {
     ]).start();
   }, []);
 
+  useEffect(() => {
+    if (!allowScan) setMode("my");
+  }, [allowScan]);
+
   const onShare = async () => {
-    if (!username || !qrValue) return;
+    if (!qrUsername || !qrValue) return;
     await Share.share({
-      title: `Connect with @${username} on UConnect`,
+      title: `Connect with @${qrUsername} on UConnect`,
       message: `Scan this QR to view my UConnect profile instantly.\n\n${qrValue}`,
       url: qrValue,
     });
@@ -47,13 +58,13 @@ export default function ScanConnectScreen() {
   const handleScanned = (data: string) => {
     if (scanLocked) return;
     setScanLocked(true);
-    const username = extractUsernameFromScanPayload(data);
-    if (!username) {
+    const scannedUsername = extractUsernameFromScanPayload(data);
+    if (!scannedUsername) {
       showError("Invalid QR", "This QR code is not a valid UConnect profile.");
       setTimeout(() => setScanLocked(false), SCAN_ERROR_COOLDOWN_MS);
       return;
     }
-    router.push({ pathname: "/user/[username]" as any, params: { username } });
+    router.push({ pathname: "/user/[username]" as any, params: { username: scannedUsername } });
     setTimeout(() => setScanLocked(false), SCAN_SUCCESS_COOLDOWN_MS);
   };
 
@@ -63,20 +74,22 @@ export default function ScanConnectScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.foreground }]}>Scan to Connect</Text>
+        <Text style={[styles.title, { color: colors.foreground }]}>{allowScan ? "Scan to Connect" : "Profile QR"}</Text>
         <View style={{ width: 28 }} />
       </View>
 
-      <View style={[styles.modeRow, { borderBottomColor: colors.border, backgroundColor: colors.card }]}>
-        <TouchableOpacity onPress={() => setMode("my")} style={[styles.modeBtn, mode === "my" && { borderBottomColor: colors.primary, borderBottomWidth: 2.5 }]}>
-          <MaterialCommunityIcons name="qrcode" size={16} color={mode === "my" ? colors.primary : colors.mutedForeground} />
-          <Text style={[styles.modeLabel, { color: mode === "my" ? colors.primary : colors.mutedForeground }]}>My QR</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => setMode("scan")} style={[styles.modeBtn, mode === "scan" && { borderBottomColor: colors.primary, borderBottomWidth: 2.5 }]}>
-          <MaterialCommunityIcons name="qrcode-scan" size={16} color={mode === "scan" ? colors.primary : colors.mutedForeground} />
-          <Text style={[styles.modeLabel, { color: mode === "scan" ? colors.primary : colors.mutedForeground }]}>Scan QR</Text>
-        </TouchableOpacity>
-      </View>
+      {allowScan && (
+        <View style={[styles.modeRow, { borderBottomColor: colors.border, backgroundColor: colors.card }]}>
+          <TouchableOpacity onPress={() => setMode("my")} style={[styles.modeBtn, mode === "my" && { borderBottomColor: colors.primary, borderBottomWidth: 2.5 }]}>
+            <MaterialCommunityIcons name="qrcode" size={16} color={mode === "my" ? colors.primary : colors.mutedForeground} />
+            <Text style={[styles.modeLabel, { color: mode === "my" ? colors.primary : colors.mutedForeground }]}>My QR</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setMode("scan")} style={[styles.modeBtn, mode === "scan" && { borderBottomColor: colors.primary, borderBottomWidth: 2.5 }]}>
+            <MaterialCommunityIcons name="qrcode-scan" size={16} color={mode === "scan" ? colors.primary : colors.mutedForeground} />
+            <Text style={[styles.modeLabel, { color: mode === "scan" ? colors.primary : colors.mutedForeground }]}>Scan QR</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {mode === "my" ? (
         <View style={styles.centerWrap}>
@@ -87,8 +100,8 @@ export default function ScanConnectScreen() {
               <Text style={[styles.helper, { color: colors.mutedForeground }]}>Profile username not available.</Text>
             )}
           </View>
-          <Text style={[styles.username, { color: colors.foreground }]}>@{username || "unknown"}</Text>
-          <Text style={[styles.helper, { color: colors.mutedForeground }]}>Let others scan this code to open your profile instantly.</Text>
+          <Text style={[styles.username, { color: colors.foreground }]}>@{qrUsername || "unknown"}</Text>
+          <Text style={[styles.helper, { color: colors.mutedForeground }]}>Let others scan this code to open this profile instantly.</Text>
           <TouchableOpacity disabled={!qrValue} onPress={onShare} style={[styles.shareBtn, { backgroundColor: qrValue ? colors.primary : colors.border }]}>
             <Feather name="share-2" size={16} color="#FFF" />
             <Text style={styles.shareText}>Share QR</Text>

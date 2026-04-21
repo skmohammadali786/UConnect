@@ -29,9 +29,16 @@ export function ChatBubble({ message, isMe }: ChatBubbleProps) {
           {message.content}
         </Text>
       </View>
-      <Text style={[styles.time, { color: colors.mutedForeground, alignSelf: isMe ? "flex-end" : "flex-start" }]}>
-        {formatRelativeTime(message.createdAt)}
-      </Text>
+      <View style={[styles.metaRow, { alignSelf: isMe ? "flex-end" : "flex-start" }]}>
+        <Text style={[styles.time, { color: colors.mutedForeground }]}>
+          {formatRelativeTime(message.createdAt)}
+        </Text>
+        {isMe && (
+          <Text style={[styles.status, { color: message.isRead ? "#10B981" : colors.mutedForeground }]}>
+            {message.isRead ? "Seen" : "Unseen"}
+          </Text>
+        )}
+      </View>
     </View>
   );
 }
@@ -43,4 +50,6 @@ const styles = StyleSheet.create({
   bubble: { paddingHorizontal: 14, paddingVertical: 10 },
   text: { fontSize: 15, fontFamily: "Inter_400Regular", lineHeight: 21 },
   time: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 3, marginHorizontal: 2 },
+  metaRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  status: { fontSize: 11, fontFamily: "Inter_600SemiBold", marginTop: 3 },
 });

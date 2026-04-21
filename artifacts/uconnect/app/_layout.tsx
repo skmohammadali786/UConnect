@@ -8,6 +8,7 @@ import {
 import { Stack, router, useSegments } from "expo-router";
 import * as Linking from "expo-linking";
 import * as SplashScreen from "expo-splash-screen";
+import * as SystemUI from "expo-system-ui";
 import React, { useCallback, useEffect } from "react";
 import { View, useWindowDimensions } from "react-native";
 import { supabase } from "@/lib/supabase";
@@ -59,6 +60,12 @@ function RootLayoutNav() {
     ...(contentMaxWidth ? { maxWidth: contentMaxWidth } : {}),
   };
 
+  useEffect(() => {
+    if (!themeLoaded) return;
+    SystemUI.setBackgroundColorAsync(colors.background).catch(() => {});
+    SplashScreen.hideAsync().catch(() => {});
+  }, [themeLoaded, colors.background]);
+
   if (!themeLoaded) {
     return <View style={{ flex: 1, backgroundColor: colors.background }} />;
   }
@@ -85,12 +92,6 @@ export default function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
   });
-
-  useEffect(() => {
-    if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded, fontError]);
 
   const handleDeepLink = useCallback(async (url: string) => {
     const postId = extractPostIdFromLink(url);

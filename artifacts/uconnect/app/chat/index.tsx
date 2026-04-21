@@ -37,7 +37,7 @@ export default function ChatListScreen() {
           speed={65}
         />
         <TouchableOpacity onPress={() => router.push("/chat/new")}>
-          <Feather name="edit" size={20} color={colors.primary} />
+          <Feather name="plus" size={20} color={colors.primary} />
         </TouchableOpacity>
       </Animated.View>
       <FlatList
