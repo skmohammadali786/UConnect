@@ -66,7 +66,7 @@ export default function WelcomeScreen() {
   // Buttons
   const btnFade = useRef(new Animated.Value(0)).current;
   const btnY = useRef(new Animated.Value(30)).current;
-  const { logoSectionH, blobSize, glowSize, logoSize, logoImageSize, headlineSize, headlineLineH } = useMemo(() => {
+  const { logoSectionH, blobSize, glowSize, logoSize, logoImageSize, headlineSize, headlineLineHeight } = useMemo(() => {
     const nextLogoSize = Math.min(Math.max(W * LOGO_SIZE_RATIO, LOGO_MIN_SIZE), LOGO_MAX_SIZE);
     const nextHeadlineSize = Math.min(Math.max(W * HEADLINE_SIZE_RATIO, HEADLINE_MIN_SIZE), HEADLINE_MAX_SIZE);
     return {
@@ -76,9 +76,15 @@ export default function WelcomeScreen() {
       logoSize: nextLogoSize,
       logoImageSize: nextLogoSize - LOGO_IMAGE_INSET,
       headlineSize: nextHeadlineSize,
-      headlineLineH: nextHeadlineSize + HEADLINE_LINE_HEIGHT_OFFSET,
+      headlineLineHeight: nextHeadlineSize + HEADLINE_LINE_HEIGHT_OFFSET,
     };
   }, [W, H]);
+  const blobDynamicStyle = useMemo(() => ({
+    width: blobSize,
+    height: blobSize,
+    borderRadius: blobSize * 0.5,
+    top: -W * BLOB_TOP_OFFSET_RATIO,
+  }), [blobSize, W]);
 
   useEffect(() => {
     const ease = Easing.out(Easing.cubic);
@@ -161,14 +167,8 @@ export default function WelcomeScreen() {
       <Animated.View
         style={[
           styles.blob,
-          {
-            width: blobSize,
-            height: blobSize,
-            borderRadius: blobSize * 0.5,
-            top: -W * BLOB_TOP_OFFSET_RATIO,
-            backgroundColor: colors.primary,
-            opacity: blobOpacity,
-          },
+          blobDynamicStyle,
+          { backgroundColor: colors.primary, opacity: blobOpacity },
         ]}
       />
 
@@ -213,7 +213,7 @@ export default function WelcomeScreen() {
           UCONNECT
         </Animated.Text>
         <Animated.Text
-          style={[styles.headline, { fontSize: headlineSize, lineHeight: headlineLineH, color: colors.foreground, opacity: headFade, transform: [{ translateY: headY }] }]}
+          style={[styles.headline, { fontSize: headlineSize, lineHeight: headlineLineHeight, color: colors.foreground, opacity: headFade, transform: [{ translateY: headY }] }]}
         >
           Your college.{"\n"}Your voice.
         </Animated.Text>
