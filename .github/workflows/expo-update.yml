@@ -28,6 +28,6 @@ jobs:
         run: pnpm install
 
       - name: Publish update
-        run: pnpm dlx eas-cli@latest update --branch preview --non-interactive
+        run: pnpm dlx eas-cli@latest update --branch preview --auto --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
