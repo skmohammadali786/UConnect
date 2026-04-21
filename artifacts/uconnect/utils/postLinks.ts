@@ -24,6 +24,16 @@ export function buildPostShareLink(postId: string) {
   return `https://${domain}/post/${id}`;
 }
 
+export function buildEventShareLink(eventId: string) {
+  const id = encodeURIComponent(eventId.trim());
+  const configuredDomain = (process.env.EXPO_PUBLIC_APP_LINK_DOMAIN || process.env.EXPO_PUBLIC_DOMAIN || "").trim();
+  if (!configuredDomain) {
+    return `${APP_DEEP_LINK_SCHEME}events/${id}`;
+  }
+  const domain = normalizeDomain(configuredDomain);
+  return `https://${domain}/events/${id}`;
+}
+
 export function buildInviteShareLink(inviteCode: string) {
   const normalizedCode = inviteCode.trim().toUpperCase();
   const configuredDomain = (process.env.EXPO_PUBLIC_APP_LINK_DOMAIN || process.env.EXPO_PUBLIC_DOMAIN || "").trim();
@@ -33,6 +43,39 @@ export function buildInviteShareLink(inviteCode: string) {
   }
   const code = encodeURIComponent(normalizedCode);
   return `https://${domain}/join?ref=${code}`;
+}
+
+export function extractEventIdFromLink(url: string): string | null {
+  const raw = (url || "").trim();
+  if (!raw) return null;
+
+  const fromPath = (path: string) => {
+    const parts = path.split("/").filter(Boolean);
+    const idx = parts.findIndex((p) => p.toLowerCase() === "events" || p.toLowerCase() === "event");
+    if (idx < 0 || !parts[idx + 1]) return null;
+    const id = decodeSegment(parts[idx + 1]);
+    return id || null;
+  };
+
+  if (raw.startsWith("uconnect://")) {
+    try {
+      const parsed = new URL(raw);
+      return fromPath(`/${parsed.host}${parsed.pathname}`);
+    } catch {
+      const direct = raw.match(/\/events?\/([^/?#\s]+)/i)?.[1];
+      return direct ? decodeSegment(direct) : null;
+    }
+  }
+
+  try {
+    const parsed = new URL(raw);
+    const fromQuery = parsed.searchParams.get("eventId") || parsed.searchParams.get("eid");
+    if (fromQuery) return decodeSegment(fromQuery);
+    return fromPath(parsed.pathname);
+  } catch {
+    const fallback = raw.match(/\/events?\/([^/?#\s]+)/i)?.[1];
+    return fallback ? decodeSegment(fallback) : null;
+  }
 }
 
 export function extractReferralCodeFromLink(url: string): string | null {

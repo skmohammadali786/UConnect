@@ -19,10 +19,15 @@ const hasMissingColumnError = (message: string) =>
   /column/i.test(message) && /does not exist/i.test(message);
 
 export async function safeInsertNotification(payload: NotificationInsertPayload) {
-  const { error } = await supabase.from("notifications").insert(payload);
-  if (!error || !hasMissingColumnError(String(error.message ?? ""))) return error ?? null;
+  const tryInsert = async (insertPayload: Record<string, any>) => {
+    const { error } = await supabase.from("notifications").insert(insertPayload);
+    return error ?? null;
+  };
 
-  const fallbackPayload = {
+  let error = await tryInsert(payload as Record<string, any>);
+  if (!error || !hasMissingColumnError(String(error.message ?? ""))) return error;
+
+  const fallbackPayloadWithAction = {
     user_id: payload.user_id,
     type: payload.type,
     title: payload.title,
@@ -30,7 +35,15 @@ export async function safeInsertNotification(payload: NotificationInsertPayload)
     action_id: payload.action_id ?? null,
     action_type: payload.action_type ?? null,
   };
+  error = await tryInsert(fallbackPayloadWithAction);
+  if (!error || !hasMissingColumnError(String(error.message ?? ""))) return error;
 
-  const { error: fallbackError } = await supabase.from("notifications").insert(fallbackPayload as any);
-  return fallbackError ?? null;
+  const fallbackPayloadBase = {
+    user_id: payload.user_id,
+    type: payload.type,
+    title: payload.title,
+    body: payload.body,
+  };
+  error = await tryInsert(fallbackPayloadBase);
+  return error;
 }
