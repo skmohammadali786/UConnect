@@ -145,7 +145,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           : c
       );
       const idx = next.findIndex((c) => c.id === conversationId);
-      if (idx <= 0) return next;
+      if (idx < 0 || idx === 0) return next;
       const [updated] = next.splice(idx, 1);
       return [updated, ...next];
     });

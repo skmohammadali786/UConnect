@@ -108,23 +108,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const userId = data.user?.id;
     if (!userId) return { error: "Sign in failed. Please try again.", isNewUser: false };
 
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", userId)
-      .maybeSingle();
-
-    if (profile && !profileError) {
-      setUser(rowToUser(profile));
-      return { error: null, isNewUser: false };
-    }
-
-    if (profileError) {
-      await loadProfile(userId);
-      return { error: null, isNewUser: false };
-    }
-
-    return { error: null, isNewUser: true };
+    const profile = await loadProfile(userId);
+    return { error: null, isNewUser: !profile };
   };
 
   const signUp = async (email: string, password: string, phone?: string): Promise<{ error: string | null }> => {

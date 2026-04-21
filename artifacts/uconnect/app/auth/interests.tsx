@@ -78,7 +78,8 @@ export default function InterestsScreen() {
         .from("profiles")
         .upsert(profile, { onConflict: "id" });
       if (profileError) {
-        throw new Error(profileError.message);
+        console.error("Profile save failed:", profileError.message);
+        throw new Error("Failed to save profile. Please try again.");
       }
 
       const { error: settingsError } = await supabase.from("user_settings").upsert({
@@ -89,7 +90,8 @@ export default function InterestsScreen() {
         updated_at: now,
       }, { onConflict: "user_id" });
       if (settingsError) {
-        throw new Error(settingsError.message);
+        console.error("User settings save failed:", settingsError.message);
+        throw new Error("Failed to save settings. Please try again.");
       }
 
       const code = (referralCode || "").trim().toUpperCase();
