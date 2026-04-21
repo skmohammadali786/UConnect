@@ -34,7 +34,7 @@ const HEADLINE_LINE_HEIGHT_OFFSET = 8;
 const LOGO_BORDER_RADIUS_RATIO = 0.23;
 
 export default function WelcomeScreen() {
-  const { width: W, height: H } = useWindowDimensions();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const colors = useColors();
   const { themeMode } = useTheme();
   const scheme = useColorScheme();
@@ -66,25 +66,25 @@ export default function WelcomeScreen() {
   // Buttons
   const btnFade = useRef(new Animated.Value(0)).current;
   const btnY = useRef(new Animated.Value(30)).current;
-  const { logoSectionH, blobSize, glowSize, logoSize, logoImageSize, headlineSize, headlineLineHeight } = useMemo(() => {
-    const nextLogoSize = Math.min(Math.max(W * LOGO_SIZE_RATIO, LOGO_MIN_SIZE), LOGO_MAX_SIZE);
-    const nextHeadlineSize = Math.min(Math.max(W * HEADLINE_SIZE_RATIO, HEADLINE_MIN_SIZE), HEADLINE_MAX_SIZE);
+  const { logoSectionHeight, blobSize, glowSize, logoSize, logoImageSize, headlineSize, headlineLineHeight } = useMemo(() => {
+    const nextLogoSize = Math.min(Math.max(windowWidth * LOGO_SIZE_RATIO, LOGO_MIN_SIZE), LOGO_MAX_SIZE);
+    const nextHeadlineSize = Math.min(Math.max(windowWidth * HEADLINE_SIZE_RATIO, HEADLINE_MIN_SIZE), HEADLINE_MAX_SIZE);
     return {
-      logoSectionH: Math.max(H * LOGO_SECTION_HEIGHT_RATIO, LOGO_SECTION_MIN_HEIGHT),
-      blobSize: W * BLOB_SIZE_RATIO,
-      glowSize: Math.min(Math.max(W * GLOW_SIZE_RATIO, GLOW_MIN_SIZE), GLOW_MAX_SIZE),
+      logoSectionHeight: Math.max(windowHeight * LOGO_SECTION_HEIGHT_RATIO, LOGO_SECTION_MIN_HEIGHT),
+      blobSize: windowWidth * BLOB_SIZE_RATIO,
+      glowSize: Math.min(Math.max(windowWidth * GLOW_SIZE_RATIO, GLOW_MIN_SIZE), GLOW_MAX_SIZE),
       logoSize: nextLogoSize,
       logoImageSize: nextLogoSize - LOGO_IMAGE_INSET,
       headlineSize: nextHeadlineSize,
       headlineLineHeight: nextHeadlineSize + HEADLINE_LINE_HEIGHT_OFFSET,
     };
-  }, [W, H]);
+  }, [windowWidth, windowHeight]);
   const blobDynamicStyle = useMemo(() => ({
     width: blobSize,
     height: blobSize,
     borderRadius: blobSize * 0.5,
-    top: -W * BLOB_TOP_OFFSET_RATIO,
-  }), [blobSize, W]);
+    top: -windowWidth * BLOB_TOP_OFFSET_RATIO,
+  }), [blobSize, windowWidth]);
 
   useEffect(() => {
     const ease = Easing.out(Easing.cubic);
@@ -159,7 +159,7 @@ export default function WelcomeScreen() {
   return (
     <ScrollView
       style={[styles.scroll, { backgroundColor: colors.background }]}
-      contentContainerStyle={[styles.container, { minHeight: H, paddingBottom: insets.bottom + 20 }]}
+      contentContainerStyle={[styles.container, { minHeight: windowHeight, paddingBottom: insets.bottom + 20 }]}
       showsVerticalScrollIndicator={false}
       bounces={false}
     >
@@ -173,7 +173,7 @@ export default function WelcomeScreen() {
       />
 
       {/* ── LOGO SECTION ─────────────────── */}
-      <View style={[styles.logoSection, { height: logoSectionH, paddingTop: insets.top }]}>
+      <View style={[styles.logoSection, { height: logoSectionHeight, paddingTop: insets.top }]}>
         {/* Glow ring */}
         <Animated.View
           style={[
