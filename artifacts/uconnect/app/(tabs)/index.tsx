@@ -201,7 +201,7 @@ export default function HomeScreen() {
         ]}
       >
         <View style={styles.headerLeft}>
-          <View style={[styles.logoSmall, isDarkTheme ? { backgroundColor: "transparent", borderColor: "transparent", borderWidth: 0 } : { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" }]}>
+          <View style={[styles.logoSmall, isDarkTheme ? { backgroundColor: "#111827", borderColor: "#374151" } : { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" }]}>
             <Image source={isDarkTheme ? require("@/assets/images/logo-dark.png") : require("@/assets/images/logo.png")} style={styles.logoImg} resizeMode="contain" />
           </View>
           <View>
@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
   },
   headerLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
   logoSmall: {
-    width: 36, height: 36, borderRadius: 10, borderWidth: 1,
+    width: 36, height: 36, borderRadius: 18, borderWidth: 1,
     alignItems: "center", justifyContent: "center", overflow: "hidden",
   },
   logoImg: { width: 32, height: 32 },

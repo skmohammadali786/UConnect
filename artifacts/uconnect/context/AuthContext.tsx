@@ -81,7 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const loadProfile = async (userId: string) => {
+  const loadProfile = async (userId: string): Promise<User | null> => {
     try {
       const { data, error } = await supabase
         .from("profiles")
@@ -89,9 +89,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq("id", userId)
         .maybeSingle();
       if (data && !error) {
-        setUser(rowToUser(data));
+        const mapped = rowToUser(data);
+        setUser(mapped);
+        return mapped;
       }
     } catch {}
+    setUser(null);
+    return null;
   };
 
   const signIn = async (email: string, password: string): Promise<{ error: string | null; isNewUser: boolean }> => {
@@ -104,12 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const userId = data.user?.id;
     if (!userId) return { error: "Sign in failed. Please try again.", isNewUser: false };
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("id", userId)
-      .maybeSingle();
-
+    const profile = await loadProfile(userId);
     return { error: null, isNewUser: !profile };
   };
 

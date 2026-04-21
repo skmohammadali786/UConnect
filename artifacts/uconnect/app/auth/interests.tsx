@@ -74,15 +74,25 @@ export default function InterestsScreen() {
         joined_at: now,
       };
 
-      await supabase.from("profiles").upsert(profile);
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .upsert(profile, { onConflict: "id" });
+      if (profileError) {
+        console.error("Profile save failed:", profileError.message);
+        throw new Error("Failed to save profile. Please try again.");
+      }
 
-      await supabase.from("user_settings").upsert({
+      const { error: settingsError } = await supabase.from("user_settings").upsert({
         user_id: userId,
         push_notifications: true,
         default_anonymous: false,
         show_sensitive_content: false,
         updated_at: now,
-      });
+      }, { onConflict: "user_id" });
+      if (settingsError) {
+        console.error("User settings save failed:", settingsError.message);
+        throw new Error("Failed to save settings. Please try again.");
+      }
 
       const code = (referralCode || "").trim().toUpperCase();
       if (code) {

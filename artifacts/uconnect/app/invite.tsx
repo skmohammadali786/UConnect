@@ -9,6 +9,7 @@ import { useColors } from "@/hooks/useColors";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { buildInviteShareLink } from "@/utils/postLinks";
 
 const STEPS = [
   { icon: "user-plus", title: "Invite your batchmates", desc: "Share your unique invite link with college friends." },
@@ -32,7 +33,7 @@ export default function InviteScreen() {
     return `UCON-${seed.slice(0, 6).padEnd(6, "X")}-${(Date.now().toString(36).slice(-4)).toUpperCase()}`;
   }, [user?.id, user?.username]);
 
-  const inviteLink = `https://uconnect.app/join?ref=${inviteCode || fallbackCode}`;
+  const inviteLink = buildInviteShareLink(inviteCode || fallbackCode);
 
   useEffect(() => {
     if (!user) {

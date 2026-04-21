@@ -37,7 +37,7 @@ export default function AboutScreen() {
 
       <ScrollView contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
         <View style={[styles.hero, { backgroundColor: colors.primary + "10" }]}>
-          <View style={[styles.logoCircle, isDarkTheme ? { backgroundColor: "transparent", borderColor: "transparent", borderWidth: 0 } : { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" }]}>
+          <View style={[styles.logoCircle, isDarkTheme ? { backgroundColor: "#111827", borderColor: "#374151", borderWidth: 1.5 } : { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" }]}>
             <Image source={isDarkTheme ? require("@/assets/images/logo-dark.png") : require("@/assets/images/logo.png")} style={styles.logoImg} resizeMode="contain" />
           </View>
           <Text style={[styles.appName, { color: colors.foreground }]}>UConnect</Text>
@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
   backBtn: { padding: 4 },
   title: { fontSize: 18, fontFamily: "Inter_700Bold" },
   hero: { alignItems: "center", paddingVertical: 40, gap: 12 },
-  logoCircle: { width: 88, height: 88, borderRadius: 24, borderWidth: 1.5, alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  logoCircle: { width: 88, height: 88, borderRadius: 44, borderWidth: 1.5, alignItems: "center", justifyContent: "center", overflow: "hidden" },
   logoImg: { width: 78, height: 78 },
   appName: { fontSize: 28, fontFamily: "Inter_700Bold" },
   tagline: { fontSize: 16, fontFamily: "Inter_500Medium" },

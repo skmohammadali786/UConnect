@@ -11,7 +11,7 @@ import * as SplashScreen from "expo-splash-screen";
 import React, { useCallback, useEffect } from "react";
 import { View, useWindowDimensions } from "react-native";
 import { supabase } from "@/lib/supabase";
-import { extractPostIdFromLink } from "@/utils/postLinks";
+import { extractPostIdFromLink, extractReferralCodeFromLink } from "@/utils/postLinks";
 import { getResponsiveContentMaxWidth } from "@/utils/responsiveLayout";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -98,6 +98,13 @@ export default function RootLayout() {
       router.push({ pathname: "/post/[id]" as any, params: { id: postId } });
       return;
     }
+
+    const referralCode = extractReferralCodeFromLink(url);
+    if (referralCode) {
+      router.replace({ pathname: "/auth/login", params: { flow: "signup", referralCode } });
+      return;
+    }
+
     if (!url.includes("auth/callback")) return;
     // Hash fragment flow: #access_token=...&refresh_token=...
     const hash = url.split("#")[1];

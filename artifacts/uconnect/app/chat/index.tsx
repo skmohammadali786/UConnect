@@ -67,7 +67,7 @@ export default function ChatListScreen() {
             </View>
             {item.unreadCount > 0 && (
               <View style={[styles.badge, { backgroundColor: colors.primary }]}>
-                <Text style={styles.badgeText}>{item.unreadCount}</Text>
+                <Text style={styles.badgeText}>{item.unreadCount > 99 ? "99+" : item.unreadCount}</Text>
               </View>
             )}
           </TouchableOpacity>
@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
   convName: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   convTime: { fontSize: 12, fontFamily: "Inter_400Regular" },
   lastMsg: { fontSize: 13, fontFamily: "Inter_400Regular" },
-  badge: { width: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  badge: { minWidth: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center", paddingHorizontal: 4 },
   badgeText: { color: "#FFFFFF", fontSize: 11, fontFamily: "Inter_700Bold" },
   empty: { alignItems: "center", gap: 12, paddingTop: 80, paddingHorizontal: 32 },
   emptyTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },

@@ -98,6 +98,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           messages,
         };
       }));
+      convs.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
       setConversations(convs);
     } catch {
       setConversations([]);
@@ -133,15 +134,21 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       id: generateId(),
       senderId,
       content,
-      isRead: false,
+      isRead: senderId === userId,
       createdAt: new Date().toISOString(),
       isRevealed: false,
     };
-    setConversations((prev) => prev.map((c) =>
-      c.id === conversationId
-        ? { ...c, messages: [...c.messages, newMessage], lastMessage: content, lastMessageAt: newMessage.createdAt }
-        : c
-    ));
+    setConversations((prev) => {
+      const next = prev.map((c) =>
+        c.id === conversationId
+          ? { ...c, messages: [...c.messages, newMessage], lastMessage: content, lastMessageAt: newMessage.createdAt }
+          : c
+      );
+      const idx = next.findIndex((c) => c.id === conversationId);
+      if (idx < 0 || idx === 0) return next;
+      const [updated] = next.splice(idx, 1);
+      return [updated, ...next];
+    });
     if (user) {
       const conv = conversations.find((c) => c.id === conversationId);
       supabase.from("messages").insert({
@@ -223,7 +230,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const markRead = useCallback((conversationId: string) => {
     setConversations((prev) => prev.map((c) =>
       c.id === conversationId
-        ? { ...c, unreadCount: 0, messages: c.messages.map((m) => ({ ...m, isRead: true })) }
+        ? {
+            ...c,
+            unreadCount: 0,
+            messages: c.messages.map((m) =>
+              m.senderId !== userId ? { ...m, isRead: true } : m
+            ),
+          }
         : c
     ));
     if (userId) {

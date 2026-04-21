@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: 1 },
   backBtn: { padding: 4 },
   title: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  appIcon: { width: 90, height: 90, borderRadius: 24, borderWidth: 2, alignItems: "center", justifyContent: "center" },
+  appIcon: { width: 90, height: 90, borderRadius: 45, borderWidth: 2, alignItems: "center", justifyContent: "center" },
   appLogo: { width: 56, height: 56 },
   heading: { fontSize: 24, fontFamily: "Inter_700Bold", textAlign: "center" },
   subheading: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 22 },
