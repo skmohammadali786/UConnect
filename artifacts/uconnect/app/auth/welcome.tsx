@@ -15,6 +15,22 @@ const FEATURES = [
   { icon: "briefcase", text: "Internships and opportunities" },
   { icon: "users", text: "Find your hackathon team" },
 ];
+
+const LOGO_SECTION_MIN_HEIGHT = 180;
+const LOGO_SECTION_HEIGHT_RATIO = 0.3;
+const BLOB_SIZE_RATIO = 1.2;
+const BLOB_TOP_OFFSET_RATIO = 0.35;
+const GLOW_SIZE_RATIO = 0.34;
+const GLOW_MIN_SIZE = 120;
+const GLOW_MAX_SIZE = 150;
+const LOGO_SIZE_RATIO = 0.26;
+const LOGO_MIN_SIZE = 92;
+const LOGO_MAX_SIZE = 114;
+const LOGO_IMAGE_INSET = 14;
+const HEADLINE_SIZE_RATIO = 0.09;
+const HEADLINE_MIN_SIZE = 28;
+const HEADLINE_MAX_SIZE = 38;
+const HEADLINE_LINE_HEIGHT_OFFSET = 8;
 const LOGO_BORDER_RADIUS_RATIO = 0.23;
 
 export default function WelcomeScreen() {
@@ -50,17 +66,17 @@ export default function WelcomeScreen() {
   // Buttons
   const btnFade = useRef(new Animated.Value(0)).current;
   const btnY = useRef(new Animated.Value(30)).current;
-  const { logoSectionHeight, blobSize, glowSize, logoSize, logoImageSize, headlineFontSize, headlineLineHeight } = useMemo(() => {
-    const nextLogoSize = Math.min(Math.max(W * 0.26, 92), 114);
-    const nextHeadlineFontSize = Math.min(Math.max(W * 0.09, 28), 38);
+  const { logoSectionH, blobSize, glowSize, logoSize, logoImageSize, headlineSize, headlineLineH } = useMemo(() => {
+    const nextLogoSize = Math.min(Math.max(W * LOGO_SIZE_RATIO, LOGO_MIN_SIZE), LOGO_MAX_SIZE);
+    const nextHeadlineSize = Math.min(Math.max(W * HEADLINE_SIZE_RATIO, HEADLINE_MIN_SIZE), HEADLINE_MAX_SIZE);
     return {
-      logoSectionHeight: Math.max(H * 0.30, 180),
-      blobSize: W * 1.2,
-      glowSize: Math.min(Math.max(W * 0.34, 120), 150),
+      logoSectionH: Math.max(H * LOGO_SECTION_HEIGHT_RATIO, LOGO_SECTION_MIN_HEIGHT),
+      blobSize: W * BLOB_SIZE_RATIO,
+      glowSize: Math.min(Math.max(W * GLOW_SIZE_RATIO, GLOW_MIN_SIZE), GLOW_MAX_SIZE),
       logoSize: nextLogoSize,
-      logoImageSize: nextLogoSize - 14,
-      headlineFontSize: nextHeadlineFontSize,
-      headlineLineHeight: nextHeadlineFontSize + 8,
+      logoImageSize: nextLogoSize - LOGO_IMAGE_INSET,
+      headlineSize: nextHeadlineSize,
+      headlineLineH: nextHeadlineSize + HEADLINE_LINE_HEIGHT_OFFSET,
     };
   }, [W, H]);
 
@@ -149,7 +165,7 @@ export default function WelcomeScreen() {
             width: blobSize,
             height: blobSize,
             borderRadius: blobSize * 0.5,
-            top: -W * 0.35,
+            top: -W * BLOB_TOP_OFFSET_RATIO,
             backgroundColor: colors.primary,
             opacity: blobOpacity,
           },
@@ -157,7 +173,7 @@ export default function WelcomeScreen() {
       />
 
       {/* ── LOGO SECTION ─────────────────── */}
-      <View style={[styles.logoSection, { height: logoSectionHeight, paddingTop: insets.top }]}>
+      <View style={[styles.logoSection, { height: logoSectionH, paddingTop: insets.top }]}>
         {/* Glow ring */}
         <Animated.View
           style={[
@@ -197,7 +213,7 @@ export default function WelcomeScreen() {
           UCONNECT
         </Animated.Text>
         <Animated.Text
-          style={[styles.headline, { fontSize: headlineFontSize, lineHeight: headlineLineHeight, color: colors.foreground, opacity: headFade, transform: [{ translateY: headY }] }]}
+          style={[styles.headline, { fontSize: headlineSize, lineHeight: headlineLineH, color: colors.foreground, opacity: headFade, transform: [{ translateY: headY }] }]}
         >
           Your college.{"\n"}Your voice.
         </Animated.Text>
