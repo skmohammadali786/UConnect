@@ -28,6 +28,7 @@ jobs:
         run: pnpm install
 
       - name: Publish update
+        working-directory: artifacts/uconnect
         run: pnpm dlx eas-cli@latest update --branch preview --auto --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
