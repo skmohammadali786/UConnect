@@ -63,10 +63,10 @@ function RootLayoutNav() {
   useEffect(() => {
     if (!themeLoaded) return;
     SystemUI.setBackgroundColorAsync(colors.background).catch((error) => {
-      console.warn("Failed to sync system UI splash background color:", error);
+      console.warn("Non-fatal: failed to sync splash background color with system UI.", error);
     });
     SplashScreen.hideAsync().catch((error) => {
-      console.warn("Failed to hide splash screen:", error);
+      console.warn("Non-fatal: failed to hide splash screen automatically.", error);
     });
   }, [themeLoaded, colors.background]);
 
