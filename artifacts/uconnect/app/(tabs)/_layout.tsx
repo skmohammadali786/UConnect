@@ -2,9 +2,10 @@ import { BlurView } from "expo-blur";
 import { Tabs, router } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { Animated, Platform, StyleSheet, TouchableOpacity, View, useColorScheme } from "react-native";
+import { Animated, Platform, StyleSheet, TouchableOpacity, View, useColorScheme, useWindowDimensions } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import { useTheme } from "@/context/ThemeContext";
+import { TABLET_BREAKPOINT, getResponsiveContentMaxWidth } from "@/utils/responsiveLayout";
 
 const ND = Platform.OS !== "web";
 
@@ -54,11 +55,15 @@ function CreateTabButton() {
 }
 
 export default function TabLayout() {
+  const { width } = useWindowDimensions();
   const colors = useColors();
   const { themeMode } = useTheme();
   const scheme = useColorScheme();
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
+  const contentMaxWidth = getResponsiveContentMaxWidth(width);
+  const tabBarHeight = isWeb ? (width >= TABLET_BREAKPOINT ? 88 : 74) : 70;
+  const tabBarBottomPadding = isWeb ? (width >= TABLET_BREAKPOINT ? 12 : 6) : 12;
   const isDarkTheme = themeMode === "dark" || (themeMode === "system" && (scheme ?? "dark") === "dark");
 
   return (
@@ -66,7 +71,12 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         animation: "fade",
-        sceneStyle: { backgroundColor: colors.background },
+        sceneStyle: {
+          backgroundColor: colors.background,
+          width: "100%",
+          alignSelf: "center",
+          ...(contentMaxWidth ? { maxWidth: contentMaxWidth } : {}),
+        },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.mutedForeground,
         tabBarStyle: {
@@ -75,8 +85,11 @@ export default function TabLayout() {
           borderTopWidth: 1,
           borderTopColor: colors.border,
           elevation: 0,
-          height: isWeb ? 84 : 70,
-          paddingBottom: isWeb ? 8 : 12,
+          height: tabBarHeight,
+          paddingBottom: tabBarBottomPadding,
+          width: "100%",
+          alignSelf: "center",
+          ...(contentMaxWidth ? { maxWidth: contentMaxWidth } : {}),
         },
         tabBarBackground: () =>
           isIOS ? (

@@ -9,9 +9,10 @@ import { Stack, router, useSegments } from "expo-router";
 import * as Linking from "expo-linking";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useCallback, useEffect } from "react";
-import { View } from "react-native";
+import { View, useWindowDimensions } from "react-native";
 import { supabase } from "@/lib/supabase";
 import { extractPostIdFromLink } from "@/utils/postLinks";
+import { getResponsiveContentMaxWidth } from "@/utils/responsiveLayout";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -47,24 +48,32 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 }
 
 function RootLayoutNav() {
+  const { width } = useWindowDimensions();
   const colors = useColors();
   const { themeLoaded } = useTheme();
+  const contentMaxWidth = getResponsiveContentMaxWidth(width);
+  const responsiveContentStyle = {
+    backgroundColor: colors.background,
+    width: "100%" as const,
+    alignSelf: "center" as const,
+    ...(contentMaxWidth ? { maxWidth: contentMaxWidth } : {}),
+  };
 
   if (!themeLoaded) {
     return <View style={{ flex: 1, backgroundColor: colors.background }} />;
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: colors.background } }}>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }} />
-      <Stack.Screen name="create-post" options={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: colors.background } }} />
-      <Stack.Screen name="edit-profile" options={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: colors.background } }} />
-      <Stack.Screen name="invite" options={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: colors.background } }} />
-      <Stack.Screen name="scan-connect" options={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: colors.background } }} />
-      <Stack.Screen name="connections" options={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: colors.background } }} />
-      <Stack.Screen name="user" options={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: colors.background } }} />
-      <Stack.Screen name="settings" options={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: colors.background } }} />
-      <Stack.Screen name="+not-found" options={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: colors.background } }} />
+    <Stack screenOptions={{ headerShown: false, animation: "slide_from_right", contentStyle: responsiveContentStyle }}>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false, contentStyle: responsiveContentStyle }} />
+      <Stack.Screen name="create-post" options={{ headerShown: false, animation: "slide_from_right", contentStyle: responsiveContentStyle }} />
+      <Stack.Screen name="edit-profile" options={{ headerShown: false, animation: "slide_from_right", contentStyle: responsiveContentStyle }} />
+      <Stack.Screen name="invite" options={{ headerShown: false, animation: "slide_from_right", contentStyle: responsiveContentStyle }} />
+      <Stack.Screen name="scan-connect" options={{ headerShown: false, animation: "slide_from_right", contentStyle: responsiveContentStyle }} />
+      <Stack.Screen name="connections" options={{ headerShown: false, animation: "slide_from_right", contentStyle: responsiveContentStyle }} />
+      <Stack.Screen name="user" options={{ headerShown: false, animation: "slide_from_right", contentStyle: responsiveContentStyle }} />
+      <Stack.Screen name="settings" options={{ headerShown: false, animation: "slide_from_right", contentStyle: responsiveContentStyle }} />
+      <Stack.Screen name="+not-found" options={{ headerShown: false, animation: "slide_from_right", contentStyle: responsiveContentStyle }} />
     </Stack>
   );
 }
