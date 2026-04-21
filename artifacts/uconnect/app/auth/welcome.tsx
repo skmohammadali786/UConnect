@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import {
   Animated, Easing, Image, Platform,
   ScrollView, StyleSheet, Text, TouchableOpacity, View, useColorScheme, useWindowDimensions,
@@ -15,6 +15,7 @@ const FEATURES = [
   { icon: "briefcase", text: "Internships and opportunities" },
   { icon: "users", text: "Find your hackathon team" },
 ];
+const LOGO_BORDER_RADIUS_RATIO = 0.23;
 
 export default function WelcomeScreen() {
   const { width: W, height: H } = useWindowDimensions();
@@ -49,13 +50,19 @@ export default function WelcomeScreen() {
   // Buttons
   const btnFade = useRef(new Animated.Value(0)).current;
   const btnY = useRef(new Animated.Value(30)).current;
-  const logoSectionHeight = Math.max(H * 0.30, 180);
-  const blobSize = W * 1.2;
-  const glowSize = Math.min(Math.max(W * 0.34, 120), 150);
-  const logoSize = Math.min(Math.max(W * 0.26, 92), 114);
-  const logoImageSize = logoSize - 14;
-  const headlineFontSize = Math.min(Math.max(W * 0.09, 28), 38);
-  const headlineLineHeight = headlineFontSize + 8;
+  const { logoSectionHeight, blobSize, glowSize, logoSize, logoImageSize, headlineFontSize, headlineLineHeight } = useMemo(() => {
+    const nextLogoSize = Math.min(Math.max(W * 0.26, 92), 114);
+    const nextHeadlineFontSize = Math.min(Math.max(W * 0.09, 28), 38);
+    return {
+      logoSectionHeight: Math.max(H * 0.30, 180),
+      blobSize: W * 1.2,
+      glowSize: Math.min(Math.max(W * 0.34, 120), 150),
+      logoSize: nextLogoSize,
+      logoImageSize: nextLogoSize - 14,
+      headlineFontSize: nextHeadlineFontSize,
+      headlineLineHeight: nextHeadlineFontSize + 8,
+    };
+  }, [W, H]);
 
   useEffect(() => {
     const ease = Easing.out(Easing.cubic);
@@ -172,10 +179,10 @@ export default function WelcomeScreen() {
             transform: [{ scale: Animated.multiply(logoScale, logoPulse) }],
           }}
         >
-          <View style={[styles.logoWrap, { width: logoSize, height: logoSize, borderRadius: Math.round(logoSize * 0.23) }, isDarkTheme ? styles.logoWrapDark : styles.logoWrapLight]}>
+          <View style={[styles.logoWrap, { width: logoSize, height: logoSize, borderRadius: Math.round(logoSize * LOGO_BORDER_RADIUS_RATIO) }, isDarkTheme ? styles.logoWrapDark : styles.logoWrapLight]}>
             <Image
               source={isDarkTheme ? require("@/assets/images/logo-dark.png") : require("@/assets/images/logo.png")}
-              style={[styles.logoImg, { width: logoImageSize, height: logoImageSize }]}
+              style={{ width: logoImageSize, height: logoImageSize }}
               resizeMode="contain"
             />
           </View>
@@ -290,7 +297,6 @@ const styles = StyleSheet.create({
   },
   logoWrapLight: { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" },
   logoWrapDark: { backgroundColor: "transparent", borderColor: "transparent" },
-  logoImg: {},
   textSection: {
     paddingHorizontal: 28,
     paddingTop: 8,
