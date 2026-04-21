@@ -201,8 +201,8 @@ export default function EventsScreen() {
             </Text>
           )}
         </View>
-        <TouchableOpacity onPress={() => router.push("/events/create")}>
-          <Feather name="plus" size={22} color={colors.primary} />
+        <TouchableOpacity onPress={() => router.push("/events/create")} style={[styles.createBtn, { backgroundColor: colors.primary }]}>
+          <Feather name="plus" size={18} color="#FFF" />
         </TouchableOpacity>
       </Animated.View>
 
@@ -242,6 +242,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: 1 },
   title: { fontSize: 18, fontFamily: "Inter_700Bold" },
   subtitle: { fontSize: 11, fontFamily: "Inter_500Medium" },
+  createBtn: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
   card: { borderRadius: 14, borderWidth: 1, padding: 16, gap: 10 },
   cardHeader: { flexDirection: "row", gap: 8, alignItems: "center", flexWrap: "wrap" },

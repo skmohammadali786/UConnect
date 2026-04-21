@@ -15,14 +15,13 @@ const FEATURES = [
 
 const TEAM = [
   { name: "Sk Mohammad Ali", role: "Founder & CEO", letter: "S", image: "https://iili.io/BegEz22.md.webp" },
-  { name: "Zayen Mallik", role: "Co Founder", letter: "Z", image: "https://iili.io/BegWZiu.md.jpg" },
 ];
 
 export default function AboutScreen() {
   const colors = useColors();
   const { themeMode } = useTheme();
   const scheme = useColorScheme();
-  const isDarkTheme = themeMode === "dark" || (themeMode === "system" && (scheme ?? "dark") === "dark");
+  const isDarkTheme = themeMode === "dark" || (themeMode === "system" && (scheme ?? "light") === "dark");
   const insets = useSafeAreaInsets();
 
   return (
@@ -131,8 +130,8 @@ const styles = StyleSheet.create({
   featureIcon: { width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   featureLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   featureDesc: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
-  teamGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  teamCard: { flex: 1, minWidth: "44%", borderRadius: 14, borderWidth: 1, padding: 16, alignItems: "center", gap: 8 },
+  teamGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, justifyContent: "center" },
+  teamCard: { width: 220, borderRadius: 14, borderWidth: 1, padding: 16, alignItems: "center", gap: 8 },
   teamAvatar: { width: 56, height: 56, borderRadius: 18, alignItems: "center", justifyContent: "center" },
   teamAvatarImage: { width: 56, height: 56, borderRadius: 18 },
   teamLetter: { fontSize: 24, fontFamily: "Inter_700Bold" },

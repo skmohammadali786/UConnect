@@ -12,9 +12,9 @@ import { AppInput } from "@/components/AppInput";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/Toast";
+import { ALL_INTERESTS } from "@/constants/interests";
 
 const ND = Platform.OS !== "web";
-const INTERESTS = ["Tech", "Music", "Sports", "Gaming", "Finance", "Arts", "Photography", "Travel", "Food", "Books", "Fitness", "Cinema", "Coding", "ML/AI", "Startups", "Design"];
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "Postgraduate", "PhD", "Alumni"];
 
 export default function EditProfileScreen() {
@@ -233,7 +233,7 @@ export default function EditProfileScreen() {
           <View style={{ gap: 10 }}>
             <Text style={[styles.label, { color: colors.mutedForeground }]}>Interests ({selectedInterests.length} selected)</Text>
             <View style={styles.interestGrid}>
-              {INTERESTS.map((interest) => {
+              {ALL_INTERESTS.map((interest) => {
                 const selected = selectedInterests.includes(interest);
                 return (
                   <TouchableOpacity

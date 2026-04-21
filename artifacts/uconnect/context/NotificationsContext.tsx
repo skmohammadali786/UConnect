@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { safeInsertNotification } from "@/utils/notifications";
 
-export type NotificationType = "reply" | "mention" | "upvote" | "follow" | "message" | "event" | "system";
+export type NotificationType = "reply" | "mention" | "upvote" | "follow" | "message" | "event" | "system" | "team" | "internship" | "confession" | "note" | "invite";
 export type NotificationActionType =
   | "post"
   | "profile"

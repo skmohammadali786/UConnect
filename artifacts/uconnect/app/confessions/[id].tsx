@@ -244,7 +244,11 @@ export default function ConfessionDetailScreen() {
   }, [commentToDelete, confession, deleteConfessionComment, loadComments, showError, showSuccess]);
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={insets.bottom + 56}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? insets.bottom : 0}
+    >
       <Animated.View style={[{ flex: 1, backgroundColor: colors.background }, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
         <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, borderBottomColor: colors.border }]}>
           <TouchableOpacity onPress={goBackSafely}>

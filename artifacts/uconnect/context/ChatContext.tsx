@@ -134,7 +134,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       id: generateId(),
       senderId,
       content,
-      isRead: senderId === userId,
+      isRead: false,
       createdAt: new Date().toISOString(),
       isRevealed: false,
     };

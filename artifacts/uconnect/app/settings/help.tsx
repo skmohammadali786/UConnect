@@ -58,13 +58,11 @@ export default function HelpScreen() {
 
   const handleEmailSupport = async () => {
     const email = "support@uconnect.social";
-    const url = `mailto:${email}`;
+    const subject = encodeURIComponent("UConnect Support Request");
+    const url = `mailto:${email}?subject=${subject}`;
     try {
-      const canOpen = await Linking.canOpenURL(url);
-      if (canOpen) {
-        await Linking.openURL(url);
-        return;
-      }
+      await Linking.openURL(url);
+      return;
     } catch {}
     showError("Could not open email app", email);
   };

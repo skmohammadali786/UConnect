@@ -36,8 +36,8 @@ export default function ChatListScreen() {
           delay={300}
           speed={65}
         />
-        <TouchableOpacity onPress={() => router.push("/chat/new")}>
-          <Feather name="plus" size={20} color={colors.primary} />
+        <TouchableOpacity onPress={() => router.push("/chat/new")} style={[styles.createBtn, { backgroundColor: colors.primary }]}>
+          <Feather name="plus" size={18} color="#FFF" />
         </TouchableOpacity>
       </Animated.View>
       <FlatList
@@ -90,6 +90,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: 1 },
   title: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  createBtn: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   convItem: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14, gap: 12, borderBottomWidth: 1 },
   avatar: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center", flexShrink: 0 },
   avatarImage: { width: 48, height: 48, borderRadius: 24, flexShrink: 0 },

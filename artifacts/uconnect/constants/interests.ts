@@ -1,0 +1,15 @@
+export const ALL_INTERESTS = [
+  "Coding", "Machine Learning", "Web Dev", "App Dev", "Competitive Programming",
+  "Open Source", "Startups", "Finance", "Design", "Photography",
+  "Music", "Sports", "Gaming", "Anime", "Movies",
+  "Writing", "Research", "Robotics", "Cybersecurity", "Cloud Computing",
+  "Blockchain", "AR/VR", "Data Science", "Quant Finance", "Product Management",
+  "UI/UX", "Graphic Design", "Public Speaking", "Debating", "Drama",
+  "Singing", "Dancing", "Fitness", "Cricket", "Football",
+  "Basketball", "Badminton", "Chess", "Travel", "Cooking",
+  "Entrepreneurship", "Hackathons", "Case Competitions", "Consulting", "Marketing",
+  "Stock Market", "Economics", "Psychology", "Biology", "Chemistry",
+  "Physics", "Mathematics", "Electrical Engineering", "Mechanical Engineering", "Civil Engineering",
+  "Electronics", "MBA", "BSc Research", "AI Ethics", "Content Creation",
+  "Video Editing", "Community Building", "Event Management", "Volunteering", "Social Impact",
+];
