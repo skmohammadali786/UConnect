@@ -23,12 +23,12 @@ import { supabase } from "@/lib/supabase";
 const FILTERS = ["Latest", "Trending", "Following"];
 
 const SHORTCUTS = [
-  { icon: "message-circle", label: "Confessions", route: "/confessions", color: "#EF4444" },
-  { icon: "briefcase", label: "Internships", route: "/internships", color: "#8B5CF6" },
-  { icon: "calendar", label: "Events", route: "/events", color: "#F59E0B" },
-  { icon: "users", label: "Teams", route: "/teams", color: "#00A86B" },
-  { icon: "book-open", label: "Notes", route: "/notes", color: "#3B82F6" },
-  { icon: "send", label: "Chats", route: "/chat", color: "#06B6D4" },
+  { icon: "message-circle", label: "Confessions", route: "/confessions" },
+  { icon: "briefcase", label: "Internships", route: "/internships" },
+  { icon: "calendar", label: "Events", route: "/events" },
+  { icon: "users", label: "Teams", route: "/teams" },
+  { icon: "book-open", label: "Notes", route: "/notes" },
+  { icon: "send", label: "Chats", route: "/chat" },
 ];
 
 interface ProfileRow {
@@ -237,8 +237,8 @@ export default function HomeScreen() {
         >
           {SHORTCUTS.map((s) => (
             <TouchableOpacity key={s.label} onPress={() => router.push(s.route as any)} style={styles.shortcut} activeOpacity={0.7}>
-              <View style={[styles.shortcutIcon, { backgroundColor: s.color + "18" }]}>
-                <Feather name={s.icon as any} size={20} color={s.color} />
+              <View style={[styles.shortcutIcon, { backgroundColor: colors.primary + "18" }]}>
+                <Feather name={s.icon as any} size={20} color={colors.primary} />
                 {s.label === "Chats" && totalUnreadMessages > 0 && (
                   <View style={[styles.chatBadge, { backgroundColor: colors.primary }]}>
                     <Text style={styles.chatBadgeText}>{totalUnreadMessages > 99 ? "99+" : totalUnreadMessages}</Text>
