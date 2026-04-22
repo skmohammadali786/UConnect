@@ -6,6 +6,7 @@ import {
   Animated, Easing, FlatList, Platform, RefreshControl,
   ScrollView, StyleSheet, Text, TouchableOpacity, View, useColorScheme,
 } from "react-native";
+import Svg, { Circle, Path } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PostCard } from "@/components/PostCard";
 import { useColors } from "@/hooks/useColors";
@@ -20,7 +21,13 @@ import { useChat } from "@/context/ChatContext";
 import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
 
-const FILTERS = ["Latest", "Trending", "Following"];
+type FilterKey = "Latest" | "Trending" | "Following";
+
+const FILTERS: Array<{ key: FilterKey; label: FilterKey; badge?: number }> = [
+  { key: "Latest", label: "Latest" },
+  { key: "Trending", label: "Trending" },
+  { key: "Following", label: "Following", badge: 2 },
+];
 
 const SHORTCUTS = [
   { icon: "message-circle", label: "Confessions", route: "/confessions" },
@@ -34,6 +41,34 @@ const SHORTCUTS = [
 interface ProfileRow {
   id: string;
   username: string;
+}
+
+function FilterIcon({ tab, color }: { tab: FilterKey; color: string }) {
+  if (tab === "Latest") {
+    return (
+      <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+        <Circle cx="12" cy="12" r="8.5" stroke={color} strokeWidth="2" />
+        <Path d="M12 7.8V12.2L14.8 14.6" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </Svg>
+    );
+  }
+
+  if (tab === "Trending") {
+    return (
+      <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+        <Path d="M3.5 16L9.2 10.3L13.3 14.4L20.5 7.2" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <Path d="M16.5 7.2H20.5V11.2" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </Svg>
+    );
+  }
+
+  return (
+    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+      <Circle cx="8.5" cy="8" r="3.1" stroke={color} strokeWidth="2" />
+      <Path d="M3.8 17.2C4.8 14.8 6.4 13.4 8.6 13.4C10.8 13.4 12.4 14.8 13.4 17.2" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <Path d="M14.1 11.3L16.1 13.3L20.2 9.2" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
 }
 
 function AnimatedPostCard({ post, index, currentUserId, onDelete }: any) {
@@ -81,15 +116,17 @@ export default function HomeScreen() {
   const { settings } = useSettings();
   const { conversations } = useChat();
   const { showSuccess } = useToast();
-  const [activeFilter, setActiveFilter] = useState("Latest");
+  const [activeFilter, setActiveFilter] = useState<FilterKey>("Latest");
   const [refreshing, setRefreshing] = useState(false);
   const [feedReposts, setFeedReposts] = useState<Array<{ post_id: string; user_id: string; created_at: string; username?: string }>>([]);
+  const [filterTrackWidth, setFilterTrackWidth] = useState(0);
   const totalUnreadMessages = conversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
 
   const headerSlide = useRef(new Animated.Value(-60)).current;
   const headerFade = useRef(new Animated.Value(0)).current;
   const shortcutFade = useRef(new Animated.Value(0)).current;
   const shortcutSlide = useRef(new Animated.Value(24)).current;
+  const activeFilterAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -118,6 +155,20 @@ export default function HomeScreen() {
       ]).start();
     });
   }, []);
+
+  const activeFilterIndex = useMemo(
+    () => FILTERS.findIndex((item) => item.key === activeFilter),
+    [activeFilter],
+  );
+
+  useEffect(() => {
+    Animated.timing(activeFilterAnim, {
+      toValue: activeFilterIndex,
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  }, [activeFilterIndex, activeFilterAnim]);
 
   const loadFeedReposts = useCallback(async () => {
     try {
@@ -186,6 +237,18 @@ export default function HomeScreen() {
     showSuccess("Post deleted");
   }, [deletePost, showSuccess]);
 
+  const segmentedTrackColor = isDarkTheme ? "#14251c" : "#f0faf4";
+  const segmentedTrackBorderColor = isDarkTheme ? "#2a3f33" : "#e2f0e8";
+  const activePillColor = isDarkTheme ? "#1b2b22" : "#ffffff";
+  const activePillTextColor = isDarkTheme ? "#62d48d" : "#1a8a4a";
+  const inactivePillTextColor = isDarkTheme ? "#7f9488" : "#9aaf9e";
+  const segmentedPillWidth = filterTrackWidth > 0 ? (filterTrackWidth - 16) / FILTERS.length : 0;
+  const segmentStep = segmentedPillWidth + 4;
+  const activePillLeft = activeFilterAnim.interpolate({
+    inputRange: [0, 1, 2],
+    outputRange: [4, 4 + segmentStep, 4 + segmentStep * 2],
+  });
+
   const headerComponent = (
     <View>
       <Animated.View
@@ -251,20 +314,58 @@ export default function HomeScreen() {
         </ScrollView>
 
         <View style={[styles.filterRow, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-          {FILTERS.map((f) => (
-            <TouchableOpacity
-              key={f}
-              onPress={() => setActiveFilter(f)}
-              style={[
-                styles.filterTab,
-                activeFilter === f && { borderBottomColor: colors.primary, borderBottomWidth: 2.5 },
-              ]}
-            >
-              <Text style={[styles.filterText, { color: activeFilter === f ? colors.primary : colors.mutedForeground }]}>
-                {f}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          <View
+            style={[styles.segmentTrack, { backgroundColor: segmentedTrackColor, borderColor: segmentedTrackBorderColor }]}
+            onLayout={(event) => setFilterTrackWidth(event.nativeEvent.layout.width)}
+          >
+            {segmentedPillWidth > 0 && (
+              <Animated.View
+                style={[
+                  styles.activeSegmentPill,
+                  {
+                    width: segmentedPillWidth,
+                    transform: [{ translateX: activePillLeft }],
+                    backgroundColor: activePillColor,
+                  },
+                ]}
+              />
+            )}
+            {FILTERS.map((f) => {
+              const isActive = activeFilter === f.key;
+              return (
+                <TouchableOpacity
+                  key={f.key}
+                  onPress={() => setActiveFilter(f.key)}
+                  style={[
+                    styles.segmentPressable,
+                    segmentedPillWidth > 0 ? { width: segmentedPillWidth } : { flex: 1 },
+                  ]}
+                  activeOpacity={0.9}
+                >
+                  <View style={styles.segmentLabelWrap}>
+                    <FilterIcon tab={f.key} color={isActive ? activePillTextColor : inactivePillTextColor} />
+                    <Text
+                      style={[
+                        styles.segmentLabel,
+                        {
+                          color: isActive ? activePillTextColor : inactivePillTextColor,
+                          fontFamily: isActive ? "DMSans_700Bold" : "DMSans_500Medium",
+                          fontWeight: isActive ? "700" : "500",
+                        },
+                      ]}
+                    >
+                      {f.label}
+                    </Text>
+                    {f.key === "Following" && (
+                      <View style={styles.followBadge}>
+                        <Text style={styles.followBadgeText}>{f.badge}</Text>
+                      </View>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
       </Animated.View>
     </View>
@@ -354,9 +455,53 @@ const styles = StyleSheet.create({
   },
   chatBadgeText: { color: "#FFF", fontSize: 10, fontFamily: "Inter_700Bold" },
   shortcutLabel: { fontSize: 11, fontFamily: "Inter_500Medium" },
-  filterRow: { flexDirection: "row", borderBottomWidth: 1 },
-  filterTab: { flex: 1, alignItems: "center", paddingVertical: 12 },
-  filterText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  filterRow: { borderBottomWidth: 1, paddingHorizontal: 16, paddingBottom: 12 },
+  segmentTrack: {
+    width: "100%",
+    borderRadius: 100,
+    borderWidth: 1.5,
+    padding: 4,
+    flexDirection: "row",
+    gap: 4,
+    position: "relative",
+  },
+  activeSegmentPill: {
+    position: "absolute",
+    top: 4,
+    bottom: 4,
+    borderRadius: 100,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  segmentPressable: {
+    height: 42,
+    borderRadius: 100,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 2,
+  },
+  segmentLabelWrap: { flexDirection: "row", alignItems: "center", gap: 7 },
+  segmentLabel: { fontSize: 13, lineHeight: 16 },
+  followBadge: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#ef4444",
+    borderWidth: 1.5,
+    borderColor: "#ffffff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  followBadgeText: {
+    color: "#ffffff",
+    fontSize: 9,
+    lineHeight: 10,
+    fontFamily: "DMSans_700Bold",
+    fontWeight: "700",
+  },
   emptyState: { alignItems: "center", gap: 14, paddingTop: 64, paddingHorizontal: 32 },
   emptyIconWrap: {
     width: 80, height: 80, borderRadius: 24,

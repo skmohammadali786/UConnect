@@ -5,6 +5,7 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
+import { DMSans_500Medium, DMSans_700Bold } from "@expo-google-fonts/dm-sans";
 import { Stack, router, useSegments } from "expo-router";
 import * as Linking from "expo-linking";
 import * as SplashScreen from "expo-splash-screen";
@@ -91,6 +92,8 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
+    DMSans_500Medium,
+    DMSans_700Bold,
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
