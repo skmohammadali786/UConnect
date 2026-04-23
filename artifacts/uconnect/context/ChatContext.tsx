@@ -155,8 +155,16 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         conversation_id: conversationId,
         sender_id: senderId,
         content,
-      }).then(() => {});
-      supabase.from("conversations").update({ last_message: content, last_message_at: newMessage.createdAt }).eq("id", conversationId).then(() => {});
+      }).then(({ error }) => {
+        if (error) {
+          console.error(`Failed to persist message for conversation ${conversationId}:`, error.message);
+        }
+      });
+      supabase.from("conversations").update({ last_message: content, last_message_at: newMessage.createdAt }).eq("id", conversationId).then(({ error }) => {
+        if (error) {
+          console.error(`Failed to update conversation metadata for ${conversationId}:`, error.message);
+        }
+      });
         if (conv?.participantId) {
           safeInsertNotification({
             user_id: conv.participantId,
@@ -171,7 +179,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             secondary_entity_type: "sender",
             secondary_entity_id: senderId,
             metadata: { source: "chat_message" },
-          }).then(() => {});
+          }).then((error) => {
+            if (error) {
+              console.warn("Failed to send chat notification:", error.message);
+            }
+          });
         }
     }
   };

@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { AppState } from "react-native";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { safeInsertNotification } from "@/utils/notifications";
@@ -109,6 +110,24 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     };
   }, [user?.id, loadNotifications]);
 
+  useEffect(() => {
+    if (!user) return;
+    const pollId = setInterval(() => {
+      loadNotifications();
+    }, 20000);
+    return () => clearInterval(pollId);
+  }, [user?.id, loadNotifications]);
+
+  useEffect(() => {
+    if (!user) return;
+    const sub = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") {
+        loadNotifications();
+      }
+    });
+    return () => sub.remove();
+  }, [user?.id, loadNotifications]);
+
   const markRead = (id: string) => {
     setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, isRead: true } : n));
     if (user) {
@@ -147,7 +166,11 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
         secondary_entity_type: n.secondaryEntityType ?? null,
         secondary_entity_id: n.secondaryEntityId ?? null,
         metadata: n.metadata ?? {},
-      }).then(() => {});
+      }).then((error) => {
+        if (error) {
+          loadNotifications();
+        }
+      });
     }
   };
 

@@ -15,10 +15,43 @@ type NotificationInsertPayload = {
   metadata?: Record<string, any>;
 };
 
+let createNotificationRpcSupported: boolean | null = null;
+
 const hasMissingColumnError = (message: string) =>
   /column/i.test(message) && /does not exist/i.test(message);
+const hasMissingFunctionError = (message: string) =>
+  /function/i.test(message) && (/does not exist/i.test(message) || /not found/i.test(message));
+const hasPermissionError = (message: string) =>
+  /row-level security|permission denied|not allowed|violates row-level security/i.test(message);
 
 export async function safeInsertNotification(payload: NotificationInsertPayload) {
+  if (createNotificationRpcSupported !== false) {
+    const rpcArgs = {
+      p_user_id: payload.user_id,
+      p_type: payload.type,
+      p_title: payload.title,
+      p_body: payload.body,
+      p_action_id: payload.action_id ?? null,
+      p_action_type: payload.action_type ?? null,
+      p_redirect_path: payload.redirect_path ?? null,
+      p_entity_type: payload.entity_type ?? null,
+      p_entity_id: payload.entity_id ?? null,
+      p_secondary_entity_type: payload.secondary_entity_type ?? null,
+      p_secondary_entity_id: payload.secondary_entity_id ?? null,
+      p_metadata: payload.metadata ?? {},
+    };
+
+    // Preferred path: security-definer RPC (supports cross-user notifications safely).
+    const { error: rpcError } = await supabase.rpc("create_notification", rpcArgs);
+    if (!rpcError) {
+      createNotificationRpcSupported = true;
+      return null;
+    }
+    const rpcMessage = String(rpcError.message ?? "");
+    if (!hasMissingFunctionError(rpcMessage)) return rpcError;
+    createNotificationRpcSupported = false;
+  }
+
   const tryInsert = async (insertPayload: Record<string, any>) => {
     const { error } = await supabase.from("notifications").insert(insertPayload);
     return error ?? null;
@@ -45,5 +78,18 @@ export async function safeInsertNotification(payload: NotificationInsertPayload)
     body: payload.body,
   };
   error = await tryInsert(fallbackPayloadBase);
+
+  if (error && hasPermissionError(String(error.message ?? ""))) {
+    const { data: authData } = await supabase.auth.getUser();
+    const currentUserId = authData.user?.id;
+    if (currentUserId && currentUserId !== payload.user_id) {
+      return {
+        ...error,
+        message:
+          "Cross-user notifications are blocked by RLS. Run the SQL patch that adds create_notification() and notification policies.",
+      } as any;
+    }
+  }
+
   return error;
 }

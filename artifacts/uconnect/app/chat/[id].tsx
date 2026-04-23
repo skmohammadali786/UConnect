@@ -23,6 +23,9 @@ export default function ChatScreen() {
   const flatListRef = useRef<FlatList>(null);
 
   const conv = conversations.find((c) => c.id === id);
+  const incomingUnreadCount = conv
+    ? conv.messages.filter((m) => m.senderId !== user?.id && !m.isRead).length
+    : 0;
 
   useEffect(() => {
     if (!user || !id || conv) return;
@@ -36,9 +39,9 @@ export default function ChatScreen() {
   }, [id, username, user?.id, conv?.id]);
 
   useEffect(() => {
-    if (!conv) return;
+    if (!conv || incomingUnreadCount === 0) return;
     markRead(conv.id);
-  }, [conv?.id, markRead]);
+  }, [conv?.id, incomingUnreadCount, markRead]);
 
   if (!user) return null;
 
