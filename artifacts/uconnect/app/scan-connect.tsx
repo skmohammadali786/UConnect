@@ -1,5 +1,6 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import * as FileSystem from "expo-file-system/legacy";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Platform, Share, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -26,8 +27,10 @@ export default function ScanConnectScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [mode, setMode] = useState<"my" | "scan">("my");
   const [scanLocked, setScanLocked] = useState(false);
+  const [sharingQr, setSharingQr] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(14)).current;
+  const qrRef = useRef<any>(null);
 
   const myUsername = (user?.username || "").trim().toLowerCase();
   const targetUsername = (usernameParam || "").trim().toLowerCase();
@@ -47,12 +50,33 @@ export default function ScanConnectScreen() {
   }, [allowScan]);
 
   const onShare = async () => {
-    if (!qrUsername || !qrValue) return;
-    await Share.share({
-      title: `Connect with @${qrUsername} on UConnect`,
-      message: `Scan this QR to view my UConnect profile instantly.\n\n${qrValue}`,
-      url: qrValue,
-    });
+    if (!qrUsername || !qrValue || sharingQr) return;
+    setSharingQr(true);
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        if (!qrRef.current) {
+          reject(new Error("QR code not ready"));
+          return;
+        }
+        qrRef.current.toDataURL((data: string) => {
+          if (!data) reject(new Error("Unable to generate QR image"));
+          else resolve(data);
+        });
+      });
+
+      const fileUri = `${FileSystem.cacheDirectory ?? ""}uconnect-qr-${qrUsername}.png`;
+      if (!fileUri) throw new Error("Unable to access local storage");
+
+      await FileSystem.writeAsStringAsync(fileUri, base64, { encoding: "base64" });
+
+      await Share.share({
+        title: `Connect with @${qrUsername} on UConnect`,
+        message: `Scan this QR to view my UConnect profile instantly.`,
+        url: fileUri,
+      });
+    } finally {
+      setSharingQr(false);
+    }
   };
 
   const handleScanned = (data: string) => {
@@ -95,16 +119,24 @@ export default function ScanConnectScreen() {
         <View style={styles.centerWrap}>
           <View style={[styles.qrCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             {qrValue ? (
-              <QRCode value={qrValue} size={220} backgroundColor="#FFFFFF" color="#111827" />
+              <QRCode
+                getRef={(c) => {
+                  qrRef.current = c;
+                }}
+                value={qrValue}
+                size={220}
+                backgroundColor="#FFFFFF"
+                color="#111827"
+              />
             ) : (
               <Text style={[styles.helper, { color: colors.mutedForeground }]}>Profile username not available.</Text>
             )}
           </View>
           <Text style={[styles.username, { color: colors.foreground }]}>@{qrUsername || "unknown"}</Text>
           <Text style={[styles.helper, { color: colors.mutedForeground }]}>Let others scan this code to open this profile instantly.</Text>
-          <TouchableOpacity disabled={!qrValue} onPress={onShare} style={[styles.shareBtn, { backgroundColor: qrValue ? colors.primary : colors.border }]}>
+          <TouchableOpacity disabled={!qrValue || sharingQr} onPress={onShare} style={[styles.shareBtn, { backgroundColor: qrValue ? colors.primary : colors.border }]}>
             <Feather name="share-2" size={16} color="#FFF" />
-            <Text style={styles.shareText}>Share QR</Text>
+            <Text style={styles.shareText}>{sharingQr ? "Preparing..." : "Share QR"}</Text>
           </TouchableOpacity>
         </View>
       ) : (

@@ -90,6 +90,7 @@ export default function SearchScreen() {
   const { showSuccess } = useToast();
 
   const [query, setQuery] = useState("");
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<SearchTab>("posts");
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [trendingTags, setTrendingTags] = useState<TrendingTag[]>([]);
@@ -222,6 +223,7 @@ export default function SearchScreen() {
 
   const handleSearch = (text: string) => {
     setShowPeopleDirectory(false);
+    setSelectedTag(null);
     setQuery(text);
   };
 
@@ -236,6 +238,21 @@ export default function SearchScreen() {
     });
     setFocused(false);
     inputRef.current?.blur();
+  };
+
+  const openTagPosts = (tag: string) => {
+    const normalizedTag = tag.trim().toLowerCase().replace(/^#/, "");
+    if (!normalizedTag) return;
+    setSelectedTag(normalizedTag);
+    setShowPeopleDirectory(false);
+    setQuery(`#${normalizedTag}`);
+    switchTab("posts");
+    setFocused(false);
+    inputRef.current?.blur();
+    setRecentSearches((prev) => {
+      const deduped = prev.filter((item) => item.toLowerCase() !== normalizedTag);
+      return [normalizedTag, ...deduped].slice(0, MAX_RECENT_SEARCHES);
+    });
   };
 
   const clearRecent = () => {
@@ -262,11 +279,19 @@ export default function SearchScreen() {
   ];
 
   const filteredPosts = query
-    ? posts.filter((p) =>
-        p.content.toLowerCase().includes(query.toLowerCase()) ||
-        p.tag.toLowerCase().includes(query.toLowerCase()) ||
-        p.authorUsername?.toLowerCase().includes(query.toLowerCase())
-      )
+    ? posts.filter((p) => {
+        if (selectedTag) {
+          const normalizedPostTag = (p.tag ?? "").trim().toLowerCase().replace(/\s+/g, "");
+          if (normalizedPostTag === selectedTag) return true;
+          return extractHashtags(p.content ?? "").includes(selectedTag);
+        }
+        const q = query.toLowerCase();
+        return (
+          p.content.toLowerCase().includes(q) ||
+          p.tag.toLowerCase().includes(q) ||
+          p.authorUsername?.toLowerCase().includes(q)
+        );
+      })
     : [];
 
   const filteredPeople = people;
@@ -326,7 +351,7 @@ export default function SearchScreen() {
   const renderTagCard = ({ item, index }: any) => (
     <FadeSlideItem index={index}>
       <TouchableOpacity
-        onPress={() => selectQuery(item.tag)}
+        onPress={() => openTagPosts(item.tag)}
         style={[styles.tagCard, { backgroundColor: colors.card, borderColor: colors.border }]}
         activeOpacity={0.88}
       >
@@ -516,7 +541,7 @@ export default function SearchScreen() {
                 {trendingTags.slice(0, 6).map((item, i) => (
                   <FadeSlideItem key={item.tag} index={i} delay={100} style={{ width: "31%" }}>
                     <TouchableOpacity
-                      onPress={() => selectQuery(item.tag)}
+                      onPress={() => openTagPosts(item.tag)}
                       style={[styles.trendCard, { backgroundColor: colors.card, borderColor: colors.border }]}
                       activeOpacity={0.82}
                     >
