@@ -20,9 +20,6 @@ const LOGO_SECTION_MIN_HEIGHT = 180;
 const LOGO_SECTION_HEIGHT_RATIO = 0.3;
 const BLOB_SIZE_RATIO = 1.2;
 const BLOB_TOP_OFFSET_RATIO = 0.35;
-const GLOW_SIZE_RATIO = 0.34;
-const GLOW_MIN_SIZE = 120;
-const GLOW_MAX_SIZE = 150;
 const LOGO_SIZE_RATIO = 0.26;
 const LOGO_MIN_SIZE = 92;
 const LOGO_MAX_SIZE = 114;
@@ -43,8 +40,6 @@ export default function WelcomeScreen() {
   const logoScale = useRef(new Animated.Value(0)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
   const logoPulse = useRef(new Animated.Value(1)).current;
-  const glowOpacity = useRef(new Animated.Value(0)).current;
-  const glowScale = useRef(new Animated.Value(0.7)).current;
 
   // Blob background
   const blobOpacity = useRef(new Animated.Value(0)).current;
@@ -65,13 +60,12 @@ export default function WelcomeScreen() {
   // Buttons
   const btnFade = useRef(new Animated.Value(0)).current;
   const btnY = useRef(new Animated.Value(30)).current;
-  const { logoSectionHeight, blobSize, glowSize, logoSize, logoImageSize, headlineSize, headlineLineHeight } = useMemo(() => {
+  const { logoSectionHeight, blobSize, logoSize, logoImageSize, headlineSize, headlineLineHeight } = useMemo(() => {
     const nextLogoSize = Math.min(Math.max(windowWidth * LOGO_SIZE_RATIO, LOGO_MIN_SIZE), LOGO_MAX_SIZE);
     const nextHeadlineSize = Math.min(Math.max(windowWidth * HEADLINE_SIZE_RATIO, HEADLINE_MIN_SIZE), HEADLINE_MAX_SIZE);
     return {
       logoSectionHeight: Math.max(windowHeight * LOGO_SECTION_HEIGHT_RATIO, LOGO_SECTION_MIN_HEIGHT),
       blobSize: windowWidth * BLOB_SIZE_RATIO,
-      glowSize: Math.min(Math.max(windowWidth * GLOW_SIZE_RATIO, GLOW_MIN_SIZE), GLOW_MAX_SIZE),
       logoSize: nextLogoSize,
       logoImageSize: nextLogoSize - LOGO_IMAGE_INSET,
       headlineSize: nextHeadlineSize,
@@ -97,25 +91,12 @@ export default function WelcomeScreen() {
         Animated.timing(logoOpacity, { toValue: 1, duration: 400, easing: ease, useNativeDriver: false }),
         Animated.spring(logoScale, { toValue: 1, friction: 5, tension: 110, useNativeDriver: false }),
       ]).start(() => {
-        // Glow ring radiates
-        Animated.parallel([
-          Animated.timing(glowOpacity, { toValue: 0.65, duration: 500, easing: ease, useNativeDriver: false }),
-          Animated.spring(glowScale, { toValue: 1, friction: 6, tension: 70, useNativeDriver: false }),
-        ]).start(() => {
-          // Continuous breath
-          Animated.loop(
-            Animated.sequence([
-              Animated.timing(logoPulse, { toValue: 1.055, duration: 2000, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
-              Animated.timing(logoPulse, { toValue: 1, duration: 2000, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
-            ])
-          ).start();
-          Animated.loop(
-            Animated.sequence([
-              Animated.timing(glowOpacity, { toValue: 0.25, duration: 1800, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
-              Animated.timing(glowOpacity, { toValue: 0.65, duration: 1800, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
-            ])
-          ).start();
-        });
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(logoPulse, { toValue: 1.055, duration: 2000, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+            Animated.timing(logoPulse, { toValue: 1, duration: 2000, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+          ])
+        ).start();
       });
     }, 150);
 
@@ -173,20 +154,6 @@ export default function WelcomeScreen() {
 
       {/* ── LOGO SECTION ─────────────────── */}
       <View style={[styles.logoSection, { height: logoSectionHeight, paddingTop: insets.top }]}>
-        {/* Glow ring */}
-        <Animated.View
-          style={[
-            styles.glowRing,
-            {
-              width: glowSize,
-              height: glowSize,
-              borderRadius: glowSize * 0.5,
-              borderColor: colors.primary,
-              opacity: glowOpacity,
-              transform: [{ scale: glowScale }],
-            },
-          ]}
-        />
         {/* Logo */}
         <Animated.View
           style={{
@@ -299,10 +266,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
-  },
-  glowRing: {
-    position: "absolute",
-    borderWidth: 1.5,
   },
   logoWrap: {
     borderWidth: 1.5,

@@ -420,7 +420,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1,
+    paddingHorizontal: 16, paddingBottom: 12,
   },
   headerLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
   logoSmall: {
@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
     width: 38, height: 38, borderRadius: 10, borderWidth: 1,
     alignItems: "center", justifyContent: "center",
   },
-  shortcuts: { paddingHorizontal: 12, paddingVertical: 14, gap: 6, borderBottomWidth: 1 },
+  shortcuts: { paddingHorizontal: 12, paddingVertical: 14, gap: 6 },
   shortcut: { alignItems: "center", gap: 6, marginHorizontal: 6 },
   shortcutIcon: { width: 52, height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center" },
   chatBadge: {
