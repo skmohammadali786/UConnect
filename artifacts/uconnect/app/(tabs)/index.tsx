@@ -23,10 +23,10 @@ import { supabase } from "@/lib/supabase";
 
 type FilterKey = "Latest" | "Trending" | "Following";
 
-const FILTERS: Array<{ key: FilterKey; label: FilterKey; badge?: number }> = [
+const FILTERS: Array<{ key: FilterKey; label: FilterKey }> = [
   { key: "Latest", label: "Latest" },
   { key: "Trending", label: "Trending" },
-  { key: "Following", label: "Following", badge: 2 },
+  { key: "Following", label: "Following" },
 ];
 
 const SHORTCUTS = [
@@ -356,11 +356,6 @@ export default function HomeScreen() {
                     >
                       {f.label}
                     </Text>
-                    {f.key === "Following" && (
-                      <View style={styles.followBadge}>
-                        <Text style={styles.followBadgeText}>{f.badge}</Text>
-                      </View>
-                    )}
                   </View>
                 </TouchableOpacity>
               );
@@ -485,23 +480,6 @@ const styles = StyleSheet.create({
   },
   segmentLabelWrap: { flexDirection: "row", alignItems: "center", gap: 7 },
   segmentLabel: { fontSize: 13, lineHeight: 16 },
-  followBadge: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: "#ef4444",
-    borderWidth: 1.5,
-    borderColor: "#ffffff",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  followBadgeText: {
-    color: "#ffffff",
-    fontSize: 9,
-    lineHeight: 10,
-    fontFamily: "DMSans_700Bold",
-    fontWeight: "700",
-  },
   emptyState: { alignItems: "center", gap: 14, paddingTop: 64, paddingHorizontal: 32 },
   emptyIconWrap: {
     width: 80, height: 80, borderRadius: 24,
