@@ -5,6 +5,7 @@ import React from "react";
 import { Animated, Platform, StyleSheet, TouchableOpacity, View, useColorScheme, useWindowDimensions } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import { useTheme } from "@/context/ThemeContext";
+import { useNotifications } from "@/context/NotificationsContext";
 import { TABLET_BREAKPOINT, getResponsiveContentMaxWidth } from "@/utils/responsiveLayout";
 
 const ND = Platform.OS !== "web";
@@ -65,6 +66,7 @@ export default function TabLayout() {
   const tabBarHeight = isWeb ? (width >= TABLET_BREAKPOINT ? 88 : 74) : 70;
   const tabBarBottomPadding = isWeb ? (width >= TABLET_BREAKPOINT ? 12 : 6) : 12;
   const isDarkTheme = themeMode === "dark" || (themeMode === "system" && (scheme ?? "dark") === "dark");
+  const { unreadCount } = useNotifications();
 
   return (
     <Tabs
@@ -132,6 +134,13 @@ export default function TabLayout() {
         options={{
           title: "Alerts",
           tabBarIcon: ({ color }) => <Feather name="bell" size={22} color={color} />,
+          tabBarBadge: unreadCount > 0 ? (unreadCount > 99 ? "99+" : unreadCount) : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: colors.primary,
+            color: "#fff",
+            fontFamily: "Inter_600SemiBold",
+            fontSize: 10,
+          },
         }}
       />
       <Tabs.Screen
