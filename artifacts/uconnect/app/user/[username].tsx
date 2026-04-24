@@ -73,6 +73,7 @@ export default function UserProfileScreen() {
             following: data.following ?? 0,
             isVerified: false,
             avatar: data.avatar || null,
+            avatarRingColor: data.avatar_ring_color || "#6366F1",
             banner: data.banner || null,
           });
           setRepostRows((repostData ?? []) as { post_id: string; created_at: string }[]);
@@ -89,6 +90,7 @@ export default function UserProfileScreen() {
             followers: 0,
             following: 0,
             isVerified: false,
+            avatarRingColor: "#6366F1",
             banner: null,
           });
           setRepostRows([]);
@@ -106,6 +108,7 @@ export default function UserProfileScreen() {
           followers: 0,
           following: 0,
           isVerified: false,
+          avatarRingColor: "#6366F1",
           banner: null,
         });
         setRepostRows([]);
@@ -209,9 +212,9 @@ export default function UserProfileScreen() {
 
               <View style={styles.avatarRow}>
                 {profile.avatar ? (
-                  <Image source={{ uri: profile.avatar }} style={[styles.avatarImg, { borderColor: colors.card }]} />
+                  <Image source={{ uri: profile.avatar }} style={[styles.avatarImg, { borderColor: profile.avatarRingColor || colors.card }]} />
                 ) : (
-                  <View style={[styles.avatar, { backgroundColor: colors.primary + "20", borderColor: colors.card, borderWidth: 4 }]}>
+                  <View style={[styles.avatar, { backgroundColor: (profile.avatarRingColor || colors.primary) + "20", borderColor: profile.avatarRingColor || colors.card, borderWidth: 4 }]}>
                     <Text style={[styles.avatarText, { color: colors.primary }]}>{initials}</Text>
                   </View>
                 )}

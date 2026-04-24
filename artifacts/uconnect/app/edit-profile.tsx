@@ -16,6 +16,10 @@ import { ALL_INTERESTS } from "@/constants/interests";
 
 const ND = Platform.OS !== "web";
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "Postgraduate", "PhD", "Alumni"];
+const DEFAULT_AVATAR_RING_COLOR = "#6366F1";
+const RING_SWATCHES = ["#6366F1", "#EF4444", "#F59E0B", "#10B981", "#06B6D4", "#8B5CF6", "#EC4899", "#111827"];
+
+const isValidHexColor = (value: string) => /^#([0-9A-F]{3}|[0-9A-F]{6})$/i.test(value.trim());
 
 export default function EditProfileScreen() {
   const colors = useColors();
@@ -28,6 +32,7 @@ export default function EditProfileScreen() {
   const [year, setYear] = useState(user?.year || "");
   const [selectedInterests, setSelectedInterests] = useState<string[]>(user?.interests || []);
   const [avatarUri, setAvatarUri] = useState<string | null>(user?.avatar || null);
+  const [avatarRingColor, setAvatarRingColor] = useState(user?.avatarRingColor || DEFAULT_AVATAR_RING_COLOR);
   const [bannerUri, setBannerUri] = useState<string | null>(user?.banner || null);
   const [saving, setSaving] = useState(false);
   const [showYearPicker, setShowYearPicker] = useState(false);
@@ -109,6 +114,7 @@ export default function EditProfileScreen() {
       showError("Name required", "Please enter a display name.");
       return;
     }
+    const normalizedRingColor = isValidHexColor(avatarRingColor) ? avatarRingColor.trim().toUpperCase() : DEFAULT_AVATAR_RING_COLOR;
     setSaving(true);
     await updateUser({
       displayName: displayName.trim(),
@@ -116,14 +122,17 @@ export default function EditProfileScreen() {
       year,
       interests: selectedInterests,
       avatar: avatarUri,
+      avatarRingColor: normalizedRingColor,
       banner: bannerUri,
     });
+    setAvatarRingColor(normalizedRingColor);
     setSaving(false);
     showSuccess("Profile updated!", "Your changes have been saved.");
     router.back();
   };
 
   const initials = displayName?.charAt(0)?.toUpperCase() || user?.username?.charAt(0)?.toUpperCase() || "U";
+  const previewRingColor = isValidHexColor(avatarRingColor) ? avatarRingColor : DEFAULT_AVATAR_RING_COLOR;
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
@@ -153,9 +162,9 @@ export default function EditProfileScreen() {
           <View style={styles.avatarSection}>
             <TouchableOpacity onPress={handlePickPhoto} style={styles.avatarTap} activeOpacity={0.85}>
               {avatarUri ? (
-                <Image source={{ uri: avatarUri }} style={[styles.avatarImg, { borderColor: colors.primary + "60" }]} />
+                <Image source={{ uri: avatarUri }} style={[styles.avatarImg, { borderColor: previewRingColor }]} />
               ) : (
-                <View style={[styles.avatar, { backgroundColor: colors.primary + "20", borderColor: colors.primary + "50" }]}>
+                <View style={[styles.avatar, { backgroundColor: previewRingColor + "20", borderColor: previewRingColor }]}>
                   <Text style={[styles.avatarText, { color: colors.primary }]}>{initials}</Text>
                 </View>
               )}
@@ -167,6 +176,32 @@ export default function EditProfileScreen() {
               <Feather name="camera" size={14} color={colors.primary} />
               <Text style={[styles.changePhotoText, { color: colors.primary }]}>Change Photo</Text>
             </TouchableOpacity>
+          </View>
+
+          <View style={{ gap: 8 }}>
+            <Text style={[styles.label, { color: colors.mutedForeground }]}>Profile Photo Ring Color</Text>
+            <View style={[styles.colorInputWrap, { backgroundColor: colors.input, borderColor: isValidHexColor(avatarRingColor) ? avatarRingColor : colors.border }]}>
+              <View style={[styles.colorPreview, { backgroundColor: isValidHexColor(avatarRingColor) ? avatarRingColor : "transparent", borderColor: colors.border }]} />
+              <TextInput
+                value={avatarRingColor}
+                onChangeText={setAvatarRingColor}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                placeholder="#6366F1"
+                placeholderTextColor={colors.placeholder}
+                style={[styles.colorInput, { color: colors.foreground }]}
+              />
+            </View>
+            <View style={styles.colorSwatches}>
+              {RING_SWATCHES.map((swatch) => (
+                <TouchableOpacity
+                  key={swatch}
+                  onPress={() => setAvatarRingColor(swatch)}
+                  style={[styles.swatchBtn, { backgroundColor: swatch, borderColor: avatarRingColor.toLowerCase() === swatch.toLowerCase() ? colors.foreground : "transparent" }]}
+                />
+              ))}
+            </View>
+            <Text style={[styles.helperText, { color: colors.mutedForeground }]}>Use any HEX color (example: #22C55E). This ring will be visible on your public profile.</Text>
           </View>
 
           <AppInput
@@ -281,6 +316,12 @@ const styles = StyleSheet.create({
   cameraOverlay: { position: "absolute", bottom: 2, right: 2, width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center", borderWidth: 2.5, borderColor: "#fff" },
   changePhotoBtn: { flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 20, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 8 },
   changePhotoText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  colorInputWrap: { flexDirection: "row", alignItems: "center", borderRadius: 12, borderWidth: 1.5, paddingHorizontal: 12, paddingVertical: 10, gap: 10 },
+  colorPreview: { width: 20, height: 20, borderRadius: 10, borderWidth: 1 },
+  colorInput: { flex: 1, fontSize: 15, fontFamily: "Inter_500Medium" },
+  colorSwatches: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 2 },
+  swatchBtn: { width: 24, height: 24, borderRadius: 12, borderWidth: 2 },
+  helperText: { fontSize: 12, fontFamily: "Inter_400Regular" },
   label: { fontSize: 13, fontFamily: "Inter_500Medium" },
   bioWrap: { borderRadius: 12, borderWidth: 1.5, padding: 12 },
   bioInput: { fontSize: 15, fontFamily: "Inter_400Regular", lineHeight: 22, minHeight: 80, textAlignVertical: "top" },

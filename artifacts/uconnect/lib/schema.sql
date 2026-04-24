@@ -16,6 +16,7 @@ create table if not exists profiles (
   year text not null default '',
   bio text not null default '',
   avatar text,
+  avatar_ring_color text not null default '#6366F1',
   banner text,
   interests text[] not null default '{}',
   followers int not null default 0,
@@ -1280,6 +1281,9 @@ alter table profiles
   add column if not exists referred_by_user_id uuid references profiles(id) on delete set null,
   add column if not exists referral_code_used text,
   add column if not exists referral_at timestamptz;
+
+alter table profiles
+  add column if not exists avatar_ring_color text not null default '#6366F1';
 
 create table if not exists referral_attributions (
   id uuid primary key default uuid_generate_v4(),
