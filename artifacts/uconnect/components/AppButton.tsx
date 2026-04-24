@@ -1,6 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React, { useRef } from "react";
+import { LinearGradient } from "expo-linear-gradient";
+import React, { useMemo, useRef } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -8,6 +9,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  View,
   ViewStyle,
 } from "react-native";
 import { useColors } from "@/hooks/useColors";
@@ -38,14 +40,12 @@ export function AppButton({
   const colors = useColors();
   const scale = useRef(new Animated.Value(1)).current;
 
-  const ND = Platform.OS !== "web";
-
   const handlePressIn = () => {
-    Animated.spring(scale, { toValue: 0.93, useNativeDriver: false, tension: 280, friction: 8 }).start();
+    Animated.spring(scale, { toValue: 0.95, useNativeDriver: false, tension: 280, friction: 8 }).start();
   };
 
   const handlePressOut = () => {
-    Animated.spring(scale, { toValue: 1, useNativeDriver: false, tension: 180, friction: 8 }).start();
+    Animated.spring(scale, { toValue: 1, useNativeDriver: false, tension: 200, friction: 8 }).start();
   };
 
   const handlePress = () => {
@@ -54,30 +54,26 @@ export function AppButton({
     onPress();
   };
 
-  const bgColor =
-    variant === "primary"
-      ? colors.primary
-      : variant === "secondary"
-      ? colors.secondary
-      : variant === "destructive"
-      ? colors.destructive
-      : "transparent";
-
   const textColor =
     variant === "primary"
       ? "#FFFFFF"
       : variant === "destructive"
-      ? "#FFFFFF"
+      ? colors.destructiveForeground
       : variant === "outline"
       ? colors.primary
       : variant === "ghost"
       ? colors.foreground
-      : colors.foreground;
+      : colors.secondaryForeground;
 
-  const borderColor = variant === "outline" ? colors.primary : "transparent";
-  const height = size === "sm" ? 36 : size === "lg" ? 52 : 46;
-  const fontSize = size === "sm" ? 13 : size === "lg" ? 15 : 14;
-  const px = size === "sm" ? 12 : size === "lg" ? 24 : 18;
+  const height = size === "sm" ? 40 : size === "lg" ? 56 : 48;
+  const fontSize = size === "sm" ? 13 : size === "lg" ? 16 : 14;
+  const px = size === "sm" ? 14 : size === "lg" ? 24 : 18;
+
+  const gradient = useMemo(() => {
+    if (variant === "primary") return [colors.primary, "#18BB7E"] as const;
+    if (variant === "destructive") return ["#EF4444", "#DC2626"] as const;
+    return null;
+  }, [variant, colors.primary]);
 
   return (
     <Animated.View style={[{ transform: [{ scale }] }, fullWidth && { width: "100%" }]}>
@@ -90,25 +86,33 @@ export function AppButton({
         style={[
           styles.base,
           {
-            backgroundColor: bgColor,
-            borderColor,
+            backgroundColor: gradient ? "transparent" : variant === "secondary" ? colors.secondary : "transparent",
+            borderColor: variant === "outline" ? colors.primary : "transparent",
             borderWidth: variant === "outline" ? 1.5 : 0,
             height,
             paddingHorizontal: px,
-            opacity: disabled ? 0.4 : 1,
-            borderRadius: colors.radius,
+            opacity: disabled ? 0.45 : 1,
+            borderRadius: colors.radius + 2,
+            shadowColor: colors.shadow,
+            shadowOffset: { width: 0, height: 10 },
+            shadowOpacity: variant === "primary" || variant === "destructive" ? 0.2 : 0,
+            shadowRadius: 22,
+            elevation: variant === "primary" || variant === "destructive" ? 6 : 0,
           },
           style,
         ]}
       >
-        {loading ? (
-          <ActivityIndicator size="small" color={textColor} />
-        ) : (
-          <>
-            {icon && <Feather name={icon} size={size === "sm" ? 14 : 16} color={textColor} style={{ marginRight: 6 }} />}
-            <Text style={[styles.text, { color: textColor, fontSize }]}>{title}</Text>
-          </>
-        )}
+        {gradient ? <LinearGradient colors={gradient} style={[StyleSheet.absoluteFill, { borderRadius: colors.radius + 2 }]} /> : null}
+        <View style={styles.content}>
+          {loading ? (
+            <ActivityIndicator size="small" color={textColor} />
+          ) : (
+            <>
+              {icon && <Feather name={icon} size={size === "sm" ? 14 : 16} color={textColor} style={{ marginRight: 6 }} />}
+              <Text style={[styles.text, { color: textColor, fontSize }]}>{title}</Text>
+            </>
+          )}
+        </View>
       </TouchableOpacity>
     </Animated.View>
   );
@@ -116,6 +120,10 @@ export function AppButton({
 
 const styles = StyleSheet.create({
   base: {
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  content: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

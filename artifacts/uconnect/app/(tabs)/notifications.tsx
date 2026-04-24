@@ -42,7 +42,7 @@ const NOTIFICATION_COLORS: Record<string, string> = {
 export default function NotificationsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { notifications, unreadCount, markRead, markAllRead, deleteNotification } = useNotifications();
+  const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
   const headerAnim = useRef(new Animated.Value(0)).current;
   const headerSlide = useRef(new Animated.Value(-16)).current;
 
@@ -81,8 +81,16 @@ export default function NotificationsScreen() {
     }
   };
 
+  const elevatedCard = {
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.09,
+    shadowRadius: 16,
+    elevation: 2,
+  };
+
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}> 
       <Animated.View
         style={[
           styles.header,
@@ -92,6 +100,11 @@ export default function NotificationsScreen() {
             borderBottomColor: colors.border,
             opacity: headerAnim,
             transform: [{ translateY: headerSlide }],
+            shadowColor: colors.shadow,
+            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: 0.08,
+            shadowRadius: 14,
+            elevation: 2,
           },
         ]}
       >
@@ -102,7 +115,7 @@ export default function NotificationsScreen() {
           speed={55}
         />
         {unreadCount > 0 && (
-          <TouchableOpacity onPress={markAllRead}>
+          <TouchableOpacity onPress={markAllRead} style={[styles.markAllBtn, { backgroundColor: colors.primarySoft }]}> 
             <Text style={[styles.markAll, { color: colors.primary }]}>Mark all read</Text>
           </TouchableOpacity>
         )}
@@ -111,12 +124,20 @@ export default function NotificationsScreen() {
       <FlatList
         data={notifications}
         keyExtractor={(item) => item.id}
+        contentContainerStyle={{ paddingHorizontal: 12, paddingTop: 10, paddingBottom: Platform.OS === "web" ? 34 : 90 }}
         renderItem={({ item }) => (
           <TouchableOpacity
             onPress={() => handlePress(item)}
-            style={[styles.item, { backgroundColor: item.isRead ? colors.background : colors.primary + "08", borderBottomColor: colors.separator }]}
+            style={[
+              styles.item,
+              elevatedCard,
+              {
+                backgroundColor: item.isRead ? colors.card : colors.primary + "0E",
+                borderColor: item.isRead ? colors.border : colors.primary + "35",
+              },
+            ]}
           >
-            <View style={[styles.iconWrap, { backgroundColor: (NOTIFICATION_COLORS[item.type] || "#6B7280") + "20" }]}>
+            <View style={[styles.iconWrap, { backgroundColor: (NOTIFICATION_COLORS[item.type] || "#6B7280") + "20" }]}> 
               <Feather
                 name={NOTIFICATION_ICONS[item.type] || "bell"}
                 size={18}
@@ -133,12 +154,14 @@ export default function NotificationsScreen() {
         )}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Feather name="bell-off" size={44} color={colors.mutedForeground} />
-            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>No notifications yet</Text>
+            <View style={[styles.emptyIconWrap, { backgroundColor: colors.card, borderColor: colors.border }]}> 
+              <Feather name="bell-off" size={44} color={colors.mutedForeground} />
+            </View>
+            <Text style={[styles.emptyText, { color: colors.foreground }]}>No notifications yet</Text>
+            <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>You're all caught up. Activity from your network will appear here.</Text>
           </View>
         }
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: Platform.OS === "web" ? 34 : 80 }}
       />
     </View>
   );
@@ -148,14 +171,25 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: 1 },
   title: { fontSize: 22, fontFamily: "Inter_700Bold" },
+  markAllBtn: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
   markAll: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  item: { flexDirection: "row", alignItems: "flex-start", padding: 16, gap: 12, borderBottomWidth: 1 },
+  item: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    padding: 14,
+    gap: 12,
+    borderWidth: 1,
+    borderRadius: 16,
+    marginBottom: 10,
+  },
   iconWrap: { width: 42, height: 42, borderRadius: 21, alignItems: "center", justifyContent: "center", flexShrink: 0 },
   textWrap: { flex: 1, gap: 3 },
   itemTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   itemBody: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18 },
   itemTime: { fontSize: 11, fontFamily: "Inter_400Regular" },
   unreadDot: { width: 8, height: 8, borderRadius: 4, marginTop: 6 },
-  empty: { alignItems: "center", gap: 12, paddingTop: 80 },
-  emptyText: { fontSize: 15, fontFamily: "Inter_400Regular" },
+  empty: { alignItems: "center", gap: 12, paddingTop: 90, paddingHorizontal: 24 },
+  emptyIconWrap: { width: 88, height: 88, borderRadius: 24, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  emptyText: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  emptySub: { fontSize: 14, textAlign: "center", lineHeight: 20, fontFamily: "Inter_400Regular" },
 });
