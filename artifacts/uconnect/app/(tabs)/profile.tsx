@@ -84,10 +84,18 @@ export default function ProfileScreen() {
     setRefreshing(false);
   }, [loadActivity, loadReposts]);
 
+  const elevatedCard = {
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 18,
+    elevation: 3,
+  };
+
   if (!user) {
     return (
       <View style={[styles.authWall, { backgroundColor: colors.background }]}>
-        <View style={[styles.authCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={[styles.authCard, elevatedCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={[styles.authIconWrap, { backgroundColor: colors.primary + "15" }]}>
             <Feather name="user" size={40} color={colors.primary} />
           </View>
@@ -144,7 +152,7 @@ export default function ProfileScreen() {
         <View>
           <Text style={[styles.actSection, { color: colors.foreground }]}>Applied Internships</Text>
           {appliedInternships.map((item) => (
-            <TouchableOpacity key={item.id} onPress={() => router.push("/internships")} style={[styles.actCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <TouchableOpacity key={item.id} onPress={() => router.push("/internships")} style={[styles.actCard, elevatedCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <View style={[styles.actIcon, { backgroundColor: "#8B5CF620" }]}>
                 <Feather name="briefcase" size={16} color="#8B5CF6" />
               </View>
@@ -164,7 +172,7 @@ export default function ProfileScreen() {
         <View>
           <Text style={[styles.actSection, { color: colors.foreground }]}>Attending Events</Text>
           {rsvpEvents.map((item) => (
-            <TouchableOpacity key={item.id} onPress={() => router.push("/events")} style={[styles.actCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <TouchableOpacity key={item.id} onPress={() => router.push("/events")} style={[styles.actCard, elevatedCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <View style={[styles.actIcon, { backgroundColor: "#F59E0B20" }]}>
                 <Feather name="calendar" size={16} color="#F59E0B" />
               </View>
@@ -183,7 +191,7 @@ export default function ProfileScreen() {
         <View>
           <Text style={[styles.actSection, { color: colors.foreground }]}>Saved Notes</Text>
           {savedNotes.map((item) => (
-            <TouchableOpacity key={item.id} onPress={() => router.push("/notes")} style={[styles.actCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <TouchableOpacity key={item.id} onPress={() => router.push("/notes")} style={[styles.actCard, elevatedCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <View style={[styles.actIcon, { backgroundColor: "#3B82F620" }]}>
                 <Feather name="book-open" size={16} color="#3B82F6" />
               </View>
@@ -226,7 +234,7 @@ export default function ProfileScreen() {
         <View style={{ width: 36 }} />
       </View>
 
-      <View style={{ backgroundColor: colors.card }}>
+      <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -8 }}>
         <View style={[styles.coverBanner, { backgroundColor: colors.primary + "18" }]}>
           {user.banner ? (
             <Image source={{ uri: user.banner }} style={styles.coverImage} resizeMode="cover" />
@@ -300,7 +308,7 @@ export default function ProfileScreen() {
           {user.bio ? <Text style={[styles.bio, { color: colors.foreground }]}>{user.bio}</Text> : null}
         </View>
 
-        <View style={[styles.statsCard, { backgroundColor: colors.background, borderColor: colors.border, marginHorizontal: 16, marginBottom: 16 }]}>
+        <View style={[styles.statsCard, elevatedCard, { backgroundColor: colors.background, borderColor: colors.border, marginHorizontal: 16, marginBottom: 16 }]}>
           {[
             { num: myPosts.length || user.postsCount || 0, label: "Posts" },
             { num: user.followers, label: "Followers", mode: "followers" as const },
@@ -390,7 +398,7 @@ export default function ProfileScreen() {
           renderItem={({ item }) => (
             <TouchableOpacity
               onPress={() => router.push(`/confessions/${item.id}`)}
-              style={[styles.confessionCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+              style={[styles.confessionCard, elevatedCard, { backgroundColor: colors.card, borderColor: colors.border }]}
               activeOpacity={0.85}
             >
               {item.hasSensitiveContent && !settings.showSensitiveContent && !revealedConfessionIds.has(item.id) ? (
@@ -503,12 +511,12 @@ const styles = StyleSheet.create({
   authSub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
   signInBtn: { paddingHorizontal: 32, paddingVertical: 14, borderRadius: 12, marginTop: 4 },
   signInBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#FFF" },
-  topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1 },
+  topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: 1 },
   topBarTitle: { fontSize: 22, fontFamily: "Inter_700Bold" },
-  coverBanner: { height: 90, position: "relative" },
+  coverBanner: { height: 122, position: "relative", borderBottomLeftRadius: 22, borderBottomRightRadius: 22, overflow: "hidden" },
   coverImage: { width: "100%", height: "100%" },
   coverGradient: { position: "absolute", inset: 0 },
-  avatarRow: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", paddingHorizontal: 16, marginTop: -36, marginBottom: 12 },
+  avatarRow: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", paddingHorizontal: 16, marginTop: -44, marginBottom: 12 },
   avatarContainer: { position: "relative" },
   avatar: { width: 82, height: 82, borderRadius: 41, alignItems: "center", justifyContent: "center" },
   avatarImg: { width: 82, height: 82, borderRadius: 41, borderWidth: 4 },
@@ -528,7 +536,7 @@ const styles = StyleSheet.create({
   metaPill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 20 },
   metaText: { fontSize: 11, fontFamily: "Inter_500Medium" },
   bio: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 21, marginTop: 4 },
-  statsCard: { flexDirection: "row", alignItems: "center", justifyContent: "space-around", borderRadius: 14, borderWidth: 1, paddingVertical: 14 },
+  statsCard: { flexDirection: "row", alignItems: "center", justifyContent: "space-around", borderRadius: 16, borderWidth: 1, paddingVertical: 14 },
   statItem: { alignItems: "center", gap: 2, flex: 1 },
   statNum: { fontSize: 20, fontFamily: "Inter_700Bold" },
   statLabel: { fontSize: 11, fontFamily: "Inter_400Regular" },
@@ -544,7 +552,7 @@ const styles = StyleSheet.create({
   tabLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   tabCount: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
   tabCountText: { fontSize: 11, fontFamily: "Inter_700Bold" },
-  confessionCard: { borderRadius: 14, borderWidth: 1, padding: 14, marginHorizontal: 16, marginTop: 10, gap: 10 },
+  confessionCard: { borderRadius: 16, borderWidth: 1, padding: 14, marginHorizontal: 16, marginTop: 10, gap: 10 },
   confessionContent: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 21 },
   confessionMetaRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   confessionMetaText: { fontSize: 12, fontFamily: "Inter_400Regular" },
@@ -556,7 +564,7 @@ const styles = StyleSheet.create({
   revealBtn: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderRadius: 10, paddingHorizontal: 13, paddingVertical: 7 },
   revealText: { fontSize: 12, fontFamily: "Inter_500Medium" },
   actSection: { fontSize: 13, fontFamily: "Inter_700Bold", marginBottom: 8 },
-  actCard: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 12, borderWidth: 1, marginBottom: 8 },
+  actCard: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 14, borderWidth: 1, marginBottom: 10 },
   actIcon: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   actTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   actSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },

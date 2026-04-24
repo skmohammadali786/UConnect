@@ -44,7 +44,12 @@ export function AppInput({
           {
             backgroundColor: colors.input,
             borderColor: error ? colors.destructive : focused ? colors.primary : colors.border,
-            borderRadius: colors.radius,
+            borderRadius: colors.radius + 2,
+            shadowColor: colors.shadow,
+            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: focused ? 0.16 : 0.06,
+            shadowRadius: focused ? 20 : 12,
+            elevation: focused ? 3 : 1,
           },
         ]}
       >
@@ -68,7 +73,7 @@ export function AppInput({
         />
         {rightIcon && (
           <TouchableOpacity onPress={onRightIconPress} style={styles.rightIcon}>
-            <Feather name={rightIcon} size={18} color={colors.mutedForeground} />
+            <Feather name={rightIcon} size={18} color={focused ? colors.primary : colors.mutedForeground} />
           </TouchableOpacity>
         )}
       </View>
@@ -79,16 +84,16 @@ export function AppInput({
 
 const styles = StyleSheet.create({
   container: { gap: 6 },
-  label: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  label: { fontSize: 13, fontFamily: "Inter_500Medium", marginLeft: 4 },
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1.5,
-    height: 48,
+    minHeight: 50,
     paddingHorizontal: 12,
   },
   leftIcon: { marginRight: 8 },
   rightIcon: { padding: 4 },
-  input: { fontSize: 15 },
-  error: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  input: { fontSize: 15, paddingVertical: 12 },
+  error: { fontSize: 12, fontFamily: "Inter_400Regular", marginLeft: 4 },
 });

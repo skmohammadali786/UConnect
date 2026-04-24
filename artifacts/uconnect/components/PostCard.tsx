@@ -229,8 +229,13 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
           {
             backgroundColor: colors.card,
             borderColor: colors.border,
-            borderRadius: colors.radius,
+            borderRadius: colors.radius + 2,
             padding: 16,
+            shadowColor: colors.shadow,
+            shadowOffset: { width: 0, height: 10 },
+            shadowOpacity: 0.12,
+            shadowRadius: 20,
+            elevation: 4,
           },
         ]}
       >
@@ -262,7 +267,7 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
               </Text>
             </View>
           </TouchableOpacity>
-          <View style={[styles.tag, { backgroundColor: tagColor + "20" }]}>
+          <View style={[styles.tag, { backgroundColor: tagColor + "1A", borderColor: tagColor + "33" }]}>
             <Text style={[styles.tagText, { color: tagColor }]}>{post.tag}</Text>
           </View>
         </View>
@@ -309,13 +314,13 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
 
         <View style={styles.actions}>
           <View style={styles.voteRow}>
-            <TouchableOpacity onPress={() => handleVote("up")} style={[styles.voteBtn, post.userVote === "up" && { backgroundColor: colors.primary + "20" }]}>
+            <TouchableOpacity onPress={() => handleVote("up")} style={[styles.voteBtn, { backgroundColor: colors.surface }, post.userVote === "up" && { backgroundColor: colors.primary + "22" }]}>
               <Animated.View style={{ transform: [{ scale: upAnim }] }}>
                 <Feather name="arrow-up" size={16} color={post.userVote === "up" ? colors.primary : colors.mutedForeground} />
               </Animated.View>
               <Text style={[styles.voteCount, { color: post.userVote === "up" ? colors.primary : colors.mutedForeground }]}>{post.upvotes}</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleVote("down")} style={[styles.voteBtn, post.userVote === "down" && { backgroundColor: "#EF444420" }]}>
+            <TouchableOpacity onPress={() => handleVote("down")} style={[styles.voteBtn, { backgroundColor: colors.surface }, post.userVote === "down" && { backgroundColor: "#EF444420" }]}>
               <Animated.View style={{ transform: [{ scale: downAnim }] }}>
                 <Feather name="arrow-down" size={16} color={post.userVote === "down" ? "#EF4444" : colors.mutedForeground} />
               </Animated.View>
@@ -323,28 +328,28 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity onPress={handlePress} style={styles.actionBtn}>
+          <TouchableOpacity onPress={handlePress} style={[styles.actionBtn, { backgroundColor: colors.surface }]}>
             <Feather name="message-circle" size={16} color={colors.mutedForeground} />
             <Text style={[styles.actionText, { color: colors.mutedForeground }]}>{post.commentCount}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={handleBookmark} style={styles.actionBtn}>
+          <TouchableOpacity onPress={handleBookmark} style={[styles.actionBtn, { backgroundColor: colors.surface }]}>
             <Animated.View style={{ transform: [{ scale: bookmarkAnim }] }}>
               <Feather name="bookmark" size={16} color={post.isBookmarked ? colors.primary : colors.mutedForeground} />
             </Animated.View>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => toggleRepost(post.id)} style={styles.actionBtn}>
+          <TouchableOpacity onPress={() => toggleRepost(post.id)} style={[styles.actionBtn, { backgroundColor: colors.surface }]}>
             <Feather name="repeat" size={16} color={isReposted ? colors.primary : colors.mutedForeground} />
             <Text style={[styles.actionText, { color: isReposted ? colors.primary : colors.mutedForeground }]}>{post.repostCount}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => setShareOptionsVisible(true)} style={styles.actionBtn}>
+          <TouchableOpacity onPress={() => setShareOptionsVisible(true)} style={[styles.actionBtn, { backgroundColor: colors.surface }]}>
             <Feather name="share-2" size={16} color={colors.mutedForeground} />
           </TouchableOpacity>
 
           {isOwner ? (
-            <TouchableOpacity onPress={handleDelete} style={styles.actionBtn}>
+            <TouchableOpacity onPress={handleDelete} style={[styles.actionBtn, { backgroundColor: colors.surface }]}>
               <Animated.View style={{ transform: [{ scale: deleteAnim }] }}>
                 <Feather name="trash-2" size={16} color="#EF4444" />
               </Animated.View>
@@ -352,7 +357,7 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
           ) : (
             <TouchableOpacity
               onPress={() => setReportVisible(true)}
-              style={[styles.actionBtn, { opacity: reported ? 0.4 : 1 }]}
+              style={[styles.actionBtn, { backgroundColor: colors.surface, opacity: reported ? 0.4 : 1 }]}
               disabled={reported}
             >
               <Feather name="flag" size={16} color={colors.mutedForeground} />
@@ -444,8 +449,9 @@ const styles = StyleSheet.create({
   tag: {
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 6,
+    borderRadius: 10,
     flexShrink: 0,
+    borderWidth: 1,
   },
   tagText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
   repostedBadge: { flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, marginBottom: 10 },
@@ -465,7 +471,7 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 8,
     paddingVertical: 5,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   voteCount: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   actionBtn: {
@@ -473,7 +479,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 5,
     padding: 7,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   actionText: { fontSize: 13, fontFamily: "Inter_500Medium" },
   reportedBanner: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, marginTop: 10 },

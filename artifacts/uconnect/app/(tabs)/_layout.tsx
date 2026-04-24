@@ -83,11 +83,17 @@ export default function TabLayout() {
         tabBarInactiveTintColor: colors.mutedForeground,
         tabBarStyle: {
           position: "absolute",
-          backgroundColor: isIOS ? "transparent" : colors.background,
-          borderTopWidth: 1,
-          borderTopColor: colors.border,
+          backgroundColor: isIOS ? "transparent" : colors.tabBar,
+          borderTopWidth: 0,
           elevation: 0,
           height: tabBarHeight,
+          borderRadius: 22,
+          marginHorizontal: 10,
+          marginBottom: isWeb ? 8 : 10,
+          shadowColor: colors.shadow,
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.2,
+          shadowRadius: 16,
           paddingBottom: tabBarBottomPadding,
           width: "100%",
           alignSelf: "center",
@@ -97,7 +103,7 @@ export default function TabLayout() {
           isIOS ? (
             <BlurView intensity={90} tint={isDarkTheme ? "dark" : "light"} style={StyleSheet.absoluteFill} />
           ) : (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]} />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.tabBar, borderRadius: 22, borderWidth: 1, borderColor: colors.border }]} />
           ),
         tabBarLabelStyle: {
           fontFamily: "Inter_500Medium",
@@ -162,8 +168,8 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
   },
   createBtn: {
-    width: 72,
-    height: 40,
+    width: 76,
+    height: 44,
     borderRadius: 100,
     alignItems: "center",
     justifyContent: "center",

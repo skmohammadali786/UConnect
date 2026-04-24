@@ -221,6 +221,14 @@ export default function SearchScreen() {
     Animated.spring(barScaleAnim, { toValue: 1, tension: 200, friction: 10, useNativeDriver: ND }).start();
   };
 
+  const elevatedCard = {
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 2,
+  };
+
   const handleSearch = (text: string) => {
     setShowPeopleDirectory(false);
     setSelectedTag(null);
@@ -307,7 +315,7 @@ export default function SearchScreen() {
         <TouchableOpacity
           onPress={() => router.push({ pathname: "/user/[username]" as any, params: { username: item.username } })}
           activeOpacity={0.88}
-          style={[styles.personCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+          style={[styles.personCard, { backgroundColor: colors.card, borderColor: colors.border }, elevatedCard]}
         >
           {item.avatar ? (
             <Image source={{ uri: item.avatar }} style={styles.personAvatarImg} />
@@ -352,7 +360,7 @@ export default function SearchScreen() {
     <FadeSlideItem index={index}>
       <TouchableOpacity
         onPress={() => openTagPosts(item.tag)}
-        style={[styles.tagCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+        style={[styles.tagCard, { backgroundColor: colors.card, borderColor: colors.border }, elevatedCard]}
         activeOpacity={0.88}
       >
         <View style={[styles.tagIconWrap, { backgroundColor: colors.primary + "15" }]}>
@@ -542,7 +550,7 @@ export default function SearchScreen() {
                   <FadeSlideItem key={item.tag} index={i} delay={100} style={{ width: "31%" }}>
                     <TouchableOpacity
                       onPress={() => openTagPosts(item.tag)}
-                      style={[styles.trendCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                      style={[styles.trendCard, { backgroundColor: colors.card, borderColor: colors.border }, elevatedCard]}
                       activeOpacity={0.82}
                     >
                       <View style={styles.trendTop}>
@@ -581,7 +589,7 @@ export default function SearchScreen() {
                     <FadeSlideItem key={person.id} index={i} delay={140}>
                       <TouchableOpacity
                         onPress={() => router.push({ pathname: "/user/[username]" as any, params: { username: person.username } })}
-                        style={[styles.personHorizontalCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                        style={[styles.personHorizontalCard, { backgroundColor: colors.card, borderColor: colors.border }, elevatedCard]}
                         activeOpacity={0.85}
                       >
                         {person.avatar ? (
@@ -624,7 +632,7 @@ export default function SearchScreen() {
                   <FadeSlideItem key={s.id} index={i} delay={180} style={{ width: "47.5%" }}>
                     <TouchableOpacity
                       onPress={() => router.push(s.route as any)}
-                      style={[styles.discoverCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                      style={[styles.discoverCard, { backgroundColor: colors.card, borderColor: colors.border }, elevatedCard]}
                       activeOpacity={0.82}
                     >
                       <View style={[styles.discoverIcon, { backgroundColor: s.color + "18" }]}>
@@ -652,7 +660,7 @@ const styles = StyleSheet.create({
   headerTop: { marginBottom: 12 },
   headerTitle: { fontSize: 26, fontFamily: "Inter_700Bold" },
   searchBarWrap: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 },
-  searchBar: { flex: 1, flexDirection: "row", alignItems: "center", borderWidth: 1.5, borderRadius: 14, paddingHorizontal: 14, height: 48, gap: 10 },
+  searchBar: { flex: 1, flexDirection: "row", alignItems: "center", borderWidth: 1.5, borderRadius: 16, paddingHorizontal: 14, height: 50, gap: 10 },
   searchInput: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
   clearBtn: { width: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   cancelSearchBtn: { paddingVertical: 4 },
@@ -667,7 +675,7 @@ const styles = StyleSheet.create({
   recentChip: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
   recentChipText: { fontSize: 13, fontFamily: "Inter_500Medium" },
   trendingGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  trendCard: { flex: 1, borderRadius: 14, borderWidth: 1, padding: 14, gap: 4 },
+  trendCard: { flex: 1, borderRadius: 16, borderWidth: 1, padding: 14, gap: 4 },
   trendTop: { flexDirection: "row", alignItems: "center", gap: 2 },
   trendHash: { fontSize: 20, fontFamily: "Inter_700Bold" },
   trendTagName: { fontSize: 14, fontFamily: "Inter_700Bold" },
@@ -682,7 +690,7 @@ const styles = StyleSheet.create({
   personHorizontalBtn: { borderRadius: 10, paddingHorizontal: 16, paddingVertical: 6, borderWidth: 1, marginTop: 4 },
   personHorizontalBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
   discoverGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  discoverCard: { flex: 1, borderRadius: 14, borderWidth: 1, padding: 14, flexDirection: "row", alignItems: "center", gap: 12 },
+  discoverCard: { flex: 1, borderRadius: 16, borderWidth: 1, padding: 14, flexDirection: "row", alignItems: "center", gap: 12 },
   discoverIcon: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   discoverLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   discoverDesc: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 },
