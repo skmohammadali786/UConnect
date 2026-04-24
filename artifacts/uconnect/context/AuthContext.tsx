@@ -13,6 +13,7 @@ export interface User {
   year: string;
   bio: string;
   avatar: string | null;
+  avatarRingColor: string;
   banner: string | null;
   interests: string[];
   followers: number;
@@ -48,6 +49,7 @@ function rowToUser(row: any): User {
     year: row.year ?? "",
     bio: row.bio ?? "",
     avatar: row.avatar ?? null,
+    avatarRingColor: row.avatar_ring_color ?? "#6366F1",
     banner: row.banner ?? null,
     interests: row.interests ?? [],
     followers: row.followers ?? 0,
@@ -163,6 +165,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       year: updated.year,
       bio: updated.bio,
       avatar: updated.avatar,
+      avatar_ring_color: updated.avatarRingColor,
       banner: updated.banner,
       interests: updated.interests,
       phone: updated.phone,
@@ -182,6 +185,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       year: newUser.year,
       bio: newUser.bio,
       avatar: newUser.avatar,
+      avatar_ring_color: newUser.avatarRingColor,
       banner: newUser.banner,
       interests: newUser.interests,
       followers: newUser.followers,

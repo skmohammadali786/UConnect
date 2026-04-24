@@ -246,9 +246,9 @@ export default function ProfileScreen() {
         <View style={styles.avatarRow}>
           <View style={styles.avatarContainer}>
             {user.avatar ? (
-              <Image source={{ uri: user.avatar }} style={[styles.avatarImg, { borderColor: colors.card }]} />
+              <Image source={{ uri: user.avatar }} style={[styles.avatarImg, { borderColor: user.avatarRingColor || colors.card }]} />
             ) : (
-              <View style={[styles.avatar, { backgroundColor: colors.primary + "20", borderColor: colors.card, borderWidth: 4 }]}>
+              <View style={[styles.avatar, { backgroundColor: (user.avatarRingColor || colors.primary) + "20", borderColor: user.avatarRingColor || colors.card, borderWidth: 4 }]}>
                 <Text style={[styles.avatarText, { color: colors.primary }]}>
                   {user.displayName?.charAt(0)?.toUpperCase() || user.username?.charAt(0)?.toUpperCase() || "U"}
                 </Text>
