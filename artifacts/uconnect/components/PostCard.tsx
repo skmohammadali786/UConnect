@@ -208,6 +208,7 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
   const hasMedia = post.mediaUrls && post.mediaUrls.length > 0;
   const hasVideo = !!post.videoUrl;
   const isReposted = hasReposted(post.id);
+  const auraRingColor = post.authorAuraRingColor || "#6366F1";
 
   const autoDeleteLabel = post.autoDeleteAt ? (() => {
     const diff = new Date(post.autoDeleteAt).getTime() - Date.now();
@@ -247,13 +248,13 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
             style={styles.authorRow}
           >
             {post.isAnonymous ? (
-              <View style={[styles.avatarWrap, { backgroundColor: colors.muted }]}>
+              <View style={[styles.avatarWrap, { backgroundColor: colors.muted, borderColor: "transparent" }]}>
                 <Feather name="user-x" size={14} color={colors.mutedForeground} />
               </View>
             ) : post.authorAvatar ? (
-              <Image source={{ uri: post.authorAvatar }} style={[styles.avatarWrap, styles.avatarImg]} />
+              <Image source={{ uri: post.authorAvatar }} style={[styles.avatarWrap, styles.avatarImg, { borderColor: auraRingColor }]} />
             ) : (
-              <View style={[styles.avatarWrap, { backgroundColor: colors.primary + "22" }]}>
+              <View style={[styles.avatarWrap, { backgroundColor: auraRingColor + "22", borderColor: auraRingColor }]}>
                 <Text style={[styles.avatarInitial, { color: colors.primary }]}>{initials}</Text>
               </View>
             )}
@@ -439,6 +440,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
+    borderWidth: 2,
     alignItems: "center",
     justifyContent: "center",
   },

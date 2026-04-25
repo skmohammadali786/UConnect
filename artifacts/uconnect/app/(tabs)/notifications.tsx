@@ -8,6 +8,8 @@ import { useNotifications } from "@/context/NotificationsContext";
 import type { Notification } from "@/context/NotificationsContext";
 import { formatRelativeTime } from "@/utils/time";
 import { TypewriterText } from "@/components/TypewriterText";
+import { ConfirmModal } from "@/components/ConfirmModal";
+import { useToast } from "@/components/Toast";
 
 const NOTIFICATION_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
   reply: "message-circle",
@@ -42,9 +44,11 @@ const NOTIFICATION_COLORS: Record<string, string> = {
 export default function NotificationsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
+  const { notifications, unreadCount, markRead, markAllRead, clearAllNotifications } = useNotifications();
+  const { showError, showSuccess } = useToast();
   const headerAnim = useRef(new Animated.Value(0)).current;
   const headerSlide = useRef(new Animated.Value(-16)).current;
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = React.useState(false);
 
   useEffect(() => {
     Animated.parallel([
@@ -89,6 +93,16 @@ export default function NotificationsScreen() {
     elevation: 2,
   };
 
+  const handleDeleteAll = async () => {
+    setShowDeleteAllConfirm(false);
+    const ok = await clearAllNotifications();
+    if (ok) {
+      showSuccess("Notifications cleared", "All notifications were deleted.");
+    } else {
+      showError("Failed to delete", "Could not delete notifications. Please try again.");
+    }
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}> 
       <Animated.View
@@ -114,11 +128,18 @@ export default function NotificationsScreen() {
           delay={300}
           speed={55}
         />
-        {unreadCount > 0 && (
-          <TouchableOpacity onPress={markAllRead} style={[styles.markAllBtn, { backgroundColor: colors.primarySoft }]}> 
-            <Text style={[styles.markAll, { color: colors.primary }]}>Mark all read</Text>
-          </TouchableOpacity>
-        )}
+        <View style={styles.headerActions}>
+          {notifications.length > 0 && (
+            <TouchableOpacity onPress={() => setShowDeleteAllConfirm(true)} style={[styles.markAllBtn, { backgroundColor: "#EF444415" }]}>
+              <Text style={[styles.markAll, { color: "#EF4444" }]}>Delete all</Text>
+            </TouchableOpacity>
+          )}
+          {unreadCount > 0 && (
+            <TouchableOpacity onPress={markAllRead} style={[styles.markAllBtn, { backgroundColor: colors.primarySoft }]}> 
+              <Text style={[styles.markAll, { color: colors.primary }]}>Mark all read</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </Animated.View>
 
       <FlatList
@@ -163,6 +184,16 @@ export default function NotificationsScreen() {
         }
         showsVerticalScrollIndicator={false}
       />
+      <ConfirmModal
+        visible={showDeleteAllConfirm}
+        title="Delete all notifications"
+        message="This will permanently remove all your notifications."
+        confirmText="Delete all"
+        cancelText="Cancel"
+        variant="danger"
+        onCancel={() => setShowDeleteAllConfirm(false)}
+        onConfirm={handleDeleteAll}
+      />
     </View>
   );
 }
@@ -170,6 +201,7 @@ export default function NotificationsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: 1 },
+  headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
   title: { fontSize: 22, fontFamily: "Inter_700Bold" },
   markAllBtn: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
   markAll: { fontSize: 13, fontFamily: "Inter_600SemiBold" },

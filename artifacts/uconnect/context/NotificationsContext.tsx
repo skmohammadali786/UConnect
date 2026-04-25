@@ -46,6 +46,7 @@ interface NotificationsContextType {
   markRead: (id: string) => void;
   markAllRead: () => void;
   deleteNotification: (id: string) => void;
+  clearAllNotifications: () => Promise<boolean>;
   addNotification: (n: Omit<Notification, "id" | "createdAt" | "isRead">) => void;
 }
 
@@ -149,6 +150,24 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     }
   };
 
+  const clearAllNotifications = useCallback(async (): Promise<boolean> => {
+    if (!user) {
+      setNotifications([]);
+      return true;
+    }
+    const previous = notifications;
+    setNotifications([]);
+    const { error } = await supabase
+      .from("notifications")
+      .delete()
+      .eq("user_id", user.id);
+    if (error) {
+      setNotifications(previous);
+      return false;
+    }
+    return true;
+  }, [notifications, user]);
+
   const addNotification = (n: Omit<Notification, "id" | "createdAt" | "isRead">) => {
     const newN: Notification = { ...n, id: generateId(), createdAt: new Date().toISOString(), isRead: false };
     setNotifications((prev) => [newN, ...prev]);
@@ -177,7 +196,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   return (
-    <NotificationsContext.Provider value={{ notifications, unreadCount, markRead, markAllRead, deleteNotification, addNotification }}>
+    <NotificationsContext.Provider value={{ notifications, unreadCount, markRead, markAllRead, deleteNotification, clearAllNotifications, addNotification }}>
       {children}
     </NotificationsContext.Provider>
   );

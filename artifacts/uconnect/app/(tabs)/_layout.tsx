@@ -7,6 +7,7 @@ import { useColors } from "@/hooks/useColors";
 import { useTheme } from "@/context/ThemeContext";
 import { useNotifications } from "@/context/NotificationsContext";
 import { TABLET_BREAKPOINT, getResponsiveContentMaxWidth } from "@/utils/responsiveLayout";
+import { setTabBarVisible, subscribeTabBarVisibility } from "@/utils/tabBarVisibility";
 
 const ND = Platform.OS !== "web";
 
@@ -67,6 +68,26 @@ export default function TabLayout() {
   const tabBarBottomPadding = isWeb ? (width >= TABLET_BREAKPOINT ? 12 : 6) : 12;
   const isDarkTheme = themeMode === "dark" || (themeMode === "system" && (scheme ?? "dark") === "dark");
   const { unreadCount } = useNotifications();
+  const [isTabBarVisible, setIsTabBarVisible] = React.useState(true);
+  const tabBarSlide = React.useRef(new Animated.Value(0)).current;
+  const tabBarOpacity = React.useRef(new Animated.Value(1)).current;
+
+  React.useEffect(() => subscribeTabBarVisibility(setIsTabBarVisible), []);
+
+  React.useEffect(() => {
+    Animated.parallel([
+      Animated.timing(tabBarSlide, {
+        toValue: isTabBarVisible ? 0 : tabBarHeight + 26,
+        duration: 200,
+        useNativeDriver: false,
+      }),
+      Animated.timing(tabBarOpacity, {
+        toValue: isTabBarVisible ? 1 : 0.15,
+        duration: 180,
+        useNativeDriver: false,
+      }),
+    ]).start();
+  }, [isTabBarVisible, tabBarHeight, tabBarSlide, tabBarOpacity]);
 
   return (
     <Tabs
@@ -98,6 +119,8 @@ export default function TabLayout() {
           width: "100%",
           alignSelf: "center",
           ...(contentMaxWidth ? { maxWidth: contentMaxWidth } : {}),
+          transform: [{ translateY: tabBarSlide }],
+          opacity: tabBarOpacity,
         },
         tabBarBackground: () =>
           isIOS ? (
@@ -108,6 +131,11 @@ export default function TabLayout() {
         tabBarLabelStyle: {
           fontFamily: "Inter_500Medium",
           fontSize: 11,
+        },
+      }}
+      screenListeners={{
+        state: () => {
+          setTabBarVisible(true);
         },
       }}
     >

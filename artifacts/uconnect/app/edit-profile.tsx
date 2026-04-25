@@ -179,7 +179,7 @@ export default function EditProfileScreen() {
           </View>
 
           <View style={{ gap: 8 }}>
-            <Text style={[styles.label, { color: colors.mutedForeground }]}>Profile Photo Ring Color</Text>
+            <Text style={[styles.label, { color: colors.mutedForeground }]}>Aura Ring Color</Text>
             <View style={[styles.colorInputWrap, { backgroundColor: colors.input, borderColor: isValidHexColor(avatarRingColor) ? avatarRingColor : colors.border }]}>
               <View style={[styles.colorPreview, { backgroundColor: isValidHexColor(avatarRingColor) ? avatarRingColor : "transparent", borderColor: colors.border }]} />
               <TextInput
@@ -201,7 +201,7 @@ export default function EditProfileScreen() {
                 />
               ))}
             </View>
-            <Text style={[styles.helperText, { color: colors.mutedForeground }]}>Use any HEX color (example: #22C55E). This ring will be visible on your public profile.</Text>
+            <Text style={[styles.helperText, { color: colors.mutedForeground }]}>Use any HEX color (example: #22C55E). Your Aura Ring is visible on your profile and feed posts.</Text>
           </View>
 
           <AppInput
