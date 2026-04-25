@@ -20,6 +20,7 @@ import { useSocial } from "@/context/SocialContext";
 import { useChat } from "@/context/ChatContext";
 import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
+import { setTabBarVisible } from "@/utils/tabBarVisibility";
 
 type FilterKey = "Latest" | "Trending" | "Following";
 
@@ -121,6 +122,8 @@ export default function HomeScreen() {
   const [feedReposts, setFeedReposts] = useState<Array<{ post_id: string; user_id: string; created_at: string; username?: string }>>([]);
   const [filterTrackWidth, setFilterTrackWidth] = useState(0);
   const totalUnreadMessages = conversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+  const lastScrollY = useRef(0);
+  const lastDirectionAt = useRef(0);
 
   const headerSlide = useRef(new Animated.Value(-60)).current;
   const headerFade = useRef(new Animated.Value(0)).current;
@@ -192,6 +195,11 @@ export default function HomeScreen() {
   useEffect(() => {
     loadFeedReposts();
   }, [loadFeedReposts]);
+
+  useEffect(() => {
+    setTabBarVisible(true);
+    return () => setTabBarVisible(true);
+  }, []);
 
   const { followingIds } = useSocial();
 
@@ -380,6 +388,28 @@ export default function HomeScreen() {
           />
         )}
         ListHeaderComponent={headerComponent}
+        onScroll={(event) => {
+          const y = event.nativeEvent.contentOffset.y;
+          const delta = y - lastScrollY.current;
+          const timestamp = Date.now();
+          if (Math.abs(delta) < 8) {
+            lastScrollY.current = y;
+            return;
+          }
+          if (delta > 0 && y > 72) {
+            if (timestamp - lastDirectionAt.current > 100) {
+              setTabBarVisible(false);
+              lastDirectionAt.current = timestamp;
+            }
+          } else if (delta < 0) {
+            if (timestamp - lastDirectionAt.current > 100) {
+              setTabBarVisible(true);
+              lastDirectionAt.current = timestamp;
+            }
+          }
+          lastScrollY.current = y;
+        }}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
