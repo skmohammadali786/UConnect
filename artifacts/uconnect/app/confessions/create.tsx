@@ -7,12 +7,14 @@ import { AppButton } from "@/components/AppButton";
 import { useColors } from "@/hooks/useColors";
 import { useConfessions } from "@/context/ConfessionsContext";
 import { useToast } from "@/components/Toast";
+import { useAuth } from "@/context/AuthContext";
 
 export default function CreateConfessionScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { addConfession } = useConfessions();
-  const { showSuccess } = useToast();
+  const { user } = useAuth();
+  const { showSuccess, showInfo } = useToast();
   const [content, setContent] = useState("");
   const [agreed, setAgreed] = useState(false);
   const [isSensitive, setIsSensitive] = useState(false);
@@ -30,6 +32,10 @@ export default function CreateConfessionScreen() {
 
   const handlePost = async () => {
     if (!content.trim() || !agreed) return;
+    if (!user?.isVerified) {
+      showInfo("Verification required", "Verify your profile to post anonymous confessions.");
+      return;
+    }
     setPosting(true);
     await addConfession(content.trim(), isSensitive);
     setPosting(false);
@@ -56,6 +62,14 @@ export default function CreateConfessionScreen() {
             <Text style={[styles.anonDesc, { color: colors.mutedForeground }]}>Your identity is never stored or shared.</Text>
           </View>
         </View>
+        {!user?.isVerified && (
+          <View style={[styles.verifyNotice, { backgroundColor: colors.primary + "10", borderColor: colors.primary + "30" }]}>
+            <Feather name="shield" size={14} color={colors.primary} />
+            <Text style={[styles.verifyNoticeText, { color: colors.mutedForeground }]}>
+              Profile verification is required before posting in confessions.
+            </Text>
+          </View>
+        )}
 
         {/* Text input */}
         <View style={[styles.textWrap, { backgroundColor: colors.card, borderColor: content ? colors.primary + "60" : colors.border }]}>
@@ -118,4 +132,6 @@ const styles = StyleSheet.create({
   agreeRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
   checkbox: { width: 20, height: 20, borderRadius: 5, borderWidth: 1.5, alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 },
   agreeText: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18, flex: 1 },
+  verifyNotice: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 10, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10 },
+  verifyNoticeText: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1, lineHeight: 18 },
 });

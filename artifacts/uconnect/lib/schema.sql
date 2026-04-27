@@ -23,6 +23,7 @@ create table if not exists profiles (
   following int not null default 0,
   posts_count int not null default 0,
   is_verified boolean not null default false,
+  chat_public_key text,
   joined_at timestamptz not null default now(),
   created_at timestamptz not null default now()
 );
@@ -319,6 +320,10 @@ create table if not exists messages (
   conversation_id uuid not null references conversations(id) on delete cascade,
   sender_id uuid not null references profiles(id) on delete cascade,
   content text not null,
+  encrypted_content text,
+  encryption_iv text,
+  sender_public_key text,
+  encryption_version int not null default 1,
   is_read boolean not null default false,
   is_revealed boolean not null default false,
   created_at timestamptz not null default now()

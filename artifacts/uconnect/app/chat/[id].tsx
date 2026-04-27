@@ -16,7 +16,7 @@ export default function ChatScreen() {
   const { id, username } = useLocalSearchParams<{ id: string; username?: string }>();
   const { conversations, sendMessage, markRead, revealIdentity, blockUser, startConversation } = useChat();
   const { user } = useAuth();
-  const { showError } = useToast();
+  const { showError, showInfo } = useToast();
   const [message, setMessage] = useState("");
   const [blockModalVisible, setBlockModalVisible] = useState(false);
   const [revealModalVisible, setRevealModalVisible] = useState(false);
@@ -69,9 +69,13 @@ export default function ChatScreen() {
     );
   }
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!message.trim()) return;
-    sendMessage(conv.id, message.trim(), user.id);
+    const ok = await sendMessage(conv.id, message.trim(), user.id);
+    if (!ok) {
+      showInfo("Encryption unavailable", "Could not send encrypted message right now. Please try again.");
+      return;
+    }
     setMessage("");
   };
 
@@ -134,6 +138,10 @@ export default function ChatScreen() {
           <Text style={[styles.anonText, { color: colors.primary }]}>Anonymous conversation. Identities are hidden until revealed.</Text>
         </View>
       )}
+      <View style={[styles.e2eeBanner, { backgroundColor: colors.secondary, borderBottomColor: colors.border }]}>
+        <Feather name="lock" size={13} color={colors.primary} />
+        <Text style={[styles.e2eeText, { color: colors.mutedForeground }]}>Messages are end-to-end encrypted.</Text>
+      </View>
 
       <FlatList
         ref={flatListRef}
@@ -212,6 +220,8 @@ const styles = StyleSheet.create({
   headerBtn: { padding: 6 },
   anonBanner: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingVertical: 8, borderBottomWidth: 1 },
   anonText: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1 },
+  e2eeBanner: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 16, paddingVertical: 6, borderBottomWidth: 1 },
+  e2eeText: { fontSize: 11, fontFamily: "Inter_400Regular" },
   inputBar: { flexDirection: "row", alignItems: "flex-end", gap: 10, paddingHorizontal: 12, paddingTop: 10, borderTopWidth: 1 },
   input: { flex: 1, borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, fontFamily: "Inter_400Regular", maxHeight: 100 },
   sendBtn: { width: 42, height: 42, borderRadius: 21, alignItems: "center", justifyContent: "center", flexShrink: 0 },

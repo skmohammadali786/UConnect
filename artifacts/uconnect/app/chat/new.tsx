@@ -14,6 +14,7 @@ interface Profile {
   college: string;
   displayName: string;
   avatar: string | null;
+  chatPublicKey: string | null;
 }
 
 export default function NewChatScreen() {
@@ -32,7 +33,7 @@ export default function NewChatScreen() {
       try {
         let query = supabase
           .from("profiles")
-          .select("id, username, display_name, college, avatar")
+          .select("id, username, display_name, college, avatar, chat_public_key")
           .neq("id", user?.id ?? "")
           .limit(25);
         if (q) {
@@ -47,6 +48,7 @@ export default function NewChatScreen() {
           displayName: r.display_name,
           college: r.college,
           avatar: r.avatar ?? null,
+          chatPublicKey: r.chat_public_key ?? null,
         })));
       } catch { setProfiles([]); }
       setLoading(false);
@@ -96,7 +98,7 @@ export default function NewChatScreen() {
           <TouchableOpacity
             onPress={async () => {
               try {
-                const convId = await startConversation(item.id, item.username, false);
+                const convId = await startConversation(item.id, item.username, false, item.chatPublicKey);
                 router.replace({ pathname: "/chat/[id]" as any, params: { id: convId } });
               } catch {}
             }}
