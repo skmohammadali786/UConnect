@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { safeInsertNotification } from "@/utils/notifications";
+import { decryptChatMessage, encryptChatMessage, ensureChatKeyPair } from "@/utils/chatEncryption";
 
 export interface Message {
   id: string;
@@ -17,6 +18,7 @@ export interface Conversation {
   participantId: string;
   participantUsername: string;
   participantAvatar: string | null;
+  participantPublicKey: string | null;
   isAnonymous: boolean;
   isRevealed: boolean;
   isBlocked: boolean;
@@ -28,8 +30,8 @@ export interface Conversation {
 
 interface ChatContextType {
   conversations: Conversation[];
-  sendMessage: (conversationId: string, content: string, senderId: string) => void;
-  startConversation: (participantId: string, participantUsername: string, isAnonymous: boolean) => Promise<string>;
+  sendMessage: (conversationId: string, content: string, senderId: string) => Promise<boolean>;
+  startConversation: (participantId: string, participantUsername: string, isAnonymous: boolean, participantPublicKey?: string | null) => Promise<string>;
   markRead: (conversationId: string) => void;
   revealIdentity: (conversationId: string) => void;
   blockUser: (conversationId: string) => Promise<boolean>;
@@ -46,13 +48,34 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const userId = user?.id;
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [chatKeyPair, setChatKeyPair] = useState<{ publicKeyRaw: string; privateKeyJwk: JsonWebKey } | null>(null);
+
+  useEffect(() => {
+    if (!userId) {
+      setChatKeyPair(null);
+      return;
+    }
+    ensureChatKeyPair(userId)
+      .then((pair) => {
+        setChatKeyPair(pair);
+        supabase
+          .from("profiles")
+          .update({ chat_public_key: pair.publicKeyRaw })
+          .eq("id", userId)
+          .neq("chat_public_key", pair.publicKeyRaw)
+          .then(() => {});
+      })
+      .catch(() => {
+        setChatKeyPair(null);
+      });
+  }, [userId]);
 
   const loadConversations = useCallback(async () => {
     if (!userId) return;
     try {
       const { data: convRows } = await supabase
         .from("conversations")
-        .select("*, user_a_profile:profiles!conversations_user_a_fkey(username, avatar), user_b_profile:profiles!conversations_user_b_fkey(username, avatar)")
+        .select("*, user_a_profile:profiles!conversations_user_a_fkey(username, avatar, chat_public_key), user_b_profile:profiles!conversations_user_b_fkey(username, avatar, chat_public_key)")
         .or(`user_a.eq.${userId},user_b.eq.${userId}`)
         .order("last_message_at", { ascending: false });
 
@@ -65,6 +88,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         const isUserA = row.user_a === userId;
         const participantId = isUserA ? row.user_b : row.user_a;
         const participantProfile = isUserA ? row.user_b_profile : row.user_a_profile;
+        const participantPublicKey = participantProfile?.chat_public_key ?? null;
         const participantUsername = row.is_anonymous && !row.is_revealed ? "anonymous" : (participantProfile?.username ?? "unknown");
 
         const { data: msgRows } = await supabase
@@ -73,13 +97,30 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           .eq("conversation_id", row.id)
           .order("created_at", { ascending: true });
 
-        const messages: Message[] = (msgRows ?? []).map((m: any) => ({
-          id: m.id,
-          senderId: m.sender_id,
-          content: m.content,
-          isRead: m.is_read,
-          createdAt: m.created_at,
-          isRevealed: m.is_revealed,
+        const messages: Message[] = await Promise.all((msgRows ?? []).map(async (m: any) => {
+          let content = m.content;
+          if (chatKeyPair?.privateKeyJwk && m.encrypted_content && m.encryption_iv) {
+            const otherPublicKey = m.sender_id === userId ? participantPublicKey : (m.sender_public_key ?? null);
+            if (otherPublicKey) {
+              const decrypted = await decryptChatMessage(
+                m.encrypted_content,
+                m.encryption_iv,
+                chatKeyPair.privateKeyJwk,
+                otherPublicKey,
+              );
+              content = decrypted ?? "🔒 Encrypted message";
+            } else {
+              content = "🔒 Encrypted message";
+            }
+          }
+          return {
+            id: m.id,
+            senderId: m.sender_id,
+            content,
+            isRead: m.is_read,
+            createdAt: m.created_at,
+            isRevealed: m.is_revealed,
+          };
         }));
 
         const unreadCount = messages.filter((m) => m.senderId !== userId && !m.isRead).length;
@@ -89,6 +130,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           participantId,
           participantUsername,
           participantAvatar: participantProfile?.avatar ?? null,
+          participantPublicKey,
           isAnonymous: row.is_anonymous,
           isRevealed: row.is_revealed,
           isBlocked: row.is_blocked,
@@ -103,7 +145,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     } catch {
       setConversations([]);
     }
-  }, [userId]);
+  }, [chatKeyPair?.privateKeyJwk, userId]);
 
   useEffect(() => {
     if (!userId) {
@@ -129,7 +171,18 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     };
   }, [userId, loadConversations]);
 
-  const sendMessage = (conversationId: string, content: string, senderId: string) => {
+  const sendMessage = async (conversationId: string, content: string, senderId: string): Promise<boolean> => {
+    const conv = conversations.find((c) => c.id === conversationId);
+    if (!conv) return false;
+    if (!chatKeyPair?.privateKeyJwk || !chatKeyPair.publicKeyRaw || !conv.participantPublicKey) {
+      return false;
+    }
+    let encrypted: { cipherText: string; iv: string; version: number };
+    try {
+      encrypted = await encryptChatMessage(content, chatKeyPair.privateKeyJwk, conv.participantPublicKey);
+    } catch {
+      return false;
+    }
     const newMessage: Message = {
       id: generateId(),
       senderId,
@@ -141,7 +194,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setConversations((prev) => {
       const next = prev.map((c) =>
         c.id === conversationId
-          ? { ...c, messages: [...c.messages, newMessage], lastMessage: content, lastMessageAt: newMessage.createdAt }
+          ? { ...c, messages: [...c.messages, newMessage], lastMessage: "🔒 Encrypted message", lastMessageAt: newMessage.createdAt }
           : c
       );
       const idx = next.findIndex((c) => c.id === conversationId);
@@ -150,17 +203,20 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       return [updated, ...next];
     });
     if (user) {
-      const conv = conversations.find((c) => c.id === conversationId);
       supabase.from("messages").insert({
         conversation_id: conversationId,
         sender_id: senderId,
-        content,
+        content: "🔒 Encrypted message",
+        encrypted_content: encrypted.cipherText,
+        encryption_iv: encrypted.iv,
+        sender_public_key: chatKeyPair.publicKeyRaw,
+        encryption_version: encrypted.version,
       }).then(({ error }) => {
         if (error) {
           console.error(`Failed to persist message for conversation ${conversationId}:`, error.message);
         }
       });
-      supabase.from("conversations").update({ last_message: content, last_message_at: newMessage.createdAt }).eq("id", conversationId).then(({ error }) => {
+      supabase.from("conversations").update({ last_message: "🔒 Encrypted message", last_message_at: newMessage.createdAt }).eq("id", conversationId).then(({ error }) => {
         if (error) {
           console.error(`Failed to update conversation metadata for ${conversationId}:`, error.message);
         }
@@ -170,7 +226,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             user_id: conv.participantId,
             type: "message",
             title: `New message from @${user.username}`,
-            body: content.length > 80 ? `${content.slice(0, 80)}...` : content,
+            body: "You received an end-to-end encrypted message.",
             action_id: conversationId,
             action_type: "chat",
             redirect_path: `/chat/${conversationId}`,
@@ -186,9 +242,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           });
         }
     }
+    return true;
   };
 
-  const startConversation = async (participantId: string, participantUsername: string, isAnonymous: boolean): Promise<string> => {
+  const startConversation = async (participantId: string, participantUsername: string, isAnonymous: boolean, participantPublicKey?: string | null): Promise<string> => {
     const existing = conversations.find((c) => c.participantId === participantId);
     if (existing) return existing.id;
 
@@ -199,6 +256,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         participantId,
         participantUsername,
         participantAvatar: null,
+        participantPublicKey: participantPublicKey ?? null,
         isAnonymous,
         isRevealed: !isAnonymous,
         isBlocked: false,
@@ -227,6 +285,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       participantId,
       participantUsername,
       participantAvatar: null,
+      participantPublicKey: participantPublicKey ?? null,
       isAnonymous,
       isRevealed: !isAnonymous,
       isBlocked: false,

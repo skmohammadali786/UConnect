@@ -52,7 +52,7 @@ export default function PostDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { posts, addComment, voteComment, deletePost, adjustCommentCount } = usePosts();
   const { user } = useAuth();
-  const { showError, showSuccess } = useToast();
+  const { showError, showSuccess, showInfo } = useToast();
   const [comment, setComment] = useState("");
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
   const [isAnon, setIsAnon] = useState(false);
@@ -65,6 +65,7 @@ export default function PostDetailScreen() {
   const slideAnim = useRef(new Animated.Value(24)).current;
 
   const post = posts.find((p) => p.id === id);
+  const canCommentAnonymously = Boolean(user?.isVerified);
 
   useEffect(() => {
     Animated.parallel([
@@ -200,6 +201,10 @@ export default function PostDetailScreen() {
 
   const handleSendComment = async () => {
     if (!comment.trim() || !user) return;
+    if (isAnon && !canCommentAnonymously) {
+      showInfo("Verification required", "Verify your profile to comment anonymously.");
+      return;
+    }
     const message = comment.trim();
     const replyingTo = replyTo;
     const tempId = LOCAL_ID_PREFIX + Date.now();
@@ -403,7 +408,16 @@ export default function PostDetailScreen() {
             </View>
           )}
           <View style={styles.inputRow}>
-            <TouchableOpacity onPress={() => setIsAnon((v) => !v)} style={[styles.anonToggle, { backgroundColor: isAnon ? colors.primary + "20" : colors.muted }]}>
+            <TouchableOpacity
+              onPress={() => {
+                if (!isAnon && !canCommentAnonymously) {
+                  showInfo("Verification required", "Verify your profile to comment anonymously.");
+                  return;
+                }
+                setIsAnon((v) => !v);
+              }}
+              style={[styles.anonToggle, { backgroundColor: isAnon ? colors.primary + "20" : colors.muted }]}
+            >
               <Feather name={isAnon ? "user-x" : "user"} size={14} color={isAnon ? colors.primary : colors.mutedForeground} />
             </TouchableOpacity>
             <TextInput
@@ -418,6 +432,11 @@ export default function PostDetailScreen() {
               <Feather name="send" size={16} color={comment.trim() ? "#FFFFFF" : colors.mutedForeground} />
             </TouchableOpacity>
           </View>
+          {!canCommentAnonymously && (
+            <Text style={[styles.verifyHint, { color: colors.mutedForeground }]}>
+              Verify your profile to enable anonymous comments.
+            </Text>
+          )}
         </View>
         <ConfirmModal
           visible={deleteConfirmVisible}
@@ -452,4 +471,5 @@ const styles = StyleSheet.create({
   anonToggle: { width: 34, height: 34, borderRadius: 10, alignItems: "center", justifyContent: "center", flexShrink: 0 },
   input: { flex: 1, borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, fontSize: 14, fontFamily: "Inter_400Regular", maxHeight: 100 },
   sendBtn: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  verifyHint: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 8, marginLeft: 2 },
 });

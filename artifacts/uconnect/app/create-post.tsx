@@ -65,6 +65,7 @@ export default function CreatePostScreen() {
   const [autoDelete, setAutoDelete] = useState("never");
   const [mediaUris, setMediaUris] = useState<string[]>([]);
   const [videoUri, setVideoUri] = useState<string | null>(null);
+  const canPostAnonymously = Boolean(user?.isVerified);
 
   const draftsAnim = useRef(new Animated.Value(0)).current;
   const autoDeleteAnim = useRef(new Animated.Value(0)).current;
@@ -137,6 +138,10 @@ export default function CreatePostScreen() {
 
   const handlePost = async () => {
     if (!content.trim() || !user) return;
+    if (isAnonymous && !canPostAnonymously) {
+      showInfo("Verification required", "Verify your profile to post anonymously.");
+      return;
+    }
 
     const rl = await recordAttempt(`post_create_${user.id}`, 10, 60 * 60 * 1000, 0);
     if (!rl.allowed) {
@@ -228,9 +233,30 @@ export default function CreatePostScreen() {
             </View>
             <View style={styles.toggleRow}>
               <Text style={[styles.anonLabel, { color: colors.mutedForeground }]}>Anon</Text>
-              <Switch value={isAnonymous} onValueChange={(value) => { setAnonymousTouched(true); setIsAnonymous(value); }} trackColor={{ false: colors.border, true: colors.primary }} thumbColor="#FFF" ios_backgroundColor={colors.border} />
+              <Switch
+                value={isAnonymous}
+                onValueChange={(value) => {
+                  if (value && !canPostAnonymously) {
+                    showInfo("Verification required", "Verify your profile to post anonymously.");
+                    return;
+                  }
+                  setAnonymousTouched(true);
+                  setIsAnonymous(value);
+                }}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor="#FFF"
+                ios_backgroundColor={colors.border}
+              />
             </View>
           </View>
+          {!canPostAnonymously && (
+            <View style={[styles.verifyNotice, { backgroundColor: colors.primary + "10", borderColor: colors.primary + "30" }]}>
+              <Feather name="shield" size={14} color={colors.primary} />
+              <Text style={[styles.verifyNoticeText, { color: colors.mutedForeground }]}>
+                Anonymous posting is available after profile verification.
+              </Text>
+            </View>
+          )}
 
           <View style={styles.tagSection}>
             <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>TAG</Text>
@@ -417,6 +443,8 @@ const styles = StyleSheet.create({
   authorSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
   toggleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   anonLabel: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  verifyNotice: { marginTop: -8, marginBottom: 16, borderRadius: 10, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10, flexDirection: "row", alignItems: "center", gap: 8 },
+  verifyNoticeText: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1, lineHeight: 18 },
   tagSection: { marginBottom: 10, gap: 8 },
   sectionLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8 },
   tagChip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1.5 },

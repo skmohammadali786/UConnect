@@ -30,7 +30,7 @@ export default function ConfessionDetailScreen() {
   const { confessions, voteConfession, addConfessionComment, voteConfessionComment, deleteConfession, deleteConfessionComment } = useConfessions();
   const { settings } = useSettings();
   const { user } = useAuth();
-  const { showError, showSuccess } = useToast();
+  const { showError, showSuccess, showInfo } = useToast();
   const [comment, setComment] = useState("");
   const [isAnon, setIsAnon] = useState(true);
   const [revealed, setRevealed] = useState(false);
@@ -45,6 +45,7 @@ export default function ConfessionDetailScreen() {
   const confession = confessions.find((c) => c.id === id);
   const confessionId = confession?.id;
   const isOwner = !!user && confession?.authorId === user.id;
+  const canCommentAnonymously = Boolean(user?.isVerified);
 
   const goBackSafely = () => {
     if (router.canGoBack()) {
@@ -152,6 +153,10 @@ export default function ConfessionDetailScreen() {
 
   const handleSendComment = async () => {
     if (!comment.trim() || !user) return;
+    if (isAnon && !canCommentAnonymously) {
+      showInfo("Verification required", "Verify your profile to comment anonymously in confessions.");
+      return;
+    }
     const message = comment.trim();
     const tempCommentId = LOCAL_ID_PREFIX + Date.now();
     const newComment: ConfessionComment = {
@@ -371,7 +376,19 @@ export default function ConfessionDetailScreen() {
         <View style={[styles.inputBar, { backgroundColor: colors.card, borderTopColor: colors.border, paddingBottom: Platform.OS === "web" ? 16 : insets.bottom + 8 }]}>
           <View style={[styles.anonToggle, { backgroundColor: colors.secondary }]}>
             <Feather name={isAnon ? "user-x" : "user"} size={14} color={isAnon ? colors.primary : colors.mutedForeground} />
-            <Switch value={isAnon} onValueChange={setIsAnon} trackColor={{ false: colors.border, true: colors.primary }} thumbColor="#FFF" style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }} />
+            <Switch
+              value={isAnon}
+              onValueChange={(value) => {
+                if (value && !canCommentAnonymously) {
+                  showInfo("Verification required", "Verify your profile to comment anonymously in confessions.");
+                  return;
+                }
+                setIsAnon(value);
+              }}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor="#FFF"
+              style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+            />
           </View>
           <TextInput
             value={comment}
@@ -390,6 +407,11 @@ export default function ConfessionDetailScreen() {
             <Feather name="send" size={16} color={comment.trim() && user ? "#FFF" : colors.mutedForeground} />
           </TouchableOpacity>
         </View>
+        {!canCommentAnonymously && (
+          <Text style={[styles.verifyHint, { color: colors.mutedForeground }]}>
+            Verify your profile to enable anonymous confession comments.
+          </Text>
+        )}
         <ConfirmModal
           visible={deleteConfirmVisible}
           title="Delete confession"
@@ -455,4 +477,5 @@ const styles = StyleSheet.create({
   anonToggle: { flexDirection: "row", alignItems: "center", gap: 2, paddingHorizontal: 6, paddingVertical: 6, borderRadius: 10 },
   commentInput: { flex: 1, borderRadius: 14, borderWidth: 1.5, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, fontFamily: "Inter_400Regular", maxHeight: 100 },
   sendBtn: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  verifyHint: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 8, marginHorizontal: 4 },
 });

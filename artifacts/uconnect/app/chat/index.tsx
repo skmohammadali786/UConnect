@@ -40,6 +40,10 @@ export default function ChatListScreen() {
           <Feather name="plus" size={18} color="#FFF" />
         </TouchableOpacity>
       </Animated.View>
+      <View style={[styles.e2eeBanner, { backgroundColor: colors.secondary, borderBottomColor: colors.border }]}>
+        <Feather name="lock" size={13} color={colors.primary} />
+        <Text style={[styles.e2eeText, { color: colors.mutedForeground }]}>All chats are end-to-end encrypted.</Text>
+      </View>
       <FlatList
         data={active}
         keyExtractor={(item) => item.id}
@@ -91,6 +95,8 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: 1 },
   title: { fontSize: 18, fontFamily: "Inter_700Bold" },
   createBtn: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  e2eeBanner: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, borderBottomWidth: 1, paddingVertical: 6, paddingHorizontal: 12 },
+  e2eeText: { fontSize: 11, fontFamily: "Inter_400Regular" },
   convItem: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14, gap: 12, borderBottomWidth: 1 },
   avatar: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center", flexShrink: 0 },
   avatarImage: { width: 48, height: 48, borderRadius: 24, flexShrink: 0 },
