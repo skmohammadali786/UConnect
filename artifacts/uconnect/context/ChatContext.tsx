@@ -40,6 +40,13 @@ interface ChatContextType {
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
+interface EncryptionReadiness {
+  webCryptoAvailable: boolean;
+  senderKeyPair: { publicKeyRaw: string; privateKeyJwk: JsonWebKey } | null;
+  senderProfilePublicKey: string | null;
+  recipientPublicKey: string | null;
+}
+
 function generateId() {
   return Date.now().toString() + Math.random().toString(36).substr(2, 9);
 }
@@ -171,18 +178,92 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     };
   }, [userId, loadConversations]);
 
+  const verifyEncryptionReadiness = useCallback(async (conv: Conversation): Promise<EncryptionReadiness> => {
+    const webCryptoAvailable = !!globalThis.crypto?.subtle && !!globalThis.crypto?.getRandomValues;
+
+    let senderKeyPair = chatKeyPair;
+    if (!senderKeyPair && userId) {
+      try {
+        const generated = await ensureChatKeyPair(userId);
+        senderKeyPair = generated;
+        setChatKeyPair(generated);
+      } catch {
+        senderKeyPair = null;
+      }
+    }
+
+    let senderProfilePublicKey: string | null = null;
+    if (userId) {
+      const { data: senderProfile } = await supabase
+        .from("profiles")
+        .select("chat_public_key")
+        .eq("id", userId)
+        .single();
+      senderProfilePublicKey = senderProfile?.chat_public_key ?? null;
+    }
+
+    if (userId && senderKeyPair?.publicKeyRaw && senderProfilePublicKey !== senderKeyPair.publicKeyRaw) {
+      senderProfilePublicKey = senderKeyPair.publicKeyRaw;
+      supabase
+        .from("profiles")
+        .update({ chat_public_key: senderKeyPair.publicKeyRaw })
+        .eq("id", userId)
+        .then(() => {});
+    }
+
+    let recipientPublicKey = conv.participantPublicKey;
+    if (!recipientPublicKey && conv.participantId) {
+      const { data: recipientProfile } = await supabase
+        .from("profiles")
+        .select("chat_public_key")
+        .eq("id", conv.participantId)
+        .single();
+      recipientPublicKey = recipientProfile?.chat_public_key ?? null;
+      if (recipientPublicKey) {
+        setConversations((prev) =>
+          prev.map((c) => (c.id === conv.id ? { ...c, participantPublicKey: recipientPublicKey } : c))
+        );
+      }
+    }
+
+    return {
+      webCryptoAvailable,
+      senderKeyPair,
+      senderProfilePublicKey,
+      recipientPublicKey,
+    };
+  }, [chatKeyPair, userId]);
+
   const sendMessage = async (conversationId: string, content: string, senderId: string): Promise<boolean> => {
     const conv = conversations.find((c) => c.id === conversationId);
     if (!conv) return false;
-    if (!chatKeyPair?.privateKeyJwk || !chatKeyPair.publicKeyRaw || !conv.participantPublicKey) {
-      return false;
+    const readiness = await verifyEncryptionReadiness(conv);
+    const activeKeyPair = readiness.senderKeyPair;
+    const participantPublicKey = readiness.recipientPublicKey;
+
+    let encrypted: { cipherText: string; iv: string; version: number } | null = null;
+    const canEncrypt =
+      readiness.webCryptoAvailable &&
+      !!activeKeyPair?.privateKeyJwk &&
+      !!activeKeyPair?.publicKeyRaw &&
+      readiness.senderProfilePublicKey === activeKeyPair.publicKeyRaw &&
+      !!participantPublicKey;
+    if (canEncrypt) {
+      try {
+        encrypted = await encryptChatMessage(content, activeKeyPair!.privateKeyJwk, participantPublicKey!);
+      } catch {
+        encrypted = null;
+      }
+    } else {
+      console.info("Chat E2EE prerequisites not fully met", {
+        conversationId,
+        webCryptoAvailable: readiness.webCryptoAvailable,
+        hasSenderKeyPair: !!activeKeyPair?.privateKeyJwk && !!activeKeyPair?.publicKeyRaw,
+        senderProfileKeyMatched: !!activeKeyPair?.publicKeyRaw && readiness.senderProfilePublicKey === activeKeyPair.publicKeyRaw,
+        hasRecipientKey: !!participantPublicKey,
+      });
     }
-    let encrypted: { cipherText: string; iv: string; version: number };
-    try {
-      encrypted = await encryptChatMessage(content, chatKeyPair.privateKeyJwk, conv.participantPublicKey);
-    } catch {
-      return false;
-    }
+    const messagePreview = encrypted ? "🔒 Encrypted message" : content;
     const newMessage: Message = {
       id: generateId(),
       senderId,
@@ -194,7 +275,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setConversations((prev) => {
       const next = prev.map((c) =>
         c.id === conversationId
-          ? { ...c, messages: [...c.messages, newMessage], lastMessage: "🔒 Encrypted message", lastMessageAt: newMessage.createdAt }
+          ? { ...c, messages: [...c.messages, newMessage], lastMessage: messagePreview, lastMessageAt: newMessage.createdAt }
           : c
       );
       const idx = next.findIndex((c) => c.id === conversationId);
@@ -203,30 +284,32 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       return [updated, ...next];
     });
     if (user) {
-      supabase.from("messages").insert({
+      const { error: insertError } = await supabase.from("messages").insert({
         conversation_id: conversationId,
         sender_id: senderId,
-        content: "🔒 Encrypted message",
-        encrypted_content: encrypted.cipherText,
-        encryption_iv: encrypted.iv,
-        sender_public_key: chatKeyPair.publicKeyRaw,
-        encryption_version: encrypted.version,
-      }).then(({ error }) => {
-        if (error) {
-          console.error(`Failed to persist message for conversation ${conversationId}:`, error.message);
-        }
+        content: messagePreview,
+        encrypted_content: encrypted?.cipherText ?? null,
+        encryption_iv: encrypted?.iv ?? null,
+        sender_public_key: encrypted ? activeKeyPair?.publicKeyRaw ?? null : null,
+        encryption_version: encrypted?.version ?? 1,
       });
-      supabase.from("conversations").update({ last_message: "🔒 Encrypted message", last_message_at: newMessage.createdAt }).eq("id", conversationId).then(({ error }) => {
-        if (error) {
-          console.error(`Failed to update conversation metadata for ${conversationId}:`, error.message);
-        }
-      });
+      if (insertError) {
+        console.error(`Failed to persist message for conversation ${conversationId}:`, insertError.message);
+        return false;
+      }
+      const { error: conversationError } = await supabase
+        .from("conversations")
+        .update({ last_message: messagePreview, last_message_at: newMessage.createdAt })
+        .eq("id", conversationId);
+      if (conversationError) {
+        console.error(`Failed to update conversation metadata for ${conversationId}:`, conversationError.message);
+      }
         if (conv?.participantId) {
           safeInsertNotification({
             user_id: conv.participantId,
             type: "message",
             title: `New message from @${user.username}`,
-            body: "You received an end-to-end encrypted message.",
+            body: encrypted ? "You received an end-to-end encrypted message." : "You received a new message.",
             action_id: conversationId,
             action_type: "chat",
             redirect_path: `/chat/${conversationId}`,
