@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
@@ -13,6 +14,7 @@ import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/Toast";
 import { ALL_INTERESTS } from "@/constants/interests";
+import { supabase } from "@/lib/supabase";
 
 const ND = Platform.OS !== "web";
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "Postgraduate", "PhD", "Alumni"];
@@ -20,6 +22,50 @@ const DEFAULT_AVATAR_RING_COLOR = "#6366F1";
 const RING_SWATCHES = ["#6366F1", "#EF4444", "#F59E0B", "#10B981", "#06B6D4", "#8B5CF6", "#EC4899", "#111827"];
 
 const isValidHexColor = (value: string) => /^#([0-9A-F]{3}|[0-9A-F]{6})$/i.test(value.trim());
+type SelectedImage = { uri: string; mimeType?: string; fileName?: string };
+type VerificationRequest = {
+  status: "pending" | "approved" | "rejected";
+  college_id_url: string | null;
+  photo_id_url: string | null;
+  rejection_reason: string | null;
+};
+
+function getImageFileExtension(image: SelectedImage) {
+  const fromName = image.fileName?.split(".").pop()?.toLowerCase();
+  const fromMime = image.mimeType?.split("/")[1]?.toLowerCase();
+  const ext = fromName || fromMime || "jpg";
+  if (ext === "jpeg") return "jpg";
+  if (["jpg", "png", "webp", "heic", "heif"].includes(ext)) return ext;
+  return "jpg";
+}
+
+function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  const clean = base64.replace(/=+$/, "");
+  let bytes = 0;
+  let buffer = 0;
+  const out: number[] = [];
+  for (let i = 0; i < clean.length; i += 1) {
+    const value = chars.indexOf(clean[i]);
+    if (value < 0) continue;
+    buffer = (buffer << 6) | value;
+    bytes += 6;
+    if (bytes >= 8) {
+      bytes -= 8;
+      out.push((buffer >> bytes) & 0xff);
+    }
+  }
+  return Uint8Array.from(out).buffer;
+}
+
+async function uriToUploadBody(uri: string): Promise<Blob | ArrayBuffer> {
+  if (Platform.OS === "web") {
+    const res = await fetch(uri);
+    return await res.blob();
+  }
+  const base64 = await FileSystem.readAsStringAsync(uri, { encoding: "base64" });
+  return base64ToArrayBuffer(base64);
+}
 
 export default function EditProfileScreen() {
   const colors = useColors();
@@ -35,7 +81,12 @@ export default function EditProfileScreen() {
   const [avatarRingColor, setAvatarRingColor] = useState(user?.avatarRingColor || DEFAULT_AVATAR_RING_COLOR);
   const [bannerUri, setBannerUri] = useState<string | null>(user?.banner || null);
   const [saving, setSaving] = useState(false);
+  const [verificationLoading, setVerificationLoading] = useState(false);
+  const [requestingVerification, setRequestingVerification] = useState(false);
   const [showYearPicker, setShowYearPicker] = useState(false);
+  const [collegeIdImage, setCollegeIdImage] = useState<SelectedImage | null>(null);
+  const [photoIdImage, setPhotoIdImage] = useState<SelectedImage | null>(null);
+  const [verificationRequest, setVerificationRequest] = useState<VerificationRequest | null>(null);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(24)).current;
@@ -46,6 +97,20 @@ export default function EditProfileScreen() {
       Animated.spring(slideAnim, { toValue: 0, tension: 80, friction: 10, useNativeDriver: ND }),
     ]).start();
   }, []);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    (async () => {
+      setVerificationLoading(true);
+      const { data } = await supabase
+        .from("profile_verification_requests")
+        .select("status,college_id_url,photo_id_url,rejection_reason")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      setVerificationRequest((data as VerificationRequest | null) ?? null);
+      setVerificationLoading(false);
+    })();
+  }, [user?.id]);
 
   const toggleInterest = (interest: string) => {
     setSelectedInterests((prev) =>
@@ -109,6 +174,96 @@ export default function EditProfileScreen() {
     }
   };
 
+  const handlePickVerificationDoc = async (type: "college" | "photo") => {
+    if (Platform.OS === "web") {
+      showInfo("Mobile recommended", "Document upload works best on the mobile app.");
+      return;
+    }
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        showError("Permission denied", "Please allow access to your photo library in Settings.");
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.85,
+      });
+      if (result.canceled || !result.assets[0]) return;
+      const asset = result.assets[0];
+      const selected: SelectedImage = { uri: asset.uri, mimeType: asset.mimeType ?? undefined, fileName: asset.fileName ?? undefined };
+      if (type === "college") setCollegeIdImage(selected);
+      else setPhotoIdImage(selected);
+    } catch {
+      showError("Upload failed", "Unable to pick document. Please try again.");
+    }
+  };
+
+  const handleRequestVerification = async () => {
+    if (!user?.id) return;
+    if (user.isVerified || verificationRequest?.status === "approved") {
+      showInfo("Already verified", "Your profile is already verified.");
+      return;
+    }
+    const hasCollegeDoc = Boolean(collegeIdImage || verificationRequest?.college_id_url);
+    const hasPhotoDoc = Boolean(photoIdImage || verificationRequest?.photo_id_url);
+    if (!hasCollegeDoc || !hasPhotoDoc) {
+      showError("Documents required", "Please upload both your college ID card and photo ID proof.");
+      return;
+    }
+
+    setRequestingVerification(true);
+    try {
+      const now = Date.now();
+      let collegeIdUrl = verificationRequest?.college_id_url ?? null;
+      let photoIdUrl = verificationRequest?.photo_id_url ?? null;
+      const uploadDoc = async (image: SelectedImage, label: "college_id" | "photo_id") => {
+        const ext = getImageFileExtension(image);
+        const path = `${user.id}/${label}_${now}.${ext}`;
+        const body = await uriToUploadBody(image.uri);
+        const { error: uploadError } = await supabase.storage
+          .from("verification-documents")
+          .upload(path, body, { contentType: image.mimeType ?? undefined, upsert: true });
+        if (uploadError) throw uploadError;
+        const { data: signed } = await supabase.storage
+          .from("verification-documents")
+          .createSignedUrl(path, 60 * 60 * 24 * 365);
+        return signed?.signedUrl ?? null;
+      };
+
+      if (collegeIdImage) collegeIdUrl = await uploadDoc(collegeIdImage, "college_id");
+      if (photoIdImage) photoIdUrl = await uploadDoc(photoIdImage, "photo_id");
+
+      const { error } = await supabase
+        .from("profile_verification_requests")
+        .upsert({
+          user_id: user.id,
+          college_id_url: collegeIdUrl,
+          photo_id_url: photoIdUrl,
+          status: "pending",
+          rejection_reason: null,
+          submitted_at: new Date().toISOString(),
+          reviewed_at: null,
+        }, { onConflict: "user_id" });
+      if (error) throw error;
+
+      setVerificationRequest({
+        status: "pending",
+        college_id_url: collegeIdUrl,
+        photo_id_url: photoIdUrl,
+        rejection_reason: null,
+      });
+      setCollegeIdImage(null);
+      setPhotoIdImage(null);
+      showSuccess("Request submitted", "Your verification request is under review.");
+    } catch (err: any) {
+      showError("Request failed", err?.message ?? "Could not submit verification request.");
+    } finally {
+      setRequestingVerification(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!displayName.trim()) {
       showError("Name required", "Please enter a display name.");
@@ -133,6 +288,7 @@ export default function EditProfileScreen() {
 
   const initials = displayName?.charAt(0)?.toUpperCase() || user?.username?.charAt(0)?.toUpperCase() || "U";
   const previewRingColor = isValidHexColor(avatarRingColor) ? avatarRingColor : DEFAULT_AVATAR_RING_COLOR;
+  const isProfileVerified = Boolean(user?.isVerified || verificationRequest?.status === "approved");
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
@@ -290,6 +446,66 @@ export default function EditProfileScreen() {
             </View>
           </View>
 
+          <View style={[styles.verificationCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.verificationHeader}>
+              <Text style={[styles.verificationTitle, { color: colors.foreground }]}>Profile Verification</Text>
+              {isProfileVerified ? (
+                <View style={[styles.verifiedBadge, { backgroundColor: colors.primary + "15" }]}>
+                  <Feather name="check-circle" size={12} color={colors.primary} />
+                  <Text style={[styles.verifiedText, { color: colors.primary }]}>Verified</Text>
+                </View>
+              ) : null}
+            </View>
+            {isProfileVerified ? (
+              <Text style={[styles.helperText, { color: colors.mutedForeground }]}>
+                Your profile is verified. No verification required.
+              </Text>
+            ) : (
+              <>
+                <Text style={[styles.helperText, { color: colors.mutedForeground }]}>
+                  Upload your college ID card and a government photo ID. Once approved by admin, your verified badge will appear next to your username.
+                </Text>
+                {verificationRequest?.status === "pending" ? (
+                  <Text style={[styles.statusText, { color: "#F59E0B" }]}>Status: Pending approval</Text>
+                ) : verificationRequest?.status === "rejected" ? (
+                  <Text style={[styles.statusText, { color: "#EF4444" }]}>
+                    Status: Rejected{verificationRequest.rejection_reason ? ` — ${verificationRequest.rejection_reason}` : ""}
+                  </Text>
+                ) : null}
+
+                <View style={styles.docRow}>
+                  <TouchableOpacity
+                    onPress={() => handlePickVerificationDoc("college")}
+                    style={[styles.docBtn, { backgroundColor: colors.input, borderColor: colors.border }]}
+                  >
+                    <Feather name="credit-card" size={14} color={colors.primary} />
+                    <Text style={[styles.docBtnText, { color: colors.foreground }]}>
+                      {collegeIdImage || verificationRequest?.college_id_url ? "College ID added" : "Upload College ID"}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => handlePickVerificationDoc("photo")}
+                    style={[styles.docBtn, { backgroundColor: colors.input, borderColor: colors.border }]}
+                  >
+                    <Feather name="file-text" size={14} color={colors.primary} />
+                    <Text style={[styles.docBtnText, { color: colors.foreground }]}>
+                      {photoIdImage || verificationRequest?.photo_id_url ? "Photo ID added" : "Upload Photo ID"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                <AppButton
+                  title={verificationRequest?.status === "pending" ? "Resubmit Request" : "Request Verification"}
+                  onPress={handleRequestVerification}
+                  loading={requestingVerification || verificationLoading}
+                  fullWidth
+                  size="md"
+                />
+              </>
+            )}
+          </View>
+
           <AppButton title="Save Changes" onPress={handleSave} loading={saving} disabled={!displayName.trim()} fullWidth size="lg" />
         </ScrollView>
       </Animated.View>
@@ -338,4 +554,11 @@ const styles = StyleSheet.create({
   interestGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   interestChip: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, borderWidth: 1 },
   interestText: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  verificationCard: { borderWidth: 1, borderRadius: 14, padding: 14, gap: 10 },
+  verificationHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  verificationTitle: { fontSize: 15, fontFamily: "Inter_700Bold" },
+  statusText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  docRow: { gap: 8 },
+  docBtn: { flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11 },
+  docBtnText: { fontSize: 13, fontFamily: "Inter_500Medium" },
 });
