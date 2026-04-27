@@ -28,6 +28,7 @@ export interface Post {
   authorUsername: string;
   authorAvatar: string | null;
   authorAuraRingColor?: string;
+  authorIsVerified?: boolean;
   college: string;
   isAnonymous: boolean;
   tag: PostTag;
@@ -86,6 +87,7 @@ function rowToPost(row: any, userVote: "up" | "down" | null = null, isBookmarked
     authorUsername: row.is_anonymous ? "anonymous" : row.author_username,
     authorAvatar: row.is_anonymous ? null : row.author_avatar,
     authorAuraRingColor: row.is_anonymous ? undefined : (row.author_aura_ring_color ?? row.author_avatar_ring_color ?? "#6366F1"),
+    authorIsVerified: row.is_anonymous ? false : (row.author_is_verified ?? false),
     college: row.college,
     isAnonymous: row.is_anonymous,
     tag: row.tag as PostTag,
@@ -163,7 +165,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
         setRepostedPostIds(new Set<string>((repostsRes.data ?? []).map((r: any) => r.post_id)));
         const authorIds = Array.from(new Set(postsRes.data.filter((row: any) => !row.is_anonymous).map((row: any) => row.author_id)));
         const { data: authorProfiles } = authorIds.length > 0
-          ? await supabase.from("profiles").select("id,username,avatar,avatar_ring_color").in("id", authorIds)
+          ? await supabase.from("profiles").select("id,username,avatar,avatar_ring_color,is_verified").in("id", authorIds)
           : { data: [] as any[] };
         const authorMap = new Map((authorProfiles ?? []).map((p: any) => [p.id, p]));
 
@@ -176,6 +178,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
               author_username: row.is_anonymous ? row.author_username : (profile?.username ?? row.author_username),
               author_avatar: row.is_anonymous ? null : (profile?.avatar ?? row.author_avatar),
               author_aura_ring_color: row.is_anonymous ? null : (profile?.avatar_ring_color ?? "#6366F1"),
+              author_is_verified: row.is_anonymous ? false : Boolean(profile?.is_verified),
             },
             voteMap.get(row.id) ?? null,
             bookmarkSet.has(row.id),

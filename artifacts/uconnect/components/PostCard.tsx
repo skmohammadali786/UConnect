@@ -259,9 +259,16 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
               </View>
             )}
             <View>
-              <Text style={[styles.username, { color: post.isAnonymous ? colors.mutedForeground : colors.foreground }]}>
-                {post.isAnonymous ? "Anonymous" : `@${post.authorUsername}`}
-              </Text>
+              <View style={styles.usernameRow}>
+                <Text style={[styles.username, { color: post.isAnonymous ? colors.mutedForeground : colors.foreground }]}>
+                  {post.isAnonymous ? "Anonymous" : `@${post.authorUsername}`}
+                </Text>
+                {!post.isAnonymous && post.authorIsVerified ? (
+                  <View style={[styles.verifiedBadge, { backgroundColor: colors.primary }]}> 
+                    <Feather name="check" size={9} color="#FFF" />
+                  </View>
+                ) : null}
+              </View>
               <Text style={[styles.meta, { color: colors.mutedForeground }]}>
                 {post.college} · {formatRelativeTime(post.createdAt)}
                 {autoDeleteLabel ? ` · ⏱ ${autoDeleteLabel}` : ""}
@@ -446,7 +453,9 @@ const styles = StyleSheet.create({
   },
   avatarImg: { backgroundColor: "transparent" },
   avatarInitial: { fontSize: 15, fontFamily: "Inter_700Bold" },
+  usernameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   username: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  verifiedBadge: { width: 15, height: 15, borderRadius: 8, alignItems: "center", justifyContent: "center" },
   meta: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },
   tag: {
     paddingHorizontal: 8,

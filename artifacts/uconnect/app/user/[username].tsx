@@ -71,7 +71,7 @@ export default function UserProfileScreen() {
             interests: data.interests || [],
             followers: data.followers ?? 0,
             following: data.following ?? 0,
-            isVerified: false,
+            isVerified: Boolean(data.is_verified),
             avatar: data.avatar || null,
             avatarRingColor: data.avatar_ring_color || "#6366F1",
             banner: data.banner || null,
