@@ -241,6 +241,11 @@ export default function ProfileScreen() {
           ) : (
             <View style={styles.coverGradient} />
           )}
+          <View style={styles.bannerOverlay} />
+          <View style={styles.bannerAccentRow}>
+            <View style={[styles.bannerAccentDot, { backgroundColor: colors.primary + "70" }]} />
+            <View style={[styles.bannerAccentDot, { backgroundColor: colors.primary + "40" }]} />
+          </View>
         </View>
 
         <View style={styles.avatarRow}>
@@ -261,8 +266,7 @@ export default function ProfileScreen() {
           <View style={styles.profileActions}>
             <TouchableOpacity onPress={() => router.push("/edit-profile")} style={[styles.editBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
               <Feather name="edit-2" size={14} color={colors.foreground} />
-              <Text style={[styles.editBtnText, { color: colors.foreground }]}>Edit Profile</Text>
-            </TouchableOpacity>
+              </TouchableOpacity>
             <TouchableOpacity onPress={() => router.push("/invite")} style={[styles.shareBtn, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "30" }]}>
               <Feather name="user-plus" size={14} color={colors.primary} />
             </TouchableOpacity>
@@ -279,7 +283,7 @@ export default function ProfileScreen() {
               <MaterialCommunityIcons name="qrcode" size={14} color={colors.primary} />
             </TouchableOpacity>
             {user.isVerified && (
-              <View style={[styles.verifiedBadge, { backgroundColor: colors.primary }]}>
+              <View style={[styles.verifiedBadge, { backgroundColor: user.username?.toLowerCase() === "uconnect" ? "#FFFF00" : "#16A34A" }]}>
                 <Feather name="check" size={10} color="#FFF" />
               </View>
             )}
@@ -513,9 +517,13 @@ const styles = StyleSheet.create({
   signInBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#FFF" },
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: 1 },
   topBarTitle: { fontSize: 22, fontFamily: "Inter_700Bold" },
-  coverBanner: { height: 122, position: "relative", borderBottomLeftRadius: 22, borderBottomRightRadius: 22, overflow: "hidden" },
+  coverBanner: { height: 190, position: "relative", borderBottomLeftRadius: 24, borderBottomRightRadius: 24, overflow: "hidden" },
   coverImage: { width: "100%", height: "100%" },
   coverGradient: { position: "absolute", inset: 0 },
+  bannerGlow: { position: "absolute", width: 220, height: 220, borderRadius: 110, top: -90, right: -70 },
+  bannerOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.12)" },
+  bannerAccentRow: { position: "absolute", bottom: 12, right: 14, flexDirection: "row", gap: 8 },
+  bannerAccentDot: { width: 8, height: 8, borderRadius: 99 },
   avatarRow: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", paddingHorizontal: 16, marginTop: -44, marginBottom: 12 },
   avatarContainer: { position: "relative" },
   avatar: { width: 82, height: 82, borderRadius: 41, alignItems: "center", justifyContent: "center" },

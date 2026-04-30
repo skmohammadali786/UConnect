@@ -207,8 +207,10 @@ export default function UserProfileScreen() {
               {profile.banner ? (
                 <Image source={{ uri: profile.banner }} style={styles.cover} resizeMode="cover" />
               ) : (
-                <View style={[styles.cover, { backgroundColor: colors.primary + "15" }]} />
+                <View style={[styles.cover, { backgroundColor: colors.primary + "12" }]} />
               )}
+              <View style={styles.coverOverlay} />
+              <View style={styles.coverAccent} />
 
               <View style={styles.avatarRow}>
                 {profile.avatar ? (
@@ -249,7 +251,6 @@ export default function UserProfileScreen() {
                   {isMe && (
                     <TouchableOpacity onPress={() => router.push("/edit-profile")} style={[styles.editBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
                       <Feather name="edit-2" size={14} color={colors.foreground} />
-                      <Text style={[styles.editBtnText, { color: colors.foreground }]}>Edit</Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -270,7 +271,7 @@ export default function UserProfileScreen() {
                     <MaterialCommunityIcons name="qrcode" size={14} color={colors.primary} />
                   </TouchableOpacity>
                   {profile.isVerified && (
-                    <View style={[styles.verifiedBadge, { backgroundColor: colors.primary }]}>
+                    <View style={[styles.verifiedBadge, { backgroundColor: profile.username?.toLowerCase() === "uconnect" ? "#FFFF00" : "#16A34A" }]}>
                       <Feather name="check" size={10} color="#FFF" />
                     </View>
                   )}
@@ -357,7 +358,9 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1 },
   backBtn: { padding: 4 },
   headerTitle: { fontSize: 17, fontFamily: "Inter_700Bold" },
-  cover: { height: 80 },
+  cover: { height: 190, marginHorizontal: 16, marginTop: 14, borderRadius: 24 },
+  coverOverlay: { position: "absolute", left: 16, right: 16, top: 14, height: 190, borderRadius: 24, backgroundColor: "rgba(0,0,0,0.12)" },
+  coverAccent: { position: "absolute", right: 28, top: 28, width: 110, height: 110, borderRadius: 80, backgroundColor: "rgba(255,255,255,0.12)" },
   avatarRow: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", paddingHorizontal: 16, marginTop: -32, marginBottom: 10 },
   avatar: { width: 76, height: 76, borderRadius: 38, alignItems: "center", justifyContent: "center" },
   avatarImg: { width: 76, height: 76, borderRadius: 38, borderWidth: 4 },
