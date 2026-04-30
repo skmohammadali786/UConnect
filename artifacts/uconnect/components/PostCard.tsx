@@ -42,6 +42,9 @@ const TAG_COLORS: Record<string, string> = {
   Confession: "#A855F7",
 };
 
+const OFFICIAL_UCONNECT_BADGE_COLOR = "#EE4B2B";
+const DEFAULT_VERIFIED_BADGE_COLOR = "#16A34A";
+
 interface PostCardProps {
   post: Post;
   currentUserId: string;
@@ -81,6 +84,8 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
   const downAnim = useRef(new Animated.Value(1)).current;
   const bookmarkAnim = useRef(new Animated.Value(1)).current;
   const deleteAnim = useRef(new Animated.Value(1)).current;
+  const isOfficialUconnectAuthor = post.authorUsername?.toLowerCase() === "uconnect";
+  const verifiedBadgeColor = isOfficialUconnectAuthor ? OFFICIAL_UCONNECT_BADGE_COLOR : DEFAULT_VERIFIED_BADGE_COLOR;
 
   const pulse = (anim: Animated.Value) => {
     Animated.sequence([
@@ -264,7 +269,7 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
                   {post.isAnonymous ? "Anonymous" : `@${post.authorUsername}`}
                 </Text>
                 {!post.isAnonymous && post.authorIsVerified ? (
-                  <View style={[styles.verifiedBadge, { backgroundColor: colors.primary }]}> 
+                  <View style={[styles.verifiedBadge, { backgroundColor: verifiedBadgeColor }]}>
                     <Feather name="check" size={9} color="#FFF" />
                   </View>
                 ) : null}
