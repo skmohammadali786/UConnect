@@ -67,6 +67,16 @@ export default function HelpScreen() {
     showError("Could not open email app", email);
   };
 
+
+
+  const handleChatSupport = async () => {
+    const chatUrl = "https://instagram.com/uconnect";
+    try {
+      await Linking.openURL(chatUrl);
+      return;
+    } catch {}
+    showError("Could not open chat", "@uconnect");
+  };
   return (
     <Animated.View style={[styles.container, { backgroundColor: colors.background, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
       <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, borderBottomColor: colors.border }]}>
@@ -108,6 +118,7 @@ export default function HelpScreen() {
 
         {[
           { icon: "mail", label: "Email Support", sub: "support@uconnect.social", action: handleEmailSupport },
+          { icon: "message-circle", label: "Chat With Us", sub: "Official @uconnect account", action: handleChatSupport },
         ].map((item) => (
           <TouchableOpacity
             key={item.label}

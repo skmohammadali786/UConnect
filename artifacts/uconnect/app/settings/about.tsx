@@ -67,7 +67,6 @@ export default function AboutScreen() {
             </View>
           ))}
 
-          <Text style={[styles.sectionLabel, { color: colors.foreground }]}>Meet the Team</Text>
           <View style={styles.teamGrid}>
             {TEAM.map((m) => (
               <View key={m.name} style={[styles.teamCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
