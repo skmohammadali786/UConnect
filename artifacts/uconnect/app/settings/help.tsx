@@ -70,9 +70,14 @@ export default function HelpScreen() {
 
 
   const handleChatSupport = async () => {
-    const chatUrl = "https://instagram.com/uconnect";
+    const chatUrl = "uconnect://user/uconnect";
+    const fallbackUrl = "https://uconnect.app/user/uconnect";
     try {
       await Linking.openURL(chatUrl);
+      return;
+    } catch {}
+    try {
+      await Linking.openURL(fallbackUrl);
       return;
     } catch {}
     showError("Could not open chat", "@uconnect");

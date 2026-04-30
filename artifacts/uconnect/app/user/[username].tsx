@@ -13,6 +13,8 @@ import { useToast } from "@/components/Toast";
 import { supabase } from "@/lib/supabase";
 
 const ND = Platform.OS !== "web";
+const OFFICIAL_UCONNECT_BADGE_COLOR = "#EE4B2B";
+const DEFAULT_VERIFIED_BADGE_COLOR = "#16A34A";
 
 
 export default function UserProfileScreen() {
@@ -271,7 +273,7 @@ export default function UserProfileScreen() {
                     <MaterialCommunityIcons name="qrcode" size={14} color={colors.primary} />
                   </TouchableOpacity>
                   {profile.isVerified && (
-                    <View style={[styles.verifiedBadge, { backgroundColor: profile.username?.toLowerCase() === "uconnect" ? "#FFFF00" : "#16A34A" }]}>
+                    <View style={[styles.verifiedBadge, { backgroundColor: profile.username?.toLowerCase() === "uconnect" ? OFFICIAL_UCONNECT_BADGE_COLOR : DEFAULT_VERIFIED_BADGE_COLOR }]}>
                       <Feather name="check" size={10} color="#FFF" />
                     </View>
                   )}

@@ -23,6 +23,8 @@ import { useSettings } from "@/context/SettingsContext";
 
 type TabId = "posts" | "saved" | "reposts" | "confessions" | "activity";
 const PROFILE_TAB_MIN_WIDTH = 92;
+const OFFICIAL_UCONNECT_BADGE_COLOR = "#EE4B2B";
+const DEFAULT_VERIFIED_BADGE_COLOR = "#16A34A";
 
 export default function ProfileScreen() {
   const colors = useColors();
@@ -283,7 +285,7 @@ export default function ProfileScreen() {
               <MaterialCommunityIcons name="qrcode" size={14} color={colors.primary} />
             </TouchableOpacity>
             {user.isVerified && (
-              <View style={[styles.verifiedBadge, { backgroundColor: user.username?.toLowerCase() === "uconnect" ? "#FFFF00" : "#16A34A" }]}>
+              <View style={[styles.verifiedBadge, { backgroundColor: user.username?.toLowerCase() === "uconnect" ? OFFICIAL_UCONNECT_BADGE_COLOR : DEFAULT_VERIFIED_BADGE_COLOR }]}>
                 <Feather name="check" size={10} color="#FFF" />
               </View>
             )}
