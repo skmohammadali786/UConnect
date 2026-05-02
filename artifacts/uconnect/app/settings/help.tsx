@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
   heroIcon: { width: 60, height: 60, borderRadius: 18, alignItems: "center", justifyContent: "center" },
   heroTitle: { fontSize: 20, fontFamily: "Inter_700Bold" },
   heroSubtitle: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
-  sectionTitle: { fontSize: 16, fontFamily: "Inter_700Bold", marginTop: 8 },
+  sectionTitle: { fontSize: 16, fontFamily: "Inter_700Bold", marginTop: 8, textAlign: "center", alignSelf: "center" },
   faqCard: { borderRadius: 14, borderWidth: 1, padding: 16, gap: 10 },
   faqRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   faqQ: { fontSize: 14, fontFamily: "Inter_600SemiBold", lineHeight: 20 },
