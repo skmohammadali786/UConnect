@@ -275,7 +275,7 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
         };
       });
     });
-    if (commentId.startsWith("local_")) return true;
+    if (commentId.startsWith("local_")) return didOptimisticUpdate;
     const { error } = await supabase
       .from("confession_comments")
       .delete()

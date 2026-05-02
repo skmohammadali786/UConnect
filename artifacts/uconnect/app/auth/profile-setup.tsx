@@ -87,7 +87,15 @@ export default function ProfileSetupScreen() {
   const [showBranchPicker, setShowBranchPicker] = useState(false);
   const [showYearPicker, setShowYearPicker] = useState(false);
   const trimmedDob = dateOfBirth.trim();
-  const dobError = trimmedDob && !/^\d{4}-\d{2}-\d{2}$/.test(trimmedDob) ? "Use YYYY-MM-DD" : undefined;
+  const dobMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmedDob);
+  const isValidDob = !!dobMatch && (() => {
+    const year = Number(dobMatch[1]);
+    const month = Number(dobMatch[2]);
+    const day = Number(dobMatch[3]);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+  })();
+  const dobError = trimmedDob && !isValidDob ? "Use a valid date (YYYY-MM-DD)" : undefined;
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
@@ -169,7 +177,7 @@ export default function ProfileSetupScreen() {
         <AppButton
           title="Continue"
           onPress={() => router.push({ pathname: "/auth/interests", params: { email, college, username, displayName, dateOfBirth: trimmedDob, branch, year, bio, referralCode: referralCode.trim() } })}
-          disabled={!displayName.trim() || !trimmedDob || !!dobError || !branch || !year}
+          disabled={!displayName.trim() || !trimmedDob || !isValidDob || !branch || !year}
           fullWidth
           size="lg"
         />
