@@ -14,6 +14,7 @@ create table if not exists profiles (
   college text not null default '',
   branch text not null default '',
   year text not null default '',
+  date_of_birth date,
   bio text not null default '',
   avatar text,
   avatar_ring_color text not null default '#6366F1',

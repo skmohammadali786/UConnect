@@ -214,7 +214,7 @@ export default function TeamsScreen() {
             colors={colors}
           />
         )}
-        contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 100 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, gap: 10, paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.empty}>

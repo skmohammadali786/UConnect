@@ -95,9 +95,9 @@ export default function SearchScreen() {
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [trendingTags, setTrendingTags] = useState<TrendingTag[]>([]);
   const [focused, setFocused] = useState(false);
-  const [people, setPeople] = useState<{ id: string; username: string; displayName: string; college: string; branch: string; followers: number; bio: string; avatar: string | null }[]>([]);
+  const [people, setPeople] = useState<{ id: string; username: string; displayName: string; college: string; branch: string; followers: number; bio: string; avatar: string | null; avatarRingColor: string | null }[]>([]);
   const [peopleLoading, setPeopleLoading] = useState(false);
-  const [suggestedPeople, setSuggestedPeople] = useState<{ id: string; username: string; displayName: string; college: string; followers: number; avatar: string | null }[]>([]);
+  const [suggestedPeople, setSuggestedPeople] = useState<{ id: string; username: string; displayName: string; college: string; followers: number; avatar: string | null; avatarRingColor: string | null }[]>([]);
   const [showPeopleDirectory, setShowPeopleDirectory] = useState(false);
 
   const inputRef = useRef<TextInput>(null);
@@ -150,7 +150,7 @@ export default function SearchScreen() {
       try {
         const { data } = await supabase
           .from("profiles")
-          .select("id, username, display_name, college, followers, avatar")
+          .select("id, username, display_name, college, followers, avatar, avatar_ring_color")
           .neq("id", user?.id ?? "")
           .order("followers", { ascending: false })
           .limit(8);
@@ -159,12 +159,13 @@ export default function SearchScreen() {
             id: r.id, username: r.username, displayName: r.display_name,
             college: r.college, followers: r.followers ?? 0,
             avatar: r.avatar ?? null,
+            avatarRingColor: r.avatar_ring_color ?? "#6366F1",
           })));
         } else {
-          setSuggestedPeople(SAMPLE_PEOPLE.map((p) => ({ id: p.id, username: p.username, displayName: p.displayName, college: p.college, followers: p.followers, avatar: null })));
+          setSuggestedPeople(SAMPLE_PEOPLE.map((p) => ({ id: p.id, username: p.username, displayName: p.displayName, college: p.college, followers: p.followers, avatar: null, avatarRingColor: "#6366F1" })));
         }
       } catch {
-        setSuggestedPeople(SAMPLE_PEOPLE.map((p) => ({ id: p.id, username: p.username, displayName: p.displayName, college: p.college, followers: p.followers, avatar: null })));
+        setSuggestedPeople(SAMPLE_PEOPLE.map((p) => ({ id: p.id, username: p.username, displayName: p.displayName, college: p.college, followers: p.followers, avatar: null, avatarRingColor: "#6366F1" })));
       }
     })();
   }, []);
@@ -188,7 +189,7 @@ export default function SearchScreen() {
       try {
         let request = supabase
           .from("profiles")
-          .select("id, username, display_name, college, branch, followers, bio, avatar")
+          .select("id, username, display_name, college, branch, followers, bio, avatar, avatar_ring_color")
           .neq("id", user?.id ?? "");
         if (q) {
           request = request.or(`username.ilike.%${q}%,display_name.ilike.%${q}%,college.ilike.%${q}%`).limit(20);
@@ -205,6 +206,7 @@ export default function SearchScreen() {
           followers: r.followers ?? 0,
           bio: r.bio ?? "",
           avatar: r.avatar ?? null,
+          avatarRingColor: r.avatar_ring_color ?? "#6366F1",
         })));
       } catch { setPeople([]); }
       setPeopleLoading(false);
@@ -310,6 +312,7 @@ export default function SearchScreen() {
 
   const renderPeopleCard = ({ item, index }: any) => {
     const following = isFollowing(item.id);
+    const ringColor = item.avatarRingColor || colors.primary;
     return (
       <FadeSlideItem index={index}>
         <TouchableOpacity
@@ -318,10 +321,10 @@ export default function SearchScreen() {
           style={[styles.personCard, { backgroundColor: colors.card, borderColor: colors.border }, elevatedCard]}
         >
           {item.avatar ? (
-            <Image source={{ uri: item.avatar }} style={styles.personAvatarImg} />
+            <Image source={{ uri: item.avatar }} style={[styles.personAvatarImg, { borderColor: ringColor }]} />
           ) : (
-            <View style={[styles.personAvatar, { backgroundColor: colors.primary + "20" }]}>
-              <Text style={[styles.personInitial, { color: colors.primary }]}>
+            <View style={[styles.personAvatar, { backgroundColor: ringColor + "20", borderColor: ringColor }]}>
+              <Text style={[styles.personInitial, { color: ringColor }]}>
                 {item.displayName.charAt(0).toUpperCase()}
               </Text>
             </View>
@@ -585,6 +588,7 @@ export default function SearchScreen() {
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 4 }}>
                 {suggestedPeople.slice(0, 4).map((person, i) => {
                   const following = isFollowing(person.id);
+                  const ringColor = person.avatarRingColor || colors.primary;
                   return (
                     <FadeSlideItem key={person.id} index={i} delay={140}>
                       <TouchableOpacity
@@ -593,10 +597,10 @@ export default function SearchScreen() {
                         activeOpacity={0.85}
                       >
                         {person.avatar ? (
-                          <Image source={{ uri: person.avatar }} style={styles.personHorizontalAvatarImg} />
+                          <Image source={{ uri: person.avatar }} style={[styles.personHorizontalAvatarImg, { borderColor: ringColor }]} />
                         ) : (
-                          <View style={[styles.personHorizontalAvatar, { backgroundColor: colors.primary + "22" }]}>
-                            <Text style={[styles.personHorizontalInitial, { color: colors.primary }]}>
+                          <View style={[styles.personHorizontalAvatar, { backgroundColor: ringColor + "22", borderColor: ringColor }]}>
+                            <Text style={[styles.personHorizontalInitial, { color: ringColor }]}>
                               {(person.displayName ?? person.username).charAt(0).toUpperCase()}
                             </Text>
                           </View>
@@ -681,8 +685,8 @@ const styles = StyleSheet.create({
   trendTagName: { fontSize: 14, fontFamily: "Inter_700Bold" },
   trendPostCount: { fontSize: 11, fontFamily: "Inter_400Regular" },
   personHorizontalCard: { width: 150, borderRadius: 16, borderWidth: 1, padding: 14, alignItems: "center", gap: 6 },
-  personHorizontalAvatar: { width: 52, height: 52, borderRadius: 26, alignItems: "center", justifyContent: "center" },
-  personHorizontalAvatarImg: { width: 52, height: 52, borderRadius: 26 },
+  personHorizontalAvatar: { width: 52, height: 52, borderRadius: 26, alignItems: "center", justifyContent: "center", borderWidth: 2 },
+  personHorizontalAvatarImg: { width: 52, height: 52, borderRadius: 26, borderWidth: 2 },
   personHorizontalInitial: { fontSize: 22, fontFamily: "Inter_700Bold" },
   personHorizontalName: { fontSize: 14, fontFamily: "Inter_700Bold", textAlign: "center" },
   personHorizontalUsername: { fontSize: 12, fontFamily: "Inter_400Regular" },
@@ -695,8 +699,8 @@ const styles = StyleSheet.create({
   discoverLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   discoverDesc: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 },
   personCard: { flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 14, borderWidth: 1, padding: 14 },
-  personAvatar: { width: 46, height: 46, borderRadius: 23, alignItems: "center", justifyContent: "center" },
-  personAvatarImg: { width: 46, height: 46, borderRadius: 23 },
+  personAvatar: { width: 46, height: 46, borderRadius: 23, alignItems: "center", justifyContent: "center", borderWidth: 2 },
+  personAvatarImg: { width: 46, height: 46, borderRadius: 23, borderWidth: 2 },
   personInitial: { fontSize: 20, fontFamily: "Inter_700Bold" },
   personNameRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   personName: { fontSize: 14, fontFamily: "Inter_600SemiBold" },

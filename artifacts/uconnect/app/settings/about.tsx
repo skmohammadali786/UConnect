@@ -47,9 +47,9 @@ export default function AboutScreen() {
         </View>
 
         <View style={{ padding: 20, gap: 20 }}>
-          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.cardTitle, { color: colors.foreground }]}>Our Mission</Text>
-            <Text style={[styles.cardBody, { color: colors.mutedForeground }]}>
+          <View style={[styles.card, styles.centerCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.cardTitle, styles.centerText, { color: colors.foreground }]}>Our Mission</Text>
+            <Text style={[styles.cardBody, styles.centerText, { color: colors.mutedForeground }]}>
               UConnect was built to give college students a safe, anonymous space to express themselves, find opportunities, and build their campus community — without the fear of judgment.
             </Text>
           </View>
@@ -121,8 +121,10 @@ const styles = StyleSheet.create({
   tagline: { fontSize: 16, fontFamily: "Inter_500Medium" },
   versionBadge: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1, marginTop: 4 },
   versionText: { fontSize: 13, fontFamily: "Inter_400Regular" },
-  sectionLabel: { fontSize: 16, fontFamily: "Inter_700Bold" },
+  sectionLabel: { fontSize: 16, fontFamily: "Inter_700Bold", textAlign: "center" },
   card: { borderRadius: 16, borderWidth: 1, padding: 18, gap: 10 },
+  centerCard: { alignItems: "center" },
+  centerText: { textAlign: "center" },
   cardTitle: { fontSize: 16, fontFamily: "Inter_700Bold" },
   cardBody: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 22 },
   featureRow: { flexDirection: "row", alignItems: "center", gap: 14, borderRadius: 14, borderWidth: 1, padding: 14 },

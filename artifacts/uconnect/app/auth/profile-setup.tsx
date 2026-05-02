@@ -79,6 +79,7 @@ export default function ProfileSetupScreen() {
   const insets = useSafeAreaInsets();
   const { email, college, username, referralCode: incomingReferralCode } = useLocalSearchParams<{ email: string; college: string; username: string; referralCode?: string }>();
   const [displayName, setDisplayName] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [branch, setBranch] = useState("");
   const [year, setYear] = useState("");
   const [bio, setBio] = useState("");
@@ -102,6 +103,16 @@ export default function ProfileSetupScreen() {
         </View>
 
         <AppInput label="Display Name" placeholder="How should we call you?" value={displayName} onChangeText={setDisplayName} leftIcon="user" />
+        <AppInput
+          label="Date of Birth"
+          placeholder="YYYY-MM-DD"
+          value={dateOfBirth}
+          onChangeText={setDateOfBirth}
+          keyboardType="numbers-and-punctuation"
+          autoCorrect={false}
+          maxLength={10}
+          leftIcon="calendar"
+        />
 
         <View style={styles.field}>
           <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Branch</Text>
@@ -154,8 +165,8 @@ export default function ProfileSetupScreen() {
 
         <AppButton
           title="Continue"
-          onPress={() => router.push({ pathname: "/auth/interests", params: { email, college, username, displayName, branch, year, bio, referralCode: referralCode.trim() } })}
-          disabled={!displayName.trim() || !branch || !year}
+          onPress={() => router.push({ pathname: "/auth/interests", params: { email, college, username, displayName, dateOfBirth: dateOfBirth.trim(), branch, year, bio, referralCode: referralCode.trim() } })}
+          disabled={!displayName.trim() || !dateOfBirth.trim() || !branch || !year}
           fullWidth
           size="lg"
         />

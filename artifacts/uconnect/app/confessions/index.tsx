@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 18, fontFamily: "Inter_700Bold" },
   subtitle: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 1 },
   addBtn: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  banner: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1 },
+  banner: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, alignSelf: "center", width: "92%" },
   bannerText: { fontSize: 12, fontFamily: "Inter_400Regular", textAlign: "center" },
   card: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 14 },
   sensitiveBlock: { alignItems: "center", gap: 10, paddingVertical: 12 },

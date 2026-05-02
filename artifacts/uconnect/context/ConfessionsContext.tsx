@@ -257,23 +257,20 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
   const deleteConfessionComment = useCallback(async (confessionId: string, commentId: string) => {
     if (!user) return false;
     let previous: Confession[] = [];
-    let canDelete = false;
+    let didUpdate = false;
     setConfessions((prev) => {
       previous = prev;
-      const targetConfession = prev.find((c) => c.id === confessionId);
-      const targetComment = targetConfession?.comments.find((cm) => cm.id === commentId);
-      canDelete = !!targetComment && (targetComment.ownerId ?? targetComment.authorId) === user.id;
-      if (!canDelete) return prev;
       return prev.map((c) => {
         if (c.id !== confessionId) return c;
+        didUpdate = true;
+        const filtered = c.comments.filter((cm) => cm.id !== commentId);
         return {
           ...c,
           commentCount: Math.max(0, c.commentCount - 1),
-          comments: c.comments.filter((cm) => cm.id !== commentId),
+          comments: filtered.length === c.comments.length ? c.comments : filtered,
         };
       });
     });
-    if (!canDelete) return false;
     if (commentId.startsWith("local_")) return true;
     const { error } = await supabase
       .from("confession_comments")
@@ -281,7 +278,9 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
       .eq("id", commentId)
       .eq("author_id", user.id);
     if (error) {
-      setConfessions(previous);
+      if (didUpdate) {
+        setConfessions(previous);
+      }
       return false;
     }
     await supabase.rpc("decrement_confession_comment_count", { p_confession_id: confessionId });
