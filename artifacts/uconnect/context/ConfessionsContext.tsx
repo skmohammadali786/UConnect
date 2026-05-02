@@ -265,8 +265,7 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
         const filtered = c.comments.filter((cm) => cm.id !== commentId);
         const nextCount = Math.max(0, c.commentCount - 1);
         const commentsChanged = filtered.length !== c.comments.length;
-        const countChanged = nextCount !== c.commentCount;
-        if (!commentsChanged && !countChanged) return c;
+        if (!commentsChanged && nextCount === c.commentCount) return c;
         didOptimisticUpdate = true;
         return {
           ...c,

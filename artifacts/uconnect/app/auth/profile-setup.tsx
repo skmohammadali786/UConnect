@@ -94,8 +94,12 @@ export default function ProfileSetupScreen() {
       const year = Number(dobMatch[1]);
       const month = Number(dobMatch[2]);
       const day = Number(dobMatch[3]);
+      if (month < 1 || month > 12 || day < 1 || day > 31) return false;
       const date = new Date(Date.UTC(year, month - 1, day));
-      return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+      if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return false;
+      const today = new Date();
+      const todayUtc = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+      return date <= todayUtc;
     })();
     return { isValidDob: valid, dobError: valid ? undefined : "Use a valid date (YYYY-MM-DD)" };
   }, [trimmedDob]);
