@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppButton } from "@/components/AppButton";
@@ -87,15 +87,18 @@ export default function ProfileSetupScreen() {
   const [showBranchPicker, setShowBranchPicker] = useState(false);
   const [showYearPicker, setShowYearPicker] = useState(false);
   const trimmedDob = dateOfBirth.trim();
-  const dobMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmedDob);
-  const isValidDob = !!dobMatch && (() => {
-    const year = Number(dobMatch[1]);
-    const month = Number(dobMatch[2]);
-    const day = Number(dobMatch[3]);
-    const date = new Date(Date.UTC(year, month - 1, day));
-    return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
-  })();
-  const dobError = trimmedDob && !isValidDob ? "Use a valid date (YYYY-MM-DD)" : undefined;
+  const { isValidDob, dobError } = useMemo(() => {
+    if (!trimmedDob) return { isValidDob: false, dobError: undefined };
+    const dobMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmedDob);
+    const valid = !!dobMatch && (() => {
+      const year = Number(dobMatch[1]);
+      const month = Number(dobMatch[2]);
+      const day = Number(dobMatch[3]);
+      const date = new Date(Date.UTC(year, month - 1, day));
+      return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+    })();
+    return { isValidDob: valid, dobError: valid ? undefined : "Use a valid date (YYYY-MM-DD)" };
+  }, [trimmedDob]);
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
