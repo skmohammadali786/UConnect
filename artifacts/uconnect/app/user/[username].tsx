@@ -278,7 +278,6 @@ export default function UserProfileScreen() {
                     </View>
                   )}
                 </View>
-                <Text style={[styles.usernameText, { color: colors.mutedForeground }]}>@{profile.username}</Text>
                 <View style={styles.metaRow}>
                   {profile.college ? (
                     <View style={[styles.metaPill, { backgroundColor: colors.secondary }]}>
@@ -360,10 +359,10 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1 },
   backBtn: { padding: 4 },
   headerTitle: { fontSize: 17, fontFamily: "Inter_700Bold" },
-  cover: { height: 190, marginHorizontal: 16, marginTop: 14, borderRadius: 24 },
-  coverOverlay: { position: "absolute", left: 16, right: 16, top: 14, height: 190, borderRadius: 24, backgroundColor: "rgba(0,0,0,0.12)" },
-  coverAccent: { position: "absolute", right: 28, top: 28, width: 110, height: 110, borderRadius: 80, backgroundColor: "rgba(255,255,255,0.12)" },
-  avatarRow: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", paddingHorizontal: 16, marginTop: -32, marginBottom: 10 },
+  cover: { height: 160, marginHorizontal: 16, marginTop: 14, borderRadius: 24 },
+  coverOverlay: { position: "absolute", left: 16, right: 16, top: 14, height: 160, borderRadius: 24, backgroundColor: "rgba(0,0,0,0.12)" },
+  coverAccent: { position: "absolute", right: 24, top: 20, width: 90, height: 90, borderRadius: 80, backgroundColor: "rgba(255,255,255,0.12)" },
+  avatarRow: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", paddingHorizontal: 16, marginTop: -28, marginBottom: 10 },
   avatar: { width: 76, height: 76, borderRadius: 38, alignItems: "center", justifyContent: "center" },
   avatarImg: { width: 76, height: 76, borderRadius: 38, borderWidth: 4 },
   avatarText: { fontSize: 32, fontFamily: "Inter_700Bold" },

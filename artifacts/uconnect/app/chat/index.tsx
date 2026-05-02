@@ -1,19 +1,24 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Animated, Easing, FlatList, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useChat } from "@/context/ChatContext";
 import { formatRelativeTime } from "@/utils/time";
 import { TypewriterText } from "@/components/TypewriterText";
+import { ConfirmModal } from "@/components/ConfirmModal";
+import { useToast } from "@/components/Toast";
 
 export default function ChatListScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { conversations } = useChat();
+  const { conversations, deleteConversation } = useChat();
+  const { showSuccess } = useToast();
   const headerAnim = useRef(new Animated.Value(0)).current;
   const headerSlide = useRef(new Animated.Value(-14)).current;
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
+  const [conversationToDelete, setConversationToDelete] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     Animated.parallel([
@@ -23,6 +28,17 @@ export default function ChatListScreen() {
   }, []);
 
   const active = conversations.filter((c) => !c.isBlocked);
+  const handleRequestDelete = (conversationId: string, name: string) => {
+    setConversationToDelete({ id: conversationId, name });
+    setDeleteConfirmVisible(true);
+  };
+  const handleDeleteConversation = () => {
+    if (!conversationToDelete) return;
+    deleteConversation(conversationToDelete.id);
+    showSuccess("Chat deleted");
+    setDeleteConfirmVisible(false);
+    setConversationToDelete(null);
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -48,7 +64,11 @@ export default function ChatListScreen() {
         data={active}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <TouchableOpacity onPress={() => router.push({ pathname: "/chat/[id]" as any, params: { id: item.id } })} style={[styles.convItem, { borderBottomColor: colors.separator }]}>
+          <TouchableOpacity
+            onPress={() => router.push({ pathname: "/chat/[id]" as any, params: { id: item.id } })}
+            onLongPress={() => handleRequestDelete(item.id, item.isAnonymous && !item.isRevealed ? "Anonymous" : item.participantUsername)}
+            style={[styles.convItem, { borderBottomColor: colors.separator }]}
+          >
             {item.isAnonymous && !item.isRevealed ? (
               <View style={[styles.avatar, { backgroundColor: colors.muted }]}>
                 <Feather name="user-x" size={20} color={colors.mutedForeground} />
@@ -85,6 +105,19 @@ export default function ChatListScreen() {
         }
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: Platform.OS === "web" ? 34 : 20 }}
+      />
+      <ConfirmModal
+        visible={deleteConfirmVisible}
+        title="Delete chat"
+        message={conversationToDelete ? `Delete chat with ${conversationToDelete.name}? This cannot be undone.` : "Delete this chat? This cannot be undone."}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={handleDeleteConversation}
+        onCancel={() => {
+          setDeleteConfirmVisible(false);
+          setConversationToDelete(null);
+        }}
       />
     </View>
   );

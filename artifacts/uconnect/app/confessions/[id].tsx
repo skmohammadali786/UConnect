@@ -329,44 +329,32 @@ export default function ConfessionDetailScreen() {
               </View>
             ) : (
               displayComments.map((c) => (
-                <View key={c.id} style={[styles.commentCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View key={c.id} style={styles.commentItem}>
                   <View style={styles.commentHeader}>
-                    <View style={[styles.commentAvatar, { backgroundColor: c.isAnonymous ? colors.secondary : colors.primary + "20" }]}>
-                      <Feather name={c.isAnonymous ? "user-x" : "user"} size={13} color={c.isAnonymous ? colors.mutedForeground : colors.primary} />
+                    <View style={[styles.commentAvatar, { backgroundColor: c.isAnonymous ? colors.muted : colors.primary + "22" }]}>
+                      <Feather name={c.isAnonymous ? "user-x" : "user"} size={11} color={c.isAnonymous ? colors.mutedForeground : colors.primary} />
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.commentAuthor, { color: c.isAnonymous ? colors.mutedForeground : colors.foreground }]}>
-                        {c.isAnonymous ? "Anonymous" : `@${c.authorId}`}
-                      </Text>
-                      <Text style={[styles.commentTime, { color: colors.mutedForeground }]}>{formatRelativeTime(c.createdAt)}</Text>
-                    </View>
-                    <View style={styles.commentVoteWrap}>
-                      <TouchableOpacity
-                        onPress={() => handleVoteConfessionComment(c.id, "up")}
-                        style={[styles.commentVoteBtn, c.userVote === "up" && { backgroundColor: colors.primary + "16" }]}
-                      >
-                        <Feather name="arrow-up" size={12} color={c.userVote === "up" ? colors.primary : colors.mutedForeground} />
-                        <Text style={[styles.upvoteText, { color: c.userVote === "up" ? colors.primary : colors.mutedForeground }]}>{c.upvotes}</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={() => handleVoteConfessionComment(c.id, "down")}
-                        style={[styles.commentVoteBtn, c.userVote === "down" && { backgroundColor: "#EF444416" }]}
-                      >
-                        <Feather name="arrow-down" size={12} color={c.userVote === "down" ? "#EF4444" : colors.mutedForeground} />
-                        <Text style={[styles.upvoteText, { color: c.userVote === "down" ? "#EF4444" : colors.mutedForeground }]}>{c.downvotes}</Text>
-                      </TouchableOpacity>
-                      {user?.id === (c.ownerId ?? c.authorId) && (
-                        <TouchableOpacity
-                          onPress={() => handleRequestDeleteComment(c)}
-                          style={styles.commentVoteBtn}
-                        >
-                          <Feather name="trash-2" size={12} color="#EF4444" />
-                          <Text style={[styles.upvoteText, { color: "#EF4444" }]}>Delete</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
+                    <Text style={[styles.commentAuthor, { color: colors.foreground }]}>
+                      {c.isAnonymous ? "Anonymous" : `@${c.authorId}`}
+                    </Text>
+                    <Text style={[styles.commentTime, { color: colors.mutedForeground }]}>{formatRelativeTime(c.createdAt)}</Text>
                   </View>
                   <Text style={[styles.commentContent, { color: colors.foreground }]}>{c.content}</Text>
+                  <View style={styles.commentActions}>
+                    <TouchableOpacity onPress={() => handleVoteConfessionComment(c.id, "up")} style={styles.commentActionBtn}>
+                      <Feather name="arrow-up" size={13} color={c.userVote === "up" ? colors.primary : colors.mutedForeground} />
+                      <Text style={[styles.commentActionText, { color: c.userVote === "up" ? colors.primary : colors.mutedForeground }]}>{c.upvotes}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleVoteConfessionComment(c.id, "down")} style={styles.commentActionBtn}>
+                      <Feather name="arrow-down" size={13} color={c.userVote === "down" ? "#EF4444" : colors.mutedForeground} />
+                    </TouchableOpacity>
+                    {user?.id === (c.ownerId ?? c.authorId) && (
+                      <TouchableOpacity onPress={() => handleRequestDeleteComment(c)} style={styles.commentActionBtn}>
+                        <Feather name="trash-2" size={13} color="#EF4444" />
+                        <Text style={[styles.commentActionText, { color: "#EF4444" }]}>Delete</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
               ))
             )}
@@ -464,15 +452,15 @@ const styles = StyleSheet.create({
   noComments: { alignItems: "center", gap: 8, paddingTop: 40 },
   noCommentsText: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
   noCommentsSub: { fontSize: 13, fontFamily: "Inter_400Regular" },
-  commentCard: { borderRadius: 14, borderWidth: 1, padding: 14, marginBottom: 10, gap: 10 },
-  commentHeader: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
-  commentAvatar: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
-  commentAuthor: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  commentTime: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 },
-  commentVoteWrap: { flexDirection: "row", alignItems: "center", gap: 6 },
-  commentVoteBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 7, paddingVertical: 4, borderRadius: 8 },
-  upvoteText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
-  commentContent: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 21 },
+  commentItem: { paddingVertical: 12 },
+  commentHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 },
+  commentAvatar: { width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  commentAuthor: { fontSize: 13, fontFamily: "Inter_600SemiBold", flex: 1 },
+  commentTime: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  commentContent: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 20, marginBottom: 8 },
+  commentActions: { flexDirection: "row", alignItems: "center", gap: 12 },
+  commentActionBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
+  commentActionText: { fontSize: 12, fontFamily: "Inter_500Medium" },
   inputBar: { flexDirection: "row", alignItems: "flex-end", gap: 8, paddingHorizontal: 12, paddingTop: 10, borderTopWidth: 1 },
   anonToggle: { flexDirection: "row", alignItems: "center", gap: 2, paddingHorizontal: 6, paddingVertical: 6, borderRadius: 10 },
   commentInput: { flex: 1, borderRadius: 14, borderWidth: 1.5, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, fontFamily: "Inter_400Regular", maxHeight: 100 },

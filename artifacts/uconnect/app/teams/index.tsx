@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
   createBtn: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   pendingBanner: { flexDirection: "row", alignItems: "center", gap: 10, margin: 12, marginBottom: 0, borderRadius: 12, borderWidth: 1, padding: 12 },
   pendingText: { flex: 1, fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  typeFilter: { paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
+  typeFilter: { paddingHorizontal: 16, paddingVertical: 6, gap: 8 },
   typeScroll: { borderBottomWidth: 1 },
   typeChip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1, height: 34, alignItems: "center", justifyContent: "center" },
   typeChipText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },

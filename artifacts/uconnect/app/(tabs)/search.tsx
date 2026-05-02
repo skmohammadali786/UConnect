@@ -19,6 +19,8 @@ import { getItem, removeItem, setItem, STORAGE_KEYS } from "@/utils/storage";
 
 const ND = Platform.OS !== "web";
 const MAX_RECENT_SEARCHES = 8;
+const OFFICIAL_UCONNECT_BADGE_COLOR = "#EE4B2B";
+const DEFAULT_VERIFIED_BADGE_COLOR = "#16A34A";
 
 const SAMPLE_PEOPLE = [
   { id: "user_cs_nerd", username: "cs_nerd", displayName: "CS Nerd", college: "IIT Bombay", branch: "Computer Science", followers: 342, bio: "ICPC World Finalist. Algorithms & Coffee." },
@@ -95,9 +97,9 @@ export default function SearchScreen() {
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [trendingTags, setTrendingTags] = useState<TrendingTag[]>([]);
   const [focused, setFocused] = useState(false);
-  const [people, setPeople] = useState<{ id: string; username: string; displayName: string; college: string; branch: string; followers: number; bio: string; avatar: string | null; avatarRingColor: string | null }[]>([]);
+  const [people, setPeople] = useState<{ id: string; username: string; displayName: string; college: string; branch: string; followers: number; bio: string; avatar: string | null; avatarRingColor: string | null; isVerified: boolean }[]>([]);
   const [peopleLoading, setPeopleLoading] = useState(false);
-  const [suggestedPeople, setSuggestedPeople] = useState<{ id: string; username: string; displayName: string; college: string; followers: number; avatar: string | null; avatarRingColor: string | null }[]>([]);
+  const [suggestedPeople, setSuggestedPeople] = useState<{ id: string; username: string; displayName: string; college: string; followers: number; avatar: string | null; avatarRingColor: string | null; isVerified: boolean }[]>([]);
   const [showPeopleDirectory, setShowPeopleDirectory] = useState(false);
 
   const inputRef = useRef<TextInput>(null);
@@ -150,7 +152,7 @@ export default function SearchScreen() {
       try {
         const { data } = await supabase
           .from("profiles")
-          .select("id, username, display_name, college, followers, avatar, avatar_ring_color")
+          .select("id, username, display_name, college, followers, avatar, avatar_ring_color, is_verified")
           .neq("id", user?.id ?? "")
           .order("followers", { ascending: false })
           .limit(8);
@@ -160,12 +162,13 @@ export default function SearchScreen() {
             college: r.college, followers: r.followers ?? 0,
             avatar: r.avatar ?? null,
             avatarRingColor: r.avatar_ring_color ?? "#6366F1",
+            isVerified: Boolean(r.is_verified),
           })));
         } else {
-          setSuggestedPeople(SAMPLE_PEOPLE.map((p) => ({ id: p.id, username: p.username, displayName: p.displayName, college: p.college, followers: p.followers, avatar: null, avatarRingColor: "#6366F1" })));
+          setSuggestedPeople(SAMPLE_PEOPLE.map((p) => ({ id: p.id, username: p.username, displayName: p.displayName, college: p.college, followers: p.followers, avatar: null, avatarRingColor: "#6366F1", isVerified: false })));
         }
       } catch {
-        setSuggestedPeople(SAMPLE_PEOPLE.map((p) => ({ id: p.id, username: p.username, displayName: p.displayName, college: p.college, followers: p.followers, avatar: null, avatarRingColor: "#6366F1" })));
+        setSuggestedPeople(SAMPLE_PEOPLE.map((p) => ({ id: p.id, username: p.username, displayName: p.displayName, college: p.college, followers: p.followers, avatar: null, avatarRingColor: "#6366F1", isVerified: false })));
       }
     })();
   }, []);
@@ -189,7 +192,7 @@ export default function SearchScreen() {
       try {
         let request = supabase
           .from("profiles")
-          .select("id, username, display_name, college, branch, followers, bio, avatar, avatar_ring_color")
+          .select("id, username, display_name, college, branch, followers, bio, avatar, avatar_ring_color, is_verified")
           .neq("id", user?.id ?? "");
         if (q) {
           request = request.or(`username.ilike.%${q}%,display_name.ilike.%${q}%,college.ilike.%${q}%`).limit(20);
@@ -207,6 +210,7 @@ export default function SearchScreen() {
           bio: r.bio ?? "",
           avatar: r.avatar ?? null,
           avatarRingColor: r.avatar_ring_color ?? "#6366F1",
+          isVerified: Boolean(r.is_verified),
         })));
       } catch { setPeople([]); }
       setPeopleLoading(false);
@@ -313,6 +317,8 @@ export default function SearchScreen() {
   const renderPeopleCard = ({ item, index }: any) => {
     const following = isFollowing(item.id);
     const ringColor = item.avatarRingColor || colors.primary;
+    const isOfficial = item.username?.toLowerCase() === "uconnect";
+    const badgeColor = isOfficial ? OFFICIAL_UCONNECT_BADGE_COLOR : DEFAULT_VERIFIED_BADGE_COLOR;
     return (
       <FadeSlideItem index={index}>
         <TouchableOpacity
@@ -329,11 +335,16 @@ export default function SearchScreen() {
               </Text>
             </View>
           )}
-          <View style={{ flex: 1 }}>
-            <View style={styles.personNameRow}>
-              <Text style={[styles.personName, { color: colors.foreground }]}>{item.displayName}</Text>
-            </View>
-            <Text style={[styles.personUsername, { color: colors.mutedForeground }]}>@{item.username}</Text>
+            <View style={{ flex: 1 }}>
+              <View style={styles.personNameRow}>
+                <Text style={[styles.personName, { color: colors.foreground }]}>{item.displayName}</Text>
+                {item.isVerified && (
+                  <View style={[styles.verifiedBadge, { backgroundColor: badgeColor }]}>
+                    <Feather name="check" size={9} color="#FFF" />
+                  </View>
+                )}
+              </View>
+              <Text style={[styles.personUsername, { color: colors.mutedForeground }]}>@{item.username}</Text>
             <View style={styles.personMeta}>
               <Feather name="book" size={10} color={colors.mutedForeground} />
               <Text style={[styles.personMetaText, { color: colors.mutedForeground }]}>{item.college}</Text>
@@ -589,6 +600,8 @@ export default function SearchScreen() {
                 {suggestedPeople.slice(0, 4).map((person, i) => {
                   const following = isFollowing(person.id);
                   const ringColor = person.avatarRingColor || colors.primary;
+                  const isOfficial = person.username?.toLowerCase() === "uconnect";
+                  const badgeColor = isOfficial ? OFFICIAL_UCONNECT_BADGE_COLOR : DEFAULT_VERIFIED_BADGE_COLOR;
                   return (
                     <FadeSlideItem key={person.id} index={i} delay={140}>
                       <TouchableOpacity
@@ -605,7 +618,14 @@ export default function SearchScreen() {
                             </Text>
                           </View>
                         )}
-                        <Text style={[styles.personHorizontalName, { color: colors.foreground }]}>{person.displayName}</Text>
+                        <View style={styles.personHorizontalNameRow}>
+                          <Text style={[styles.personHorizontalName, { color: colors.foreground }]}>{person.displayName}</Text>
+                          {person.isVerified && (
+                            <View style={[styles.verifiedBadgeSmall, { backgroundColor: badgeColor }]}>
+                              <Feather name="check" size={8} color="#FFF" />
+                            </View>
+                          )}
+                        </View>
                         <Text style={[styles.personHorizontalUsername, { color: colors.mutedForeground }]}>@{person.username}</Text>
                         <Text style={[styles.personHorizontalCollege, { color: colors.mutedForeground }]} numberOfLines={1}>{person.college}</Text>
                         <TouchableOpacity
@@ -688,6 +708,7 @@ const styles = StyleSheet.create({
   personHorizontalAvatar: { width: 52, height: 52, borderRadius: 26, alignItems: "center", justifyContent: "center", borderWidth: 2 },
   personHorizontalAvatarImg: { width: 52, height: 52, borderRadius: 26, borderWidth: 2 },
   personHorizontalInitial: { fontSize: 22, fontFamily: "Inter_700Bold" },
+  personHorizontalNameRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 },
   personHorizontalName: { fontSize: 14, fontFamily: "Inter_700Bold", textAlign: "center" },
   personHorizontalUsername: { fontSize: 12, fontFamily: "Inter_400Regular" },
   personHorizontalCollege: { fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "center" },
@@ -704,6 +725,8 @@ const styles = StyleSheet.create({
   personInitial: { fontSize: 20, fontFamily: "Inter_700Bold" },
   personNameRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   personName: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  verifiedBadge: { width: 15, height: 15, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+  verifiedBadgeSmall: { width: 13, height: 13, borderRadius: 7, alignItems: "center", justifyContent: "center" },
   personUsername: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },
   personMeta: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3 },
   personMetaText: { fontSize: 11, fontFamily: "Inter_400Regular" },
