@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppButton } from "@/components/AppButton";
@@ -79,12 +79,30 @@ export default function ProfileSetupScreen() {
   const insets = useSafeAreaInsets();
   const { email, college, username, referralCode: incomingReferralCode } = useLocalSearchParams<{ email: string; college: string; username: string; referralCode?: string }>();
   const [displayName, setDisplayName] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [branch, setBranch] = useState("");
   const [year, setYear] = useState("");
   const [bio, setBio] = useState("");
   const [referralCode, setReferralCode] = useState((incomingReferralCode || "").toUpperCase());
   const [showBranchPicker, setShowBranchPicker] = useState(false);
   const [showYearPicker, setShowYearPicker] = useState(false);
+  const trimmedDob = dateOfBirth.trim();
+  const { isValidDob, dobError } = useMemo(() => {
+    if (!trimmedDob) return { isValidDob: false, dobError: undefined };
+    const dobMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmedDob);
+    const valid = !!dobMatch && (() => {
+      const year = Number(dobMatch[1]);
+      const month = Number(dobMatch[2]);
+      const day = Number(dobMatch[3]);
+      if (month < 1 || month > 12 || day < 1 || day > 31) return false;
+      const date = new Date(Date.UTC(year, month - 1, day));
+      if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return false;
+      const today = new Date();
+      const todayUtc = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+      return date <= todayUtc;
+    })();
+    return { isValidDob: valid, dobError: valid ? undefined : "Use a valid date (YYYY-MM-DD)" };
+  }, [trimmedDob]);
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
@@ -102,6 +120,17 @@ export default function ProfileSetupScreen() {
         </View>
 
         <AppInput label="Display Name" placeholder="How should we call you?" value={displayName} onChangeText={setDisplayName} leftIcon="user" />
+        <AppInput
+          label="Date of Birth"
+          placeholder="YYYY-MM-DD"
+          value={dateOfBirth}
+          onChangeText={setDateOfBirth}
+          keyboardType="numbers-and-punctuation"
+          autoCorrect={false}
+          maxLength={10}
+          leftIcon="calendar"
+          error={dobError}
+        />
 
         <View style={styles.field}>
           <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Branch</Text>
@@ -154,8 +183,8 @@ export default function ProfileSetupScreen() {
 
         <AppButton
           title="Continue"
-          onPress={() => router.push({ pathname: "/auth/interests", params: { email, college, username, displayName, branch, year, bio, referralCode: referralCode.trim() } })}
-          disabled={!displayName.trim() || !branch || !year}
+          onPress={() => router.push({ pathname: "/auth/interests", params: { email, college, username, displayName, dateOfBirth: trimmedDob, branch, year, bio, referralCode: referralCode.trim() } })}
+          disabled={!displayName.trim() || !trimmedDob || !isValidDob || !branch || !year}
           fullWidth
           size="lg"
         />

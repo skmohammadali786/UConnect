@@ -12,7 +12,7 @@ import { ALL_INTERESTS } from "@/constants/interests";
 export default function InterestsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { email, college, username, displayName, branch, year, bio, referralCode } = useLocalSearchParams<Record<string, string>>();
+  const { email, college, username, displayName, dateOfBirth, branch, year, bio, referralCode } = useLocalSearchParams<Record<string, string>>();
   const [selected, setSelected] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [verifyModalVisible, setVerifyModalVisible] = useState(false);
@@ -48,6 +48,7 @@ export default function InterestsScreen() {
         college: college || "",
         branch: branch || "",
         year: year || "",
+        date_of_birth: dateOfBirth || null,
         bio: bio || "",
         avatar: null,
         avatar_ring_color: "#6366F1",
