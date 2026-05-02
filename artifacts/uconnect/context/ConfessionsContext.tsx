@@ -257,17 +257,21 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
   const deleteConfessionComment = useCallback(async (confessionId: string, commentId: string) => {
     if (!user) return false;
     let previous: Confession[] = [];
-    let didUpdate = false;
+    let didOptimisticUpdate = false;
     setConfessions((prev) => {
       previous = prev;
       return prev.map((c) => {
         if (c.id !== confessionId) return c;
-        didUpdate = true;
         const filtered = c.comments.filter((cm) => cm.id !== commentId);
+        const nextCount = Math.max(0, c.commentCount - 1);
+        const commentsChanged = filtered.length !== c.comments.length;
+        const countChanged = nextCount !== c.commentCount;
+        if (!commentsChanged && !countChanged) return c;
+        didOptimisticUpdate = true;
         return {
           ...c,
-          commentCount: Math.max(0, c.commentCount - 1),
-          comments: filtered.length === c.comments.length ? c.comments : filtered,
+          commentCount: nextCount,
+          comments: commentsChanged ? filtered : c.comments,
         };
       });
     });
@@ -278,7 +282,7 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
       .eq("id", commentId)
       .eq("author_id", user.id);
     if (error) {
-      if (didUpdate) {
+      if (didOptimisticUpdate) {
         setConfessions(previous);
       }
       return false;

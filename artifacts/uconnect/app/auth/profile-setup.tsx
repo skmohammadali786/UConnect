@@ -86,6 +86,8 @@ export default function ProfileSetupScreen() {
   const [referralCode, setReferralCode] = useState((incomingReferralCode || "").toUpperCase());
   const [showBranchPicker, setShowBranchPicker] = useState(false);
   const [showYearPicker, setShowYearPicker] = useState(false);
+  const trimmedDob = dateOfBirth.trim();
+  const dobError = trimmedDob && !/^\d{4}-\d{2}-\d{2}$/.test(trimmedDob) ? "Use YYYY-MM-DD" : undefined;
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
@@ -112,6 +114,7 @@ export default function ProfileSetupScreen() {
           autoCorrect={false}
           maxLength={10}
           leftIcon="calendar"
+          error={dobError}
         />
 
         <View style={styles.field}>
@@ -165,8 +168,8 @@ export default function ProfileSetupScreen() {
 
         <AppButton
           title="Continue"
-          onPress={() => router.push({ pathname: "/auth/interests", params: { email, college, username, displayName, dateOfBirth: dateOfBirth.trim(), branch, year, bio, referralCode: referralCode.trim() } })}
-          disabled={!displayName.trim() || !dateOfBirth.trim() || !branch || !year}
+          onPress={() => router.push({ pathname: "/auth/interests", params: { email, college, username, displayName, dateOfBirth: trimmedDob, branch, year, bio, referralCode: referralCode.trim() } })}
+          disabled={!displayName.trim() || !trimmedDob || !!dobError || !branch || !year}
           fullWidth
           size="lg"
         />
