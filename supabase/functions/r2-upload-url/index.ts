@@ -100,8 +100,8 @@ const createSignedUploadUrl = async ({
   const region = "auto";
   const credentialScope = `${dateStamp}/${region}/s3/aws4_request`;
 
-  const canonicalHeaders = `content-type:${contentType}\nhost:${host}\n`;
-  const signedHeaders = "content-type;host";
+  const canonicalHeaders = `host:${host}\n`;
+  const signedHeaders = "host";
 
   const canonicalQueryParams = {
     "X-Amz-Algorithm": "AWS4-HMAC-SHA256",
@@ -173,7 +173,7 @@ serve(async (req) => {
     });
   }
 
-  const fileType = rawFileType.toLowerCase();
+  const fileType = rawFileType.trim().toLowerCase();
   if (!fileType.startsWith("image/") && !fileType.startsWith("video/")) {
     return new Response(
       JSON.stringify({ error: "Only image or video uploads are supported" }),
