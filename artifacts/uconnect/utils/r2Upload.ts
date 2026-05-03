@@ -5,6 +5,9 @@ import { supabase } from "../lib/supabase";
 const DATA_URI_REGEX = /^data:([^;]+);base64,(.*)$/i;
 const HTTP_URI_REGEX = /^https?:\/\//i;
 const BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+const BASE64_LOOKUP: Record<string, number> = Object.fromEntries(
+  [...BASE64_CHARS].map((char, index) => [char, index]),
+);
 
 type MediaKind = "image" | "video" | "any";
 
@@ -33,8 +36,8 @@ function base64ToArrayBuffer(base64: string): ArrayBuffer {
   let buffer = 0;
   const out: number[] = [];
   for (let i = 0; i < clean.length; i += 1) {
-    const value = BASE64_CHARS.indexOf(clean[i]);
-    if (value < 0) continue;
+    const value = BASE64_LOOKUP[clean[i]];
+    if (value === undefined) continue;
     buffer = (buffer << 6) | value;
     bytes += 6;
     if (bytes >= 8) {
