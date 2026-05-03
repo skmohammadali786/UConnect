@@ -15,6 +15,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/Toast";
 import { ALL_INTERESTS } from "@/constants/interests";
 import { supabase } from "@/lib/supabase";
+import { uploadMediaUriToR2 } from "@/utils/r2Upload";
 
 const ND = Platform.OS !== "web";
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "Postgraduate", "PhD", "Alumni"];
@@ -271,19 +272,33 @@ export default function EditProfileScreen() {
     }
     const normalizedRingColor = isValidHexColor(avatarRingColor) ? avatarRingColor.trim().toUpperCase() : DEFAULT_AVATAR_RING_COLOR;
     setSaving(true);
-    await updateUser({
-      displayName: displayName.trim(),
-      bio: bio.trim(),
-      year,
-      interests: selectedInterests,
-      avatar: avatarUri,
-      avatarRingColor: normalizedRingColor,
-      banner: bannerUri,
-    });
-    setAvatarRingColor(normalizedRingColor);
-    setSaving(false);
-    showSuccess("Profile updated!", "Your changes have been saved.");
-    router.back();
+    try {
+      const [uploadedAvatar, uploadedBanner] = await Promise.all([
+        avatarUri ? uploadMediaUriToR2(avatarUri, { kind: "image" }) : Promise.resolve(null),
+        bannerUri ? uploadMediaUriToR2(bannerUri, { kind: "image" }) : Promise.resolve(null),
+      ]);
+      const avatarUrl = uploadedAvatar?.publicUrl ?? null;
+      const bannerUrl = uploadedBanner?.publicUrl ?? null;
+
+      await updateUser({
+        displayName: displayName.trim(),
+        bio: bio.trim(),
+        year,
+        interests: selectedInterests,
+        avatar: avatarUrl,
+        avatarRingColor: normalizedRingColor,
+        banner: bannerUrl,
+      });
+      setAvatarUri(avatarUrl);
+      setBannerUri(bannerUrl);
+      setAvatarRingColor(normalizedRingColor);
+      showSuccess("Profile updated!", "Your changes have been saved.");
+      router.back();
+    } catch (err: any) {
+      showError("Update failed", err?.message ?? "Could not update your profile.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const initials = displayName?.charAt(0)?.toUpperCase() || user?.username?.charAt(0)?.toUpperCase() || "U";

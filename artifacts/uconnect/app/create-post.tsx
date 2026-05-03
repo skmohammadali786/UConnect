@@ -14,6 +14,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useToast } from "@/components/Toast";
 import { recordAttempt, formatLockTime } from "@/utils/rateLimit";
+import { uploadMediaUriToR2 } from "@/utils/r2Upload";
 import type { PostTag, Draft } from "@/context/PostsContext";
 
 const ND = Platform.OS !== "web";
@@ -155,24 +156,42 @@ export default function CreatePostScreen() {
       Animated.spring(publishAnim, { toValue: 1, tension: 200, friction: 8, useNativeDriver: ND }),
     ]).start();
 
-    const deleteMs = getAutoDeleteMs(autoDelete);
-    const autoDeleteAt = deleteMs ? new Date(Date.now() + deleteMs).toISOString() : undefined;
+    try {
+      const deleteMs = getAutoDeleteMs(autoDelete);
+      const autoDeleteAt = deleteMs ? new Date(Date.now() + deleteMs).toISOString() : undefined;
 
-    await createPost({
-      authorId: user.id,
-      authorUsername: user.username,
-      authorAvatar: isAnonymous ? null : (user.avatar || null),
-      college: user.college,
-      isAnonymous,
-      tag,
-      content: content.trim(),
-      mediaUrls: mediaUris,
-      videoUrl: videoUri,
-      autoDeleteAt,
-    });
-    setLoading(false);
-    showSuccess("Post published!", isAnonymous ? "Posted anonymously" : `Posted as @${user.username}`);
-    router.back();
+      const uploadedMedia = await Promise.all(
+        mediaUris.map(async (uri) => {
+          const result = await uploadMediaUriToR2(uri, { kind: "image" });
+          return result.publicUrl;
+        }),
+      );
+
+      let uploadedVideoUrl = videoUri;
+      if (videoUri) {
+        const result = await uploadMediaUriToR2(videoUri, { kind: "video" });
+        uploadedVideoUrl = result.publicUrl;
+      }
+
+      await createPost({
+        authorId: user.id,
+        authorUsername: user.username,
+        authorAvatar: isAnonymous ? null : (user.avatar || null),
+        college: user.college,
+        isAnonymous,
+        tag,
+        content: content.trim(),
+        mediaUrls: uploadedMedia,
+        videoUrl: uploadedVideoUrl,
+        autoDeleteAt,
+      });
+      showSuccess("Post published!", isAnonymous ? "Posted anonymously" : `Posted as @${user.username}`);
+      router.back();
+    } catch (err: any) {
+      showError("Upload failed", err?.message ?? "Could not publish your post. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSaveDraft = async () => {

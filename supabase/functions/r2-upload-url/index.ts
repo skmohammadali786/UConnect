@@ -58,6 +58,12 @@ const getFileExtension = (fileType: string): string => {
   if (normalized === "jpeg") {
     return "jpg";
   }
+  if (normalized === "quicktime") {
+    return "mov";
+  }
+  if (normalized === "x-msvideo") {
+    return "avi";
+  }
   return normalized;
 };
 
@@ -168,9 +174,9 @@ serve(async (req) => {
   }
 
   const fileType = rawFileType.toLowerCase();
-  if (!fileType.startsWith("image/")) {
+  if (!fileType.startsWith("image/") && !fileType.startsWith("video/")) {
     return new Response(
-      JSON.stringify({ error: "Only image uploads are supported" }),
+      JSON.stringify({ error: "Only image or video uploads are supported" }),
       {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
