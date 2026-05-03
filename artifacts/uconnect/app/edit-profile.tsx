@@ -15,6 +15,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/Toast";
 import { ALL_INTERESTS } from "@/constants/interests";
 import { supabase } from "@/lib/supabase";
+import { isRemoteUri, uploadMediaUriToR2 } from "@/utils/r2Upload";
 
 const ND = Platform.OS !== "web";
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "Postgraduate", "PhD", "Alumni"];
@@ -271,19 +272,41 @@ export default function EditProfileScreen() {
     }
     const normalizedRingColor = isValidHexColor(avatarRingColor) ? avatarRingColor.trim().toUpperCase() : DEFAULT_AVATAR_RING_COLOR;
     setSaving(true);
-    await updateUser({
-      displayName: displayName.trim(),
-      bio: bio.trim(),
-      year,
-      interests: selectedInterests,
-      avatar: avatarUri,
-      avatarRingColor: normalizedRingColor,
-      banner: bannerUri,
-    });
-    setAvatarRingColor(normalizedRingColor);
-    setSaving(false);
-    showSuccess("Profile updated!", "Your changes have been saved.");
-    router.back();
+    try {
+      const shouldUploadAvatar = !!avatarUri && !isRemoteUri(avatarUri);
+      const shouldUploadBanner = !!bannerUri && !isRemoteUri(bannerUri);
+      const [uploadedAvatar, uploadedBanner] = await Promise.all([
+        shouldUploadAvatar ? uploadMediaUriToR2(avatarUri, { kind: "image" }) : Promise.resolve(null),
+        shouldUploadBanner ? uploadMediaUriToR2(bannerUri, { kind: "image" }) : Promise.resolve(null),
+      ]);
+      if (shouldUploadAvatar && !uploadedAvatar?.publicUrl) {
+        throw new Error("Avatar upload failed");
+      }
+      if (shouldUploadBanner && !uploadedBanner?.publicUrl) {
+        throw new Error("Banner upload failed");
+      }
+      const avatarUrl = avatarUri ? (shouldUploadAvatar ? uploadedAvatar!.publicUrl : avatarUri) : null;
+      const bannerUrl = bannerUri ? (shouldUploadBanner ? uploadedBanner!.publicUrl : bannerUri) : null;
+
+      await updateUser({
+        displayName: displayName.trim(),
+        bio: bio.trim(),
+        year,
+        interests: selectedInterests,
+        avatar: avatarUrl,
+        avatarRingColor: normalizedRingColor,
+        banner: bannerUrl,
+      });
+      setAvatarUri(avatarUrl);
+      setBannerUri(bannerUrl);
+      setAvatarRingColor(normalizedRingColor);
+      showSuccess("Profile updated!", "Your changes have been saved.");
+      router.back();
+    } catch (err: any) {
+      showError("Update failed", err?.message ?? "Could not update your profile.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const initials = displayName?.charAt(0)?.toUpperCase() || user?.username?.charAt(0)?.toUpperCase() || "U";
