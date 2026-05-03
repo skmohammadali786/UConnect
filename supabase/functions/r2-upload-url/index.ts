@@ -8,6 +8,8 @@ const corsHeaders = {
 
 const encoder = new TextEncoder();
 
+const UPLOAD_URL_EXPIRY_SECONDS = 900;
+
 const encodeRfc3986 = (value: string): string =>
   encodeURIComponent(value).replace(
     /[!'()*]/g,
@@ -203,7 +205,7 @@ serve(async (req) => {
       bucket,
       key: objectKey,
       contentType: fileType,
-      expiresInSeconds: 900,
+      expiresInSeconds: UPLOAD_URL_EXPIRY_SECONDS,
     });
 
     const publicPath = objectKey

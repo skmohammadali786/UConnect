@@ -17,15 +17,20 @@ export async function uploadImageToR2(
   file: Blob,
   fileType?: string,
 ): Promise<UploadResult> {
-  const resolvedType = (fileType ?? file.type ?? "").toLowerCase();
-  if (!resolvedType.startsWith("image/")) {
+  const resolvedType = fileType ?? file.type;
+  if (!resolvedType) {
+    throw new Error("fileType is required");
+  }
+
+  const normalizedType = resolvedType.toLowerCase();
+  if (!normalizedType.startsWith("image/")) {
     throw new Error("Only image uploads are supported");
   }
 
   const { data, error } = await supabase.functions.invoke<SignedUploadResponse>(
     "r2-upload-url",
     {
-      body: { fileType: resolvedType },
+      body: { fileType: normalizedType },
     },
   );
 
@@ -40,7 +45,7 @@ export async function uploadImageToR2(
   const uploadResponse = await fetch(data.uploadUrl, {
     method: data.method ?? "PUT",
     headers: {
-      "Content-Type": resolvedType,
+      "Content-Type": normalizedType,
       ...(data.headers ?? {}),
     },
     body: file,
