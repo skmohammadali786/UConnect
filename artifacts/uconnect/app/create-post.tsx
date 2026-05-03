@@ -168,11 +168,11 @@ export default function CreatePostScreen() {
         }),
       );
 
-      let finalVideoUrl = videoUri;
-      if (videoUri && !isRemoteUri(videoUri)) {
-        const result = await uploadMediaUriToR2(videoUri, { kind: "video" });
-        finalVideoUrl = result.publicUrl;
-      }
+      const finalVideoUrl = videoUri
+        ? (isRemoteUri(videoUri)
+          ? videoUri
+          : (await uploadMediaUriToR2(videoUri, { kind: "video" })).publicUrl)
+        : null;
 
       await createPost({
         authorId: user.id,

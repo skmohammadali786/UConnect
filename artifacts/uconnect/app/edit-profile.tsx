@@ -273,12 +273,20 @@ export default function EditProfileScreen() {
     const normalizedRingColor = isValidHexColor(avatarRingColor) ? avatarRingColor.trim().toUpperCase() : DEFAULT_AVATAR_RING_COLOR;
     setSaving(true);
     try {
+      const shouldUploadAvatar = !!avatarUri && !isRemoteUri(avatarUri);
+      const shouldUploadBanner = !!bannerUri && !isRemoteUri(bannerUri);
       const [uploadedAvatar, uploadedBanner] = await Promise.all([
-        avatarUri && !isRemoteUri(avatarUri) ? uploadMediaUriToR2(avatarUri, { kind: "image" }) : Promise.resolve(null),
-        bannerUri && !isRemoteUri(bannerUri) ? uploadMediaUriToR2(bannerUri, { kind: "image" }) : Promise.resolve(null),
+        shouldUploadAvatar ? uploadMediaUriToR2(avatarUri, { kind: "image" }) : Promise.resolve(null),
+        shouldUploadBanner ? uploadMediaUriToR2(bannerUri, { kind: "image" }) : Promise.resolve(null),
       ]);
-      const avatarUrl = avatarUri ? (uploadedAvatar?.publicUrl ?? avatarUri) : null;
-      const bannerUrl = bannerUri ? (uploadedBanner?.publicUrl ?? bannerUri) : null;
+      if (shouldUploadAvatar && !uploadedAvatar?.publicUrl) {
+        throw new Error("Avatar upload failed");
+      }
+      if (shouldUploadBanner && !uploadedBanner?.publicUrl) {
+        throw new Error("Banner upload failed");
+      }
+      const avatarUrl = avatarUri ? (shouldUploadAvatar ? uploadedAvatar!.publicUrl : avatarUri) : null;
+      const bannerUrl = bannerUri ? (shouldUploadBanner ? uploadedBanner!.publicUrl : bannerUri) : null;
 
       await updateUser({
         displayName: displayName.trim(),
