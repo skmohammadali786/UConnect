@@ -25,7 +25,7 @@ const EXTENSION_MIME_MAP: Record<string, string> = {
   avi: "video/x-msvideo",
 };
 
-function normalizeFileType(fileType: string | undefined): string | null {
+function normalizeFileType(fileType: string | null | undefined): string | null {
   const normalized = fileType?.trim().toLowerCase();
   return normalized ? normalized : null;
 }
@@ -129,12 +129,17 @@ async function uploadToR2(
     throw new Error("Invalid signed upload response");
   }
 
+  const headers: Record<string, string> = { ...(data.headers ?? {}) };
+  const hasContentType = Object.keys(headers).some(
+    (key) => key.toLowerCase() === "content-type",
+  );
+  if (!hasContentType) {
+    headers["Content-Type"] = fileType;
+  }
+
   const uploadResponse = await fetch(data.uploadUrl, {
     method: data.method ?? "PUT",
-    headers: {
-      "Content-Type": fileType,
-      ...(data.headers ?? {}),
-    },
+    headers,
     body: file,
   });
 
