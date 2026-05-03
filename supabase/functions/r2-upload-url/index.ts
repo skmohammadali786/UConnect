@@ -9,6 +9,7 @@ const corsHeaders = {
 const encoder = new TextEncoder();
 
 const UPLOAD_URL_EXPIRY_SECONDS = 900;
+const CONTENT_SHA256_VALUE = "UNSIGNED-PAYLOAD";
 
 const encodeRfc3986 = (value: string): string =>
   encodeURIComponent(value).replace(
@@ -100,9 +101,8 @@ const createSignedUploadUrl = async ({
   const region = "auto";
   const credentialScope = `${dateStamp}/${region}/s3/aws4_request`;
 
-  const contentSha256Value = "UNSIGNED-PAYLOAD";
   const canonicalHeaders = `host:${host}\n` +
-    `x-amz-content-sha256:${contentSha256Value}\n`;
+    `x-amz-content-sha256:${CONTENT_SHA256_VALUE}\n`;
   const signedHeaders = "host;x-amz-content-sha256";
 
   const canonicalQueryParams = {
@@ -123,7 +123,7 @@ const createSignedUploadUrl = async ({
     canonicalQueryString,
     canonicalHeaders,
     signedHeaders,
-    contentSha256Value,
+    CONTENT_SHA256_VALUE,
   ].join("\n");
 
   const stringToSign = [
@@ -231,7 +231,7 @@ serve(async (req) => {
         method: "PUT",
         headers: {
           "Content-Type": contentType,
-          "x-amz-content-sha256": contentSha256Value,
+          "x-amz-content-sha256": CONTENT_SHA256_VALUE,
         },
       }),
       {
