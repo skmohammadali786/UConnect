@@ -15,7 +15,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/Toast";
 import { ALL_INTERESTS } from "@/constants/interests";
 import { supabase } from "@/lib/supabase";
-import { uploadMediaUriToR2 } from "@/utils/r2Upload";
+import { isRemoteUri, uploadMediaUriToR2 } from "@/utils/r2Upload";
 
 const ND = Platform.OS !== "web";
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "Postgraduate", "PhD", "Alumni"];
@@ -274,11 +274,11 @@ export default function EditProfileScreen() {
     setSaving(true);
     try {
       const [uploadedAvatar, uploadedBanner] = await Promise.all([
-        avatarUri ? uploadMediaUriToR2(avatarUri, { kind: "image" }) : Promise.resolve(null),
-        bannerUri ? uploadMediaUriToR2(bannerUri, { kind: "image" }) : Promise.resolve(null),
+        avatarUri && !isRemoteUri(avatarUri) ? uploadMediaUriToR2(avatarUri, { kind: "image" }) : Promise.resolve(null),
+        bannerUri && !isRemoteUri(bannerUri) ? uploadMediaUriToR2(bannerUri, { kind: "image" }) : Promise.resolve(null),
       ]);
-      const avatarUrl = uploadedAvatar?.publicUrl ?? null;
-      const bannerUrl = uploadedBanner?.publicUrl ?? null;
+      const avatarUrl = avatarUri ? (uploadedAvatar?.publicUrl ?? avatarUri) : null;
+      const bannerUrl = bannerUri ? (uploadedBanner?.publicUrl ?? bannerUri) : null;
 
       await updateUser({
         displayName: displayName.trim(),

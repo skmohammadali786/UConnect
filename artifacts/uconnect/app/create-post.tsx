@@ -14,7 +14,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useToast } from "@/components/Toast";
 import { recordAttempt, formatLockTime } from "@/utils/rateLimit";
-import { uploadMediaUriToR2 } from "@/utils/r2Upload";
+import { isRemoteUri, uploadMediaUriToR2 } from "@/utils/r2Upload";
 import type { PostTag, Draft } from "@/context/PostsContext";
 
 const ND = Platform.OS !== "web";
@@ -162,13 +162,14 @@ export default function CreatePostScreen() {
 
       const uploadedMedia = await Promise.all(
         mediaUris.map(async (uri) => {
+          if (isRemoteUri(uri)) return uri;
           const result = await uploadMediaUriToR2(uri, { kind: "image" });
           return result.publicUrl;
         }),
       );
 
       let finalVideoUrl = videoUri;
-      if (videoUri) {
+      if (videoUri && !isRemoteUri(videoUri)) {
         const result = await uploadMediaUriToR2(videoUri, { kind: "video" });
         finalVideoUrl = result.publicUrl;
       }

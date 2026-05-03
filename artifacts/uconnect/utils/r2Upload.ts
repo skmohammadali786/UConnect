@@ -48,7 +48,7 @@ function base64ToArrayBuffer(base64: string): ArrayBuffer {
   return Uint8Array.from(out).buffer;
 }
 
-function isRemoteUri(uri: string): boolean {
+export function isRemoteUri(uri: string): boolean {
   return HTTP_URI_REGEX.test(uri);
 }
 
@@ -139,7 +139,9 @@ async function uploadToR2(
   });
 
   if (!uploadResponse.ok) {
-    throw new Error(`Upload failed with status ${uploadResponse.status}`);
+    throw new Error(
+      `Upload failed with status ${uploadResponse.status}: ${uploadResponse.statusText}`,
+    );
   }
 
   return {
@@ -165,7 +167,7 @@ export async function uploadMediaUriToR2(
   options: { fileType?: string; kind?: MediaKind } = {},
 ): Promise<UploadResult> {
   if (isRemoteUri(uri)) {
-    return { publicUrl: uri, path: uri };
+    throw new Error("Remote URLs must be uploaded separately");
   }
   const { body, fileType } = await resolveUploadPayload(uri, options.fileType);
   const kind = options.kind ?? "any";
