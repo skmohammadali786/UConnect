@@ -167,10 +167,10 @@ export default function CreatePostScreen() {
         }),
       );
 
-      let uploadedVideoUrl = videoUri;
+      let finalVideoUrl = videoUri;
       if (videoUri) {
         const result = await uploadMediaUriToR2(videoUri, { kind: "video" });
-        uploadedVideoUrl = result.publicUrl;
+        finalVideoUrl = result.publicUrl;
       }
 
       await createPost({
@@ -182,7 +182,7 @@ export default function CreatePostScreen() {
         tag,
         content: content.trim(),
         mediaUrls: uploadedMedia,
-        videoUrl: uploadedVideoUrl,
+        videoUrl: finalVideoUrl,
         autoDeleteAt,
       });
       showSuccess("Post published!", isAnonymous ? "Posted anonymously" : `Posted as @${user.username}`);
