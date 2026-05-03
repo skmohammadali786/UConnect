@@ -68,9 +68,14 @@ const getFileExtension = (fileType: string): string => {
   return normalized;
 };
 
+const splitPathSegments = (value: string): string[] =>
+  value.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
+
 const buildObjectPath = (endpointPath: string, bucket: string, key: string) => {
-  const basePath = endpointPath.replace(/^\/+|\/+$/g, "");
-  const segments = [basePath, bucket, key].filter(Boolean);
+  const baseSegments = splitPathSegments(endpointPath);
+  const bucketSegments = splitPathSegments(bucket);
+  const keySegments = splitPathSegments(key);
+  const segments = [...baseSegments, ...bucketSegments, ...keySegments];
   return `/${segments.map((segment) => encodeRfc3986(segment)).join("/")}`;
 };
 
@@ -101,9 +106,8 @@ const createSignedUploadUrl = async ({
   const region = "auto";
   const credentialScope = `${dateStamp}/${region}/s3/aws4_request`;
 
-  const canonicalHeaders = `host:${host}\n` +
-    `x-amz-content-sha256:${CONTENT_SHA256_VALUE}\n`;
-  const signedHeaders = "host;x-amz-content-sha256";
+  const canonicalHeaders = `host:${host}\n`;
+  const signedHeaders = "host";
 
   const canonicalQueryParams = {
     "X-Amz-Algorithm": "AWS4-HMAC-SHA256",
@@ -216,8 +220,7 @@ serve(async (req) => {
       expiresInSeconds: UPLOAD_URL_EXPIRY_SECONDS,
     });
 
-    const publicPath = objectKey
-      .split("/")
+    const publicPath = splitPathSegments(objectKey)
       .map((segment) => encodeRfc3986(segment))
       .join("/");
 
@@ -231,7 +234,6 @@ serve(async (req) => {
         method: "PUT",
         headers: {
           "Content-Type": contentType,
-          "x-amz-content-sha256": CONTENT_SHA256_VALUE,
         },
       }),
       {
