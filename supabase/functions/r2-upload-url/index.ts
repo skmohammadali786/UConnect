@@ -159,7 +159,7 @@ serve(async (req) => {
 
   const rawFileType = body?.fileType;
   if (typeof rawFileType !== "string") {
-    return new Response(JSON.stringify({ error: "fileType is required." }), {
+    return new Response(JSON.stringify({ error: "fileType is required" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -168,7 +168,7 @@ serve(async (req) => {
   const fileType = rawFileType.toLowerCase();
   if (!fileType.startsWith("image/")) {
     return new Response(
-      JSON.stringify({ error: "Only image uploads are supported." }),
+      JSON.stringify({ error: "Only image uploads are supported" }),
       {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -184,7 +184,7 @@ serve(async (req) => {
 
   if (!accessKey || !secretKey || !endpoint || !bucket || !publicUrl) {
     return new Response(
-      JSON.stringify({ error: "Server is missing R2 configuration." }),
+      JSON.stringify({ error: "Server is missing R2 configuration" }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -231,7 +231,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("Failed to create signed URL", error);
     return new Response(
-      JSON.stringify({ error: "Failed to create signed upload URL." }),
+      JSON.stringify({ error: "Failed to create signed upload URL" }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
