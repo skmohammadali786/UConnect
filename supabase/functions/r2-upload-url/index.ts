@@ -100,9 +100,9 @@ const createSignedUploadUrl = async ({
   const region = "auto";
   const credentialScope = `${dateStamp}/${region}/s3/aws4_request`;
 
-  const payloadHash = "UNSIGNED-PAYLOAD";
+  const contentSha256Value = "UNSIGNED-PAYLOAD";
   const canonicalHeaders = `host:${host}\n` +
-    `x-amz-content-sha256:${payloadHash}\n`;
+    `x-amz-content-sha256:${contentSha256Value}\n`;
   const signedHeaders = "host;x-amz-content-sha256";
 
   const canonicalQueryParams = {
@@ -123,7 +123,7 @@ const createSignedUploadUrl = async ({
     canonicalQueryString,
     canonicalHeaders,
     signedHeaders,
-    payloadHash,
+    contentSha256Value,
   ].join("\n");
 
   const stringToSign = [
@@ -231,7 +231,7 @@ serve(async (req) => {
         method: "PUT",
         headers: {
           "Content-Type": contentType,
-          "x-amz-content-sha256": payloadHash,
+          "x-amz-content-sha256": contentSha256Value,
         },
       }),
       {
