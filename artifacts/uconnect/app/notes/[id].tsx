@@ -126,9 +126,7 @@ export default function NoteDetailScreen() {
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
         <Text style={[styles.title, { color: colors.foreground }]}>Note Details</Text>
-        <TouchableOpacity onPress={openDownloadModal}>
-          <Feather name="download" size={20} color={colors.primary} />
-        </TouchableOpacity>
+        <View style={{ width: 20 }} />
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 50 }} showsVerticalScrollIndicator={false}>
@@ -209,9 +207,7 @@ export default function NoteDetailScreen() {
         </View>
 
         <TouchableOpacity onPress={openDownloadModal} style={[styles.downloadBtn, { backgroundColor: colors.primary }]}>
-          <Feather name="download" size={20} color="#FFFFFF" />
           <Text style={styles.downloadBtnText}>Download Notes</Text>
-          <Text style={[styles.downloadSize, { color: "#FFFFFF90" }]}>{note.fileSize}</Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -304,8 +300,7 @@ const styles = StyleSheet.create({
   verifiedPill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8, borderWidth: 1 },
   verifiedText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
   downloadBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, borderRadius: 14, height: 56 },
-  downloadBtnText: { color: "#FFFFFF", fontSize: 16, fontFamily: "Inter_700Bold", flex: 1, textAlign: "center" },
-  downloadSize: { fontSize: 13, fontFamily: "Inter_400Regular", marginLeft: -8 },
+  downloadBtnText: { color: "#FFFFFF", fontSize: 16, fontFamily: "Inter_700Bold", textAlign: "center" },
   backdrop: { backgroundColor: "rgba(0,0,0,0.6)" },
   sheet: { position: "absolute", bottom: 0, left: 0, right: 0, borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, padding: 24, paddingBottom: 36, alignItems: "center", gap: 12 },
   sheetHandle: { width: 40, height: 4, borderRadius: 2, marginBottom: 8 },
