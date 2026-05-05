@@ -1,5 +1,4 @@
 import { Feather } from "@expo/vector-icons";
-import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import React, { useState } from "react";
@@ -11,6 +10,7 @@ import { useColors } from "@/hooks/useColors";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { uploadMediaUriToR2 } from "@/utils/r2Upload";
 
 const SUBJECTS = [
   "Mathematics", "Physics", "Chemistry", "Computer Science", "Data Structures", "Algorithms", "DBMS", "Operating Systems",
@@ -31,35 +31,6 @@ function getImageFileExtension(image: SelectedImage) {
   if (ext === "jpeg") return "jpg";
   if (["jpg", "png", "webp", "heic", "heif", "gif"].includes(ext)) return ext;
   return "jpg";
-}
-
-function base64ToArrayBuffer(base64: string): ArrayBuffer {
-  // RN native file URIs are converted via base64 because storage upload expects binary body.
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-  const clean = base64.replace(/=+$/, "");
-  let bytes = 0;
-  let buffer = 0;
-  const out: number[] = [];
-  for (let i = 0; i < clean.length; i += 1) {
-    const value = chars.indexOf(clean[i]);
-    if (value < 0) continue;
-    buffer = (buffer << 6) | value;
-    bytes += 6;
-    if (bytes >= 8) {
-      bytes -= 8;
-      out.push((buffer >> bytes) & 0xff);
-    }
-  }
-  return Uint8Array.from(out).buffer;
-}
-
-async function uriToUploadBody(uri: string): Promise<Blob | ArrayBuffer> {
-  if (Platform.OS === "web") {
-    const res = await fetch(uri);
-    return await res.blob();
-  }
-  const base64 = await FileSystem.readAsStringAsync(uri, { encoding: "base64" });
-  return base64ToArrayBuffer(base64);
 }
 
 export default function UploadNotesScreen() {
@@ -111,25 +82,14 @@ export default function UploadNotesScreen() {
     setLoading(true);
     try {
       const imageUrls: string[] = [];
-      const uploadSessionId = Date.now().toString(36);
-      for (let imageIndex = 0; imageIndex < images.length; imageIndex += 1) {
-        const image = images[imageIndex];
+      for (const image of images) {
         const extension = getImageFileExtension(image);
-        let path = "";
-        let uploadError: unknown = null;
-        for (let attempt = 0; attempt < 2; attempt += 1) {
-          path = `${user.id}/${uploadSessionId}_${imageIndex}_${attempt}.${extension}`;
-          const fileBody = await uriToUploadBody(image.uri);
-          const { error } = await supabase.storage.from("notes").upload(path, fileBody, {
-            contentType: image.mimeType ?? undefined,
-            upsert: false,
-          });
-          uploadError = error;
-          if (!uploadError) break;
-        }
-        if (uploadError) throw uploadError;
-        const { data: publicData } = supabase.storage.from("notes").getPublicUrl(path);
-        if (publicData?.publicUrl) imageUrls.push(publicData.publicUrl);
+        const fileType = image.mimeType ?? `image/${extension === "jpg" ? "jpeg" : extension}`;
+        const { publicUrl } = await uploadMediaUriToR2(image.uri, {
+          fileType,
+          kind: "image",
+        });
+        imageUrls.push(publicUrl);
       }
       const payload = {
         title: title.trim(),
