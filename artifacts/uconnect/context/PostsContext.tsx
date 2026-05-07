@@ -35,6 +35,8 @@ export interface Post {
   content: string;
   mediaUrls: string[];
   videoUrl: string | null;
+  videoProvider?: "r2" | "gumlet";
+  videoAssetId?: string | null;
   upvotes: number;
   downvotes: number;
   repostCount: number;
@@ -80,6 +82,12 @@ interface PostsContextType {
 
 const PostsContext = createContext<PostsContextType | undefined>(undefined);
 
+type GumletPlaybackResponse = {
+  playbackUrl?: string;
+  status?: string;
+};
+
+
 function rowToPost(row: any, userVote: "up" | "down" | null = null, isBookmarked = false, comments: Comment[] = []): Post {
   return {
     id: row.id,
@@ -94,6 +102,8 @@ function rowToPost(row: any, userVote: "up" | "down" | null = null, isBookmarked
     content: row.content,
     mediaUrls: row.media_urls ?? [],
     videoUrl: row.video_url ?? null,
+    videoProvider: row.video_provider ?? undefined,
+    videoAssetId: row.video_asset_id ?? null,
     upvotes: row.upvotes ?? 0,
     downvotes: row.downvotes ?? 0,
     repostCount: row.repost_count ?? 0,
@@ -217,6 +227,30 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
     fetchPosts();
   }, [user?.id]);
 
+  const resolveGumletPlaybackUrl = useCallback(async (postId: string, assetId: string) => {
+    const maxPolls = 20;
+    for (let attempt = 0; attempt < maxPolls; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      const status = await supabase.functions.invoke<GumletPlaybackResponse>("gumlet-video-upload", {
+        body: { action: "getPlayback", assetId },
+      });
+      if (status.error) continue;
+      if (!status.data?.playbackUrl) continue;
+
+      const playbackUrl = status.data.playbackUrl;
+      const { error } = await supabase
+        .from("posts")
+        .update({ video_url: playbackUrl })
+        .eq("id", postId)
+        .eq("video_asset_id", assetId);
+
+      if (!error) {
+        applyPosts(postsRef.current.map((p) => (p.id === postId ? { ...p, videoUrl: playbackUrl } : p)));
+      }
+      return;
+    }
+  }, [applyPosts]);
+
   const createPost = useCallback(async (postData: Omit<Post, "id" | "upvotes" | "downvotes" | "repostCount" | "userVote" | "commentCount" | "isBookmarked" | "createdAt" | "comments" | "repostedByUsername" | "repostedAt">) => {
     if (!user) {
       // Demo mode: local only
@@ -246,16 +280,23 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
       content: postData.content,
       media_urls: postData.mediaUrls,
       video_url: postData.videoUrl,
+      video_provider: postData.videoProvider ?? "r2",
+      video_asset_id: postData.videoAssetId ?? null,
       auto_delete_at: postData.autoDeleteAt ?? null,
     }).select().single();
+
+    if (error) throw error;
 
     if (data) {
       const newPost = rowToPost(data);
       applyPosts([newPost, ...postsRef.current]);
+      if (!newPost.videoUrl && newPost.videoProvider === "gumlet" && newPost.videoAssetId) {
+        void resolveGumletPlaybackUrl(newPost.id, newPost.videoAssetId);
+      }
       // Update post count
       await supabase.from("profiles").update({ posts_count: (user.postsCount ?? 0) + 1 }).eq("id", user.id);
     }
-  }, [user, applyPosts]);
+  }, [user, applyPosts, resolveGumletPlaybackUrl]);
 
   const votePost = useCallback((postId: string, vote: "up" | "down") => {
     if (!user) {
@@ -286,7 +327,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
     });
     applyPosts(updated);
     supabase.rpc("vote_post", { p_post_id: postId, p_user_id: user.id, p_vote: vote }).then(() => {});
-  }, [user, applyPosts]);
+  }, [user, applyPosts, resolveGumletPlaybackUrl]);
 
   const bookmarkPost = useCallback((postId: string) => {
     const post = postsRef.current.find((p) => p.id === postId);
@@ -302,7 +343,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
     } else {
       supabase.from("bookmarks").insert({ user_id: user.id, post_id: postId }).then(() => {});
     }
-  }, [user, applyPosts]);
+  }, [user, applyPosts, resolveGumletPlaybackUrl]);
 
   const deletePost = useCallback((postId: string) => {
     const updated = postsRef.current.filter((p) => p.id !== postId);
@@ -310,7 +351,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
     if (user) {
       supabase.from("posts").delete().eq("id", postId).then(() => {});
     }
-  }, [user, applyPosts]);
+  }, [user, applyPosts, resolveGumletPlaybackUrl]);
 
   const addComment = useCallback(async (postId: string, commentData: Omit<Comment, "id" | "createdAt" | "upvotes" | "downvotes" | "userVote" | "replies">) => {
     const newComment: Comment = {
@@ -396,7 +437,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
 
     supabase.rpc("increment_comment_count", { p_post_id: postId }).then(() => {});
     return true;
-  }, [user, applyPosts]);
+  }, [user, applyPosts, resolveGumletPlaybackUrl]);
 
   const voteComment = useCallback((postId: string, commentId: string, vote: "up" | "down") => {
     const applyVote = (c: Comment): Comment => {
@@ -456,12 +497,14 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
       setDrafts((prev) => [newDraft, ...prev]);
       return;
     }
-    const { data } = await supabase.from("drafts").insert({
+    const { data, error } = await supabase.from("drafts").insert({
       user_id: user.id,
       content: draftData.content,
       tag: draftData.tag,
       is_anonymous: draftData.isAnonymous,
     }).select().single();
+    if (error) throw error;
+
     if (data) {
       const newDraft: Draft = { id: data.id, content: data.content, tag: data.tag, isAnonymous: data.is_anonymous, savedAt: data.saved_at };
       setDrafts((prev) => [newDraft, ...prev]);
