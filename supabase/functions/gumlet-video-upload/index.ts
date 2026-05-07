@@ -72,7 +72,7 @@ serve(async (req) => {
       keep_original: false,
       title: fileName || `uconnect-${crypto.randomUUID()}`,
       metadata: {
-        max_duration_seconds: MAX_VIDEO_DURATION_SECONDS,
+        max_duration_seconds: maxDurationSeconds,
         app: "uconnect",
       },
     };
