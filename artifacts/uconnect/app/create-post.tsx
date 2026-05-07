@@ -168,11 +168,21 @@ export default function CreatePostScreen() {
         }),
       );
 
-      const finalVideoUrl = videoUri
-        ? (isRemoteUri(videoUri)
-          ? videoUri
-          : (await uploadVideoUriToGumlet(videoUri)).publicUrl)
-        : null;
+      let finalVideoUrl: string | null = null;
+      let videoProvider: "r2" | "gumlet" | undefined;
+      let videoAssetId: string | null = null;
+
+      if (videoUri) {
+        if (isRemoteUri(videoUri)) {
+          finalVideoUrl = videoUri;
+          videoProvider = "gumlet";
+        } else {
+          const uploadedVideo = await uploadVideoUriToGumlet(videoUri);
+          finalVideoUrl = uploadedVideo.publicUrl;
+          videoProvider = "gumlet";
+          videoAssetId = uploadedVideo.assetId;
+        }
+      }
 
       await createPost({
         authorId: user.id,
@@ -184,6 +194,8 @@ export default function CreatePostScreen() {
         content: content.trim(),
         mediaUrls: uploadedMedia,
         videoUrl: finalVideoUrl,
+        videoProvider,
+        videoAssetId,
         autoDeleteAt,
       });
       showSuccess("Post published!", isAnonymous ? "Posted anonymously" : `Posted as @${user.username}`);

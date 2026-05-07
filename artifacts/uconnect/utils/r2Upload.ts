@@ -195,7 +195,7 @@ export async function uploadMediaUriToR2(
 export async function uploadVideoUriToGumlet(
   uri: string,
   options: { fileType?: string; fileName?: string } = {},
-): Promise<{ publicUrl: string; assetId: string; status: string }> {
+): Promise<{ publicUrl: string | null; assetId: string; status: string }> {
   if (isRemoteUri(uri)) {
     throw new Error("Remote URLs must be uploaded separately");
   }
@@ -229,6 +229,7 @@ export async function uploadVideoUriToGumlet(
   }
 
   const maxPolls = 20;
+  let latestStatus = "processing";
   for (let attempt = 0; attempt < maxPolls; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 3000));
     const status = await supabase.functions.invoke<GumletPlaybackResponse>(
@@ -236,14 +237,19 @@ export async function uploadVideoUriToGumlet(
       { body: { action: "getPlayback", assetId: create.data.assetId } },
     );
     if (status.error) continue;
+    latestStatus = status.data?.status ?? latestStatus;
     if (status.data?.playbackUrl) {
       return {
         publicUrl: status.data.playbackUrl,
         assetId: create.data.assetId,
-        status: status.data.status ?? "ready",
+        status: latestStatus,
       };
     }
   }
 
-  throw new Error("Video is uploaded but still processing. Try publishing again in a few seconds.");
+  return {
+    publicUrl: null,
+    assetId: create.data.assetId,
+    status: latestStatus,
+  };
 }
