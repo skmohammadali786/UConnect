@@ -83,8 +83,8 @@ interface PostsContextType {
 const PostsContext = createContext<PostsContextType | undefined>(undefined);
 
 type GumletPlaybackResponse = {
-  playbackUrl?: string;
-  status?: string;
+  playbackUrl: 
+  string | null;
 };
 
 
