@@ -14,7 +14,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useToast } from "@/components/Toast";
 import { recordAttempt, formatLockTime } from "@/utils/rateLimit";
-import { isRemoteUri, uploadMediaUriToR2 } from "@/utils/r2Upload";
+import { isRemoteUri, uploadMediaUriToR2, uploadVideoUriToGumlet } from "@/utils/r2Upload";
 import type { PostTag, Draft } from "@/context/PostsContext";
 
 const ND = Platform.OS !== "web";
@@ -171,7 +171,7 @@ export default function CreatePostScreen() {
       const finalVideoUrl = videoUri
         ? (isRemoteUri(videoUri)
           ? videoUri
-          : (await uploadMediaUriToR2(videoUri, { kind: "video" })).publicUrl)
+          : (await uploadVideoUriToGumlet(videoUri)).publicUrl)
         : null;
 
       await createPost({

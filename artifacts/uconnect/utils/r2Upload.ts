@@ -110,6 +110,21 @@ export type UploadResult = {
   path: string;
 };
 
+type GumletCreateUploadResponse = {
+  uploadUrl: string;
+  assetId: string;
+  playbackUrl?: string | null;
+  method?: "PUT" | "POST";
+  headers?: Record<string, string>;
+};
+
+type GumletPlaybackResponse = {
+  status?: string;
+  playbackUrl?: string | null;
+};
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 async function uploadToR2(
   file: Blob | ArrayBuffer,
   fileType: string,
@@ -178,4 +193,68 @@ export async function uploadMediaUriToR2(
   const kind = options.kind ?? "any";
   assertAllowedType(fileType, kind);
   return uploadToR2(body, fileType);
+}
+
+export async function uploadVideoUriToGumlet(
+  uri: string,
+  options: { fileType?: string; fileName?: string } = {},
+): Promise<{ publicUrl: string; assetId: string; status: string }> {
+  if (isRemoteUri(uri)) {
+    throw new Error("Remote URLs must be uploaded separately");
+  }
+
+  const { body, fileType } = await resolveUploadPayload(uri, options.fileType);
+  assertAllowedType(fileType, "video");
+
+  const create = await supabase.functions.invoke<GumletCreateUploadResponse>(
+    "gumlet-video-upload",
+    { body: { action: "createUpload", fileType, fileName: options.fileName ?? undefined, maxDurationSeconds: 30 } },
+  );
+
+  if (create.error) throw create.error;
+  if (!create.data?.uploadUrl || !create.data?.assetId) {
+    throw new Error("Invalid Gumlet upload response");
+  }
+
+  const uploadHeaders: Record<string, string> = { ...(create.data.headers ?? {}) };
+  if (!Object.keys(uploadHeaders).some((key) => key.toLowerCase() === "content-type")) {
+    uploadHeaders["Content-Type"] = fileType;
+  }
+
+  const uploadResponse = await fetch(create.data.uploadUrl, {
+    method: create.data.method ?? "PUT",
+    headers: uploadHeaders,
+    body,
+  });
+
+  if (!uploadResponse.ok) {
+    throw new Error(`Gumlet upload failed with ${uploadResponse.status}`);
+  }
+
+  if (create.data.playbackUrl) {
+    return {
+      publicUrl: create.data.playbackUrl,
+      assetId: create.data.assetId,
+      status: "ready",
+    };
+  }
+
+  const maxPolls = 40;
+  for (let attempt = 0; attempt < maxPolls; attempt += 1) {
+    await sleep(3000);
+    const status = await supabase.functions.invoke<GumletPlaybackResponse>(
+      "gumlet-video-upload",
+      { body: { action: "getPlayback", assetId: create.data.assetId } },
+    );
+    if (status.error) continue;
+    if (status.data?.playbackUrl) {
+      return {
+        publicUrl: status.data.playbackUrl,
+        assetId: create.data.assetId,
+        status: status.data.status ?? "ready",
+      };
+    }
+  }
+
+  throw new Error("Video upload succeeded but Gumlet is still processing it. Please try posting again in 1-2 minutes.");
 }
