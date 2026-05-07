@@ -123,6 +123,12 @@ type GumletPlaybackResponse = {
   playbackUrl?: string | null;
 };
 
+type GumletUploadResult = {
+  publicUrl: string;
+  assetId: string;
+  status: string;
+};
+
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function uploadToR2(
@@ -198,7 +204,7 @@ export async function uploadMediaUriToR2(
 export async function uploadVideoUriToGumlet(
   uri: string,
   options: { fileType?: string; fileName?: string } = {},
-): Promise<{ publicUrl: string; assetId: string; status: string }> {
+): Promise<GumletUploadResult> {
   if (isRemoteUri(uri)) {
     throw new Error("Remote URLs must be uploaded separately");
   }
@@ -256,5 +262,6 @@ export async function uploadVideoUriToGumlet(
     }
   }
 
-  throw new Error("Video upload succeeded but Gumlet is still processing it. Please try posting again in 1-2 minutes.");
+  throw new Error("Video uploaded, but processing is not finished yet. Please retry posting in 1-2 minutes.");
 }
+

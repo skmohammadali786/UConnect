@@ -10,6 +10,8 @@ const MAX_VIDEO_DURATION_SECONDS = 30;
 const pickPlaybackUrl = (data: any): string | null =>
   data?.playback_url
   ?? data?.playbackUrl
+  ?? data?.stream_url
+  ?? data?.streamUrl
   ?? data?.output?.playback_url
   ?? data?.output?.playbackUrl
   ?? data?.output?.hls
