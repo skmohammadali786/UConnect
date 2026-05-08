@@ -81,6 +81,7 @@ interface PostsContextType {
 }
 
 const PostsContext = createContext<PostsContextType | undefined>(undefined);
+const RLS_PERMISSION_DENIED_CODE = "42501";
 
 type GumletPlaybackResponse = {
   playbackUrl: 
@@ -151,7 +152,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
   const resolveGumletPlaybackUrl = useCallback(async (postId: string, assetId: string) => {
     const maxPolls = 30;
     for (let attempt = 0; attempt < maxPolls; attempt += 1) {
-      await new Promise((resolveTimeout) => setTimeout(resolveTimeout, 3000));
+      await new Promise((resolve) => setTimeout(resolve, 3000));
       const status = await supabase.functions.invoke<GumletPlaybackResponse>("gumlet-video-upload", {
         body: { action: "getPlayback", assetId },
       });
@@ -165,7 +166,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
         .eq("id", postId)
         .eq("video_asset_id", assetId);
 
-      if (error && error.code !== "42501") {
+      if (error && error.code !== RLS_PERMISSION_DENIED_CODE) {
         console.error("Failed to update Gumlet playback URL", error);
         return;
       }
