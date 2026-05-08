@@ -149,7 +149,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const resolveGumletPlaybackUrl = useCallback(async (postId: string, assetId: string) => {
-    const maxPolls = 40;
+    const maxPolls = 30;
     for (let attempt = 0; attempt < maxPolls; attempt += 1) {
       await new Promise((resolve) => setTimeout(resolve, 3000));
       const status = await supabase.functions.invoke<GumletPlaybackResponse>("gumlet-video-upload", {
@@ -165,7 +165,10 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
         .eq("id", postId)
         .eq("video_asset_id", assetId);
 
-      if (error && error.code !== "42501") return;
+      if (error && error.code !== "42501") {
+        console.error("Failed to update Gumlet playback URL", error);
+        return;
+      }
       if (!postsRef.current.some((p) => p.id === postId)) return;
       applyPosts(postsRef.current.map((p) => (p.id === postId ? { ...p, videoUrl: playbackUrl } : p)));
       return;
