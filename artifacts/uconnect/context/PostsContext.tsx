@@ -187,7 +187,10 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
       gumletResolutionInFlight.current.add(post.id);
       resolveGumletPlaybackUrl(post.id, post.videoAssetId)
         .catch((error) => {
-          console.error(`Failed to resolve Gumlet playback URL for post ${post.id}`, error);
+          console.error(
+            `Failed to resolve Gumlet playback URL for post ${post.id} (asset ${post.videoAssetId})`,
+            error,
+          );
         })
         .finally(() => {
           gumletResolutionInFlight.current.delete(post.id);
