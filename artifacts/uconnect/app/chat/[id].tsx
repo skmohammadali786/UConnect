@@ -1,4 +1,4 @@
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { FlatList, Image, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
@@ -9,6 +9,9 @@ import { useColors } from "@/hooks/useColors";
 import { useChat } from "@/context/ChatContext";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/Toast";
+
+const OFFICIAL_UCONNECT_BADGE_COLOR = "#EE4B2B";
+const DEFAULT_VERIFIED_BADGE_COLOR = "#16A34A";
 
 export default function ChatScreen() {
   const colors = useColors();
@@ -117,7 +120,14 @@ export default function ChatScreen() {
               <Feather name="user" size={16} color={colors.primary} />
             </View>
           )}
-          <Text style={[styles.headerName, { color: colors.foreground }]}>{displayName}</Text>
+          <View style={styles.headerNameRow}>
+            <Text style={[styles.headerName, { color: colors.foreground }]}>{displayName}</Text>
+            {!conv.isAnonymous && conv.participantIsVerified && (
+              <View style={[styles.verifiedBadge, { backgroundColor: conv.participantUsername?.toLowerCase() === "uconnect" ? OFFICIAL_UCONNECT_BADGE_COLOR : DEFAULT_VERIFIED_BADGE_COLOR }]}>
+                <MaterialIcons name="verified" size={12} color="#fff" />
+              </View>
+            )}
+          </View>
         </TouchableOpacity>
         <View style={styles.headerActions}>
           {conv.isAnonymous && !conv.isRevealed && (
@@ -213,6 +223,8 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: 1, gap: 12 },
   headerCenter: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
+  headerNameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  verifiedBadge: { width: 16, height: 16, borderRadius: 8, alignItems: "center", justifyContent: "center" },
   avatar: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
   avatarImage: { width: 36, height: 36, borderRadius: 18 },
   headerName: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
