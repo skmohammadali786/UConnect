@@ -151,7 +151,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
   const resolveGumletPlaybackUrl = useCallback(async (postId: string, assetId: string) => {
     const maxPolls = 30;
     for (let attempt = 0; attempt < maxPolls; attempt += 1) {
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      await new Promise((resolveTimeout) => setTimeout(resolveTimeout, 3000));
       const status = await supabase.functions.invoke<GumletPlaybackResponse>("gumlet-video-upload", {
         body: { action: "getPlayback", assetId },
       });
@@ -181,7 +181,9 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
       if (gumletResolutionInFlight.current.has(post.id)) return;
       gumletResolutionInFlight.current.add(post.id);
       resolveGumletPlaybackUrl(post.id, post.videoAssetId)
-        .catch(() => {})
+        .catch((error) => {
+          console.error("Failed to resolve Gumlet playback URL", error);
+        })
         .finally(() => {
           gumletResolutionInFlight.current.delete(post.id);
         });
