@@ -81,6 +81,7 @@ interface PostsContextType {
 }
 
 const PostsContext = createContext<PostsContextType | undefined>(undefined);
+const RLS_PERMISSION_DENIED_CODE = "42501";
 
 type GumletPlaybackResponse = {
   playbackUrl: 
@@ -141,11 +142,63 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [repostedPostIds, setRepostedPostIds] = useState<Set<string>>(new Set());
   const postsRef = useRef<Post[]>([]);
+  const gumletResolutionInFlight = useRef<Set<string>>(new Set());
 
   const applyPosts = useCallback((list: Post[]) => {
     postsRef.current = list;
     setPosts(list);
   }, []);
+
+  const resolveGumletPlaybackUrl = useCallback(async (postId: string, assetId: string) => {
+    const pollDelayMs = 3000;
+    const maxPolls = 20;
+    for (let attempt = 0; attempt < maxPolls; attempt += 1) {
+      const status = await supabase.functions.invoke<GumletPlaybackResponse>("gumlet-video-upload", {
+        body: { action: "getPlayback", assetId },
+      });
+
+      if (!status.error && status.data?.playbackUrl) {
+        const playbackUrl = status.data.playbackUrl;
+        const { error } = await supabase
+          .from("posts")
+          .update({ video_url: playbackUrl })
+          .match({ id: postId, video_asset_id: assetId });
+
+        if (error && error.code !== RLS_PERMISSION_DENIED_CODE) {
+          console.error("Failed to update Gumlet playback URL", error);
+          return;
+        }
+        if (!postsRef.current.some((p) => p.id === postId && p.videoAssetId === assetId)) return;
+        applyPosts(postsRef.current.map((p) => (p.id === postId ? { ...p, videoUrl: playbackUrl } : p)));
+        return;
+      }
+
+      if (attempt < maxPolls - 1) {
+        await new Promise((resolve) => setTimeout(resolve, pollDelayMs));
+      }
+    }
+    console.warn(
+      `Gumlet playback URL not ready after ${maxPolls} attempts for post ${postId} (asset ${assetId})`,
+    );
+  }, [applyPosts]);
+
+  const scheduleGumletPlayback = useCallback((list: Post[]) => {
+    list.forEach((post) => {
+      if (post.videoProvider !== "gumlet" || post.videoUrl || !post.videoAssetId) return;
+      if (gumletResolutionInFlight.current.has(post.id)) return;
+      gumletResolutionInFlight.current.add(post.id);
+      resolveGumletPlaybackUrl(post.id, post.videoAssetId)
+        .catch((error) => {
+          console.error(
+            `Failed to resolve Gumlet playback URL for post ${post.id} (asset ${post.videoAssetId})`,
+            error,
+          );
+        })
+        .finally(() => {
+          gumletResolutionInFlight.current.delete(post.id);
+        });
+    });
+  }, [resolveGumletPlaybackUrl]);
 
   const fetchPosts = useCallback(async () => {
     setIsLoading(true);
@@ -195,6 +248,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
           );
         }).filter((p) => !p.autoDeleteAt || new Date(p.autoDeleteAt).getTime() > now);
         applyPosts(mapped);
+        scheduleGumletPlayback(mapped);
       } else {
         applyPosts([]);
         setRepostedPostIds(new Set());
@@ -221,35 +275,11 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
       applyPosts([]);
     }
     setIsLoading(false);
-  }, [user, applyPosts]);
+  }, [user, applyPosts, scheduleGumletPlayback]);
 
   useEffect(() => {
     fetchPosts();
   }, [user?.id]);
-
-  const resolveGumletPlaybackUrl = useCallback(async (postId: string, assetId: string) => {
-    const maxPolls = 20;
-    for (let attempt = 0; attempt < maxPolls; attempt += 1) {
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-      const status = await supabase.functions.invoke<GumletPlaybackResponse>("gumlet-video-upload", {
-        body: { action: "getPlayback", assetId },
-      });
-      if (status.error) continue;
-      if (!status.data?.playbackUrl) continue;
-
-      const playbackUrl = status.data.playbackUrl;
-      const { error } = await supabase
-        .from("posts")
-        .update({ video_url: playbackUrl })
-        .eq("id", postId)
-        .eq("video_asset_id", assetId);
-
-      if (!error) {
-        applyPosts(postsRef.current.map((p) => (p.id === postId ? { ...p, videoUrl: playbackUrl } : p)));
-      }
-      return;
-    }
-  }, [applyPosts]);
 
   const createPost = useCallback(async (postData: Omit<Post, "id" | "upvotes" | "downvotes" | "repostCount" | "userVote" | "commentCount" | "isBookmarked" | "createdAt" | "comments" | "repostedByUsername" | "repostedAt">) => {
     if (!user) {
@@ -291,12 +321,12 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
       const newPost = rowToPost(data);
       applyPosts([newPost, ...postsRef.current]);
       if (!newPost.videoUrl && newPost.videoProvider === "gumlet" && newPost.videoAssetId) {
-        void resolveGumletPlaybackUrl(newPost.id, newPost.videoAssetId);
+        scheduleGumletPlayback([newPost]);
       }
       // Update post count
       await supabase.from("profiles").update({ posts_count: (user.postsCount ?? 0) + 1 }).eq("id", user.id);
     }
-  }, [user, applyPosts, resolveGumletPlaybackUrl]);
+  }, [user, applyPosts, scheduleGumletPlayback]);
 
   const votePost = useCallback((postId: string, vote: "up" | "down") => {
     if (!user) {
