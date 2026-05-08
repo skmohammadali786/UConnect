@@ -118,6 +118,9 @@ create table if not exists posts (
   content text not null,
   media_urls text[] not null default '{}',
   video_url text,
+  video_asset_id text,
+  video_provider text not null default 'r2' check (video_provider in ('r2', 'gumlet')),
+  video_status text,
   upvotes int not null default 0,
   downvotes int not null default 0,
   comment_count int not null default 0,
@@ -130,6 +133,8 @@ create policy "Posts are viewable by all" on posts for select using (true);
 create policy "Authenticated users can create posts" on posts for insert with check (auth.uid() = author_id);
 create policy "Authors can update own posts" on posts for update using (auth.uid() = author_id);
 create policy "Authors can delete own posts" on posts for delete using (auth.uid() = author_id);
+create index if not exists posts_video_provider_idx on posts(video_provider);
+create index if not exists posts_video_asset_id_idx on posts(video_asset_id);
 
 -- ─── POST VOTES ──────────────────────────────────────────────────────────────
 create table if not exists post_votes (

@@ -52,8 +52,8 @@ export function isRemoteUri(uri: string): boolean {
   return HTTP_URI_REGEX.test(uri);
 }
 
-function inferMimeTypeFromUri(uri: string): string | null {
-  const clean = uri.split("?")[0]?.split("#")[0] ?? "";
+function inferMimeTypeFromUri(uriOrName: string): string | null {
+  const clean = uriOrName.split("?")[0]?.split("#")[0] ?? "";
   const ext = clean.split(".").pop()?.toLowerCase();
   return ext ? EXTENSION_MIME_MAP[ext] ?? null : null;
 }
@@ -61,10 +61,14 @@ function inferMimeTypeFromUri(uri: string): string | null {
 function resolveMimeTypeForUpload(
   uri: string,
   fileType?: string,
+  fileName?: string,
 ): { fileType: string; isDataUri: boolean } {
   const dataMatch = DATA_URI_REGEX.exec(uri);
   const resolvedType = normalizeFileType(
-    fileType ?? dataMatch?.[1] ?? inferMimeTypeFromUri(uri),
+    fileType
+      ?? dataMatch?.[1]
+      ?? inferMimeTypeFromUri(uri)
+      ?? inferMimeTypeFromUri(fileName ?? ""),
   );
   if (!resolvedType) {
     throw new Error("fileType is required");
@@ -75,6 +79,7 @@ function resolveMimeTypeForUpload(
 async function resolveUploadPayload(
   uri: string,
   fileType?: string,
+  fileName?: string,
 ): Promise<{ body: Blob | ArrayBuffer; fileType: string }> {
   const dataMatch = DATA_URI_REGEX.exec(uri);
   if (dataMatch) {
@@ -85,7 +90,11 @@ async function resolveUploadPayload(
     return { body: base64ToArrayBuffer(dataMatch[2]), fileType: resolvedType };
   }
 
-  const resolvedType = normalizeFileType(fileType ?? inferMimeTypeFromUri(uri));
+  const resolvedType = normalizeFileType(
+    fileType
+      ?? inferMimeTypeFromUri(uri)
+      ?? inferMimeTypeFromUri(fileName ?? ""),
+  );
   if (!resolvedType) {
     throw new Error("fileType is required");
   }
@@ -216,7 +225,11 @@ export async function uploadVideoUriToGumlet(
     throw new Error("Remote URLs must be uploaded separately");
   }
 
-  const { fileType, isDataUri } = resolveMimeTypeForUpload(uri, options.fileType);
+  const { fileType, isDataUri } = resolveMimeTypeForUpload(
+    uri,
+    options.fileType,
+    options.fileName,
+  );
   assertAllowedType(fileType, "video");
 
   const create = await supabase.functions.invoke<GumletCreateUploadResponse>(
@@ -264,7 +277,7 @@ export async function uploadVideoUriToGumlet(
       }
     }
   } else {
-    const { body } = await resolveUploadPayload(uri, fileType);
+    const { body } = await resolveUploadPayload(uri, fileType, options.fileName);
     const videoBlob = body instanceof Blob ? body : new Blob([body], { type: fileType });
     let uploadResponse: Response;
 
