@@ -12,6 +12,33 @@ const normalizeEnv = (value: string | undefined): string | null => {
   return normalized ? normalized : null;
 };
 
+const pickFirstString = (...values: unknown[]): string | null => {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return null;
+};
+
+const safeJson = async (res: Response): Promise<unknown> => {
+  const text = await res.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { raw: text };
+  }
+};
+
+const asStringRecord = (value: unknown): Record<string, string> | undefined => {
+  if (!value || typeof value !== "object") return undefined;
+  const entries = Object.entries(value as Record<string, unknown>)
+    .filter(([, v]) => typeof v === "string")
+    .map(([k, v]) => [k, (v as string).trim()]);
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+};
+
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -73,22 +100,47 @@ serve(async (req) => {
       body: JSON.stringify(payload),
     });
 
-    const createData = await createRes.json();
+    const createData = await safeJson(createRes) as Record<string, any>;
     if (!createRes.ok) {
       console.error("gumlet create upload failed", createData);
       return json({ error: "Failed to create Gumlet upload URL", details: createData }, 502);
     }
 
+    const uploadUrl = pickFirstString(
+      createData?.upload_url,
+      createData?.uploadUrl,
+      createData?.url,
+      createData?.upload?.url,
+      createData?.upload?.upload_url,
+    );
+    const assetId = pickFirstString(
+      createData?.asset_id,
+      createData?.assetId,
+      createData?.id,
+      createData?.asset?.id,
+    );
+
+    if (!uploadUrl || !assetId) {
+      console.error("gumlet response missing upload url/asset id", createData);
+      return json({ error: "Unexpected Gumlet response", details: createData }, 502);
+    }
+
+    const fields = asStringRecord(createData?.upload?.fields ?? createData?.fields);
+    const explicitMethod = pickFirstString(createData?.method, createData?.upload?.method)?.toUpperCase();
+    const method = explicitMethod === "POST" || (!explicitMethod && fields)
+      ? "POST"
+      : "PUT";
+
     return json({
-      uploadUrl: createData.upload_url,
-      assetId: createData.asset_id,
-      status: createData.status ?? "created",
+      uploadUrl,
+      assetId,
+      status: pickFirstString(createData?.status) ?? "created",
       maxDurationSeconds: MAX_VIDEO_DURATION_SECONDS,
       maxResolution: "720p",
-      method: "PUT",
-      headers: {
-        "Content-Type": fileType,
-      },
+      method: method === "POST" ? "POST" : "PUT",
+      headers: method === "POST" ? {} : { "Content-Type": fileType },
+      fields,
+      fieldName: pickFirstString(createData?.upload?.field_name, createData?.upload?.fieldName, createData?.fieldName) ?? undefined,
     });
   }
 
@@ -101,18 +153,25 @@ serve(async (req) => {
       headers: { Authorization: `Bearer ${gumletApiKey}` },
     });
 
-    const statusData = await statusRes.json();
+    const statusData = await safeJson(statusRes) as Record<string, any>;
     if (!statusRes.ok) {
       console.error("gumlet asset fetch failed", statusData);
       return json({ error: "Failed to fetch Gumlet asset", details: statusData }, 502);
     }
 
     const playbackUrl =
-      statusData?.playback_url ?? statusData?.output?.hls ?? statusData?.assets?.hls ?? null;
+      pickFirstString(
+        statusData?.playback_url,
+        statusData?.playbackUrl,
+        statusData?.output?.hls,
+        statusData?.assets?.hls,
+        statusData?.stream_url,
+        statusData?.streamUrl,
+      ) ?? null;
 
     return json({
       assetId,
-      status: statusData?.status ?? "unknown",
+      status: pickFirstString(statusData?.status) ?? "unknown",
       playbackUrl,
       raw: statusData,
     });
