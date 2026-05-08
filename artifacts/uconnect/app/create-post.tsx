@@ -131,7 +131,7 @@ export default function CreatePostScreen() {
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0];
         if (asset.duration && asset.duration > 30000) { showError("Video too long", "Videos must be 30 seconds or less."); return; }
-        setVideoUri(asset.base64 ? `data:${asset.mimeType || "video/mp4"};base64,${asset.base64}` : asset.uri);
+        setVideoUri(asset.uri);
         setVideoMeta({ fileType: asset.mimeType ?? undefined, fileName: asset.fileName ?? undefined });
         showSuccess("Video added", "Up to 30 seconds.");
       }
