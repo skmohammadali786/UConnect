@@ -1,4 +1,4 @@
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Easing, FlatList, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -9,6 +9,9 @@ import { formatRelativeTime } from "@/utils/time";
 import { TypewriterText } from "@/components/TypewriterText";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { useToast } from "@/components/Toast";
+
+const OFFICIAL_UCONNECT_BADGE_COLOR = "#EE4B2B";
+const DEFAULT_VERIFIED_BADGE_COLOR = "#16A34A";
 
 export default function ChatListScreen() {
   const colors = useColors();
@@ -82,9 +85,16 @@ export default function ChatListScreen() {
             )}
             <View style={styles.convInfo}>
               <View style={styles.convHeader}>
-                <Text style={[styles.convName, { color: colors.foreground }]}>
-                  {item.isAnonymous && !item.isRevealed ? "Anonymous" : item.participantUsername}
-                </Text>
+                <View style={styles.convNameRow}>
+                  <Text style={[styles.convName, { color: colors.foreground }]} numberOfLines={1}>
+                    {item.isAnonymous && !item.isRevealed ? "Anonymous" : item.participantUsername}
+                  </Text>
+                  {!item.isAnonymous && item.participantIsVerified && (
+                    <View style={[styles.verifiedBadge, { backgroundColor: item.participantUsername?.toLowerCase() === "uconnect" ? OFFICIAL_UCONNECT_BADGE_COLOR : DEFAULT_VERIFIED_BADGE_COLOR }]}>
+                      <MaterialIcons name="verified" size={12} color="#fff" />
+                    </View>
+                  )}
+                </View>
                 <Text style={[styles.convTime, { color: colors.mutedForeground }]}>{formatRelativeTime(item.lastMessageAt)}</Text>
               </View>
               <Text style={[styles.lastMsg, { color: colors.mutedForeground }]} numberOfLines={1}>{item.lastMessage || "Start a conversation..."}</Text>
@@ -135,7 +145,9 @@ const styles = StyleSheet.create({
   avatarImage: { width: 48, height: 48, borderRadius: 24, flexShrink: 0 },
   convInfo: { flex: 1 },
   convHeader: { flexDirection: "row", justifyContent: "space-between", marginBottom: 3 },
+  convNameRow: { flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 1 },
   convName: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  verifiedBadge: { width: 16, height: 16, borderRadius: 8, alignItems: "center", justifyContent: "center" },
   convTime: { fontSize: 12, fontFamily: "Inter_400Regular" },
   lastMsg: { fontSize: 13, fontFamily: "Inter_400Regular" },
   badge: { minWidth: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center", paddingHorizontal: 4 },
