@@ -20,6 +20,8 @@ import type { PostTag, Draft } from "@/context/PostsContext";
 const ND = Platform.OS !== "web";
 const TAGS: PostTag[] = ["General", "Academic", "Campus Life", "Rant", "Advice", "Meme", "Question", "Achievement", "Event", "Confession"];
 const TAG_COLORS: Record<string, string> = { General: "#6B7280", Academic: "#3B82F6", "Campus Life": "#8B5CF6", Rant: "#EF4444", Advice: "#F59E0B", Meme: "#EC4899", Question: "#06B6D4", Achievement: "#00A86B", Event: "#F97316", Confession: "#A855F7" };
+const MAX_VIDEO_DURATION_SECONDS = 30;
+const MAX_VIDEO_DURATION_MS = MAX_VIDEO_DURATION_SECONDS * 1000;
 
 const AUTO_DELETE_OPTIONS = [
   { label: "Never", value: "never" },
@@ -66,6 +68,7 @@ export default function CreatePostScreen() {
   const [autoDelete, setAutoDelete] = useState("never");
   const [mediaUris, setMediaUris] = useState<string[]>([]);
   const [videoUri, setVideoUri] = useState<string | null>(null);
+  const [videoMeta, setVideoMeta] = useState<{ fileType?: string; fileName?: string } | null>(null);
   const canPostAnonymously = Boolean(user?.isVerified);
 
   const draftsAnim = useRef(new Animated.Value(0)).current;
@@ -124,14 +127,14 @@ export default function CreatePostScreen() {
       if (status !== "granted") { showError("Permission denied", "Allow photo access in Settings."); return; }
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-        videoMaxDuration: 30,
+        videoMaxDuration: MAX_VIDEO_DURATION_SECONDS,
         quality: 0.7,
-        base64: true,
       });
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0];
-        if (asset.duration && asset.duration > 30000) { showError("Video too long", "Videos must be 30 seconds or less."); return; }
-        setVideoUri(asset.base64 ? `data:${asset.mimeType || "video/mp4"};base64,${asset.base64}` : asset.uri);
+        if (asset.duration && asset.duration > MAX_VIDEO_DURATION_MS) { showError("Video too long", "Videos must be 30 seconds or less."); return; }
+        setVideoUri(asset.uri);
+        setVideoMeta({ fileType: asset.mimeType ?? undefined, fileName: asset.fileName ?? undefined });
         showSuccess("Video added", "Up to 30 seconds.");
       }
     } catch { showError("Failed", "Could not pick video. Try again."); }
@@ -177,7 +180,10 @@ export default function CreatePostScreen() {
           finalVideoUrl = videoUri;
           videoProvider = "gumlet";
         } else {
-          const uploadedVideo = await uploadVideoUriToGumlet(videoUri);
+          const uploadedVideo = await uploadVideoUriToGumlet(videoUri, {
+            fileType: videoMeta?.fileType,
+            fileName: videoMeta?.fileName,
+          });
           finalVideoUrl = uploadedVideo.publicUrl;
           videoProvider = "gumlet";
           videoAssetId = uploadedVideo.assetId;
@@ -338,7 +344,7 @@ export default function CreatePostScreen() {
                 <View style={[styles.mediaPreviewWrap, styles.videoPreviewWrap, { backgroundColor: colors.secondary }]}>
                   <Feather name="video" size={24} color={colors.primary} />
                   <Text style={[styles.videoPreviewText, { color: colors.mutedForeground }]}>Video</Text>
-                  <TouchableOpacity onPress={() => setVideoUri(null)} style={styles.removeMediaBtn}>
+                  <TouchableOpacity onPress={() => { setVideoUri(null); setVideoMeta(null); }} style={styles.removeMediaBtn}>
                     <Feather name="x" size={11} color="#FFF" />
                   </TouchableOpacity>
                 </View>
