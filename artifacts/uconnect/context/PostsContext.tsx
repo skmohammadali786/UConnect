@@ -149,7 +149,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const resolveGumletPlaybackUrl = useCallback(async (postId: string, assetId: string) => {
-    const maxPolls = 60;
+    const maxPolls = 40;
     for (let attempt = 0; attempt < maxPolls; attempt += 1) {
       await new Promise((resolve) => setTimeout(resolve, 3000));
       const status = await supabase.functions.invoke<GumletPlaybackResponse>("gumlet-video-upload", {
@@ -159,12 +159,13 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
       if (!status.data?.playbackUrl) continue;
 
       const playbackUrl = status.data.playbackUrl;
-      const { error } = await supabase
+      await supabase
         .from("posts")
         .update({ video_url: playbackUrl })
         .eq("id", postId)
         .eq("video_asset_id", assetId);
 
+      if (!postsRef.current.some((p) => p.id === postId)) return;
       applyPosts(postsRef.current.map((p) => (p.id === postId ? { ...p, videoUrl: playbackUrl } : p)));
       return;
     }
