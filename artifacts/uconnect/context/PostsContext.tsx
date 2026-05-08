@@ -150,29 +150,33 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const resolveGumletPlaybackUrl = useCallback(async (postId: string, assetId: string) => {
+    const pollDelayMs = 3000;
     const maxPolls = 30;
     for (let attempt = 0; attempt < maxPolls; attempt += 1) {
-      await new Promise((resolve) => setTimeout(resolve, 3000));
       const status = await supabase.functions.invoke<GumletPlaybackResponse>("gumlet-video-upload", {
         body: { action: "getPlayback", assetId },
       });
-      if (status.error) continue;
-      if (!status.data?.playbackUrl) continue;
 
-      const playbackUrl = status.data.playbackUrl;
-      const { error } = await supabase
-        .from("posts")
-        .update({ video_url: playbackUrl })
-        .eq("id", postId)
-        .eq("video_asset_id", assetId);
+      if (!status.error && status.data?.playbackUrl) {
+        const playbackUrl = status.data.playbackUrl;
+        const { error } = await supabase
+          .from("posts")
+          .update({ video_url: playbackUrl })
+          .eq("id", postId)
+          .eq("video_asset_id", assetId);
 
-      if (error && error.code !== RLS_PERMISSION_DENIED_CODE) {
-        console.error("Failed to update Gumlet playback URL", error);
+        if (error && error.code !== RLS_PERMISSION_DENIED_CODE) {
+          console.error("Failed to update Gumlet playback URL", error);
+          return;
+        }
+        if (!postsRef.current.some((p) => p.id === postId && p.videoAssetId === assetId)) return;
+        applyPosts(postsRef.current.map((p) => (p.id === postId ? { ...p, videoUrl: playbackUrl } : p)));
         return;
       }
-      if (!postsRef.current.some((p) => p.id === postId && p.videoAssetId === assetId)) return;
-      applyPosts(postsRef.current.map((p) => (p.id === postId ? { ...p, videoUrl: playbackUrl } : p)));
-      return;
+
+      if (attempt < maxPolls - 1) {
+        await new Promise((resolve) => setTimeout(resolve, pollDelayMs));
+      }
     }
   }, [applyPosts]);
 
@@ -183,7 +187,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
       gumletResolutionInFlight.current.add(post.id);
       resolveGumletPlaybackUrl(post.id, post.videoAssetId)
         .catch((error) => {
-          console.error("Failed to resolve Gumlet playback URL", error);
+          console.error(`Failed to resolve Gumlet playback URL for post ${post.id}`, error);
         })
         .finally(() => {
           gumletResolutionInFlight.current.delete(post.id);
