@@ -232,6 +232,10 @@ export async function uploadVideoUriToGumlet(
       body: formData,
     });
   } else {
+    if (method === "POST") {
+      throw new Error("Gumlet returned POST upload method without multipart form fields");
+    }
+
     const uploadHeaders: Record<string, string> = { ...(create.data.headers ?? {}) };
     if (!Object.keys(uploadHeaders).some((key) => key.toLowerCase() === "content-type")) {
       uploadHeaders["Content-Type"] = fileType;

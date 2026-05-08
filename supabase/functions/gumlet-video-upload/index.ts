@@ -125,8 +125,11 @@ serve(async (req) => {
       return json({ error: "Unexpected Gumlet response", details: createData }, 502);
     }
 
-    const method = pickFirstString(createData?.method, createData?.upload?.method)?.toUpperCase() ?? "PUT";
     const fields = asStringRecord(createData?.upload?.fields ?? createData?.fields);
+    const explicitMethod = pickFirstString(createData?.method, createData?.upload?.method)?.toUpperCase();
+    const method = explicitMethod === "POST" || (!explicitMethod && fields)
+      ? "POST"
+      : "PUT";
 
     return json({
       uploadUrl,
