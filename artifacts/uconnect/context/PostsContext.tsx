@@ -159,12 +159,13 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
       if (!status.data?.playbackUrl) continue;
 
       const playbackUrl = status.data.playbackUrl;
-      await supabase
+      const { error } = await supabase
         .from("posts")
         .update({ video_url: playbackUrl })
         .eq("id", postId)
         .eq("video_asset_id", assetId);
 
+      if (error && error.code !== "42501") return;
       if (!postsRef.current.some((p) => p.id === postId)) return;
       applyPosts(postsRef.current.map((p) => (p.id === postId ? { ...p, videoUrl: playbackUrl } : p)));
       return;
@@ -177,6 +178,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
       if (gumletResolutionInFlight.current.has(post.id)) return;
       gumletResolutionInFlight.current.add(post.id);
       resolveGumletPlaybackUrl(post.id, post.videoAssetId)
+        .catch(() => {})
         .finally(() => {
           gumletResolutionInFlight.current.delete(post.id);
         });
