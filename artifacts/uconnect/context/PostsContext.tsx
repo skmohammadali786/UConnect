@@ -165,9 +165,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
         .eq("id", postId)
         .eq("video_asset_id", assetId);
 
-      if (!error) {
-        applyPosts(postsRef.current.map((p) => (p.id === postId ? { ...p, videoUrl: playbackUrl } : p)));
-      }
+      applyPosts(postsRef.current.map((p) => (p.id === postId ? { ...p, videoUrl: playbackUrl } : p)));
       return;
     }
   }, [applyPosts]);
