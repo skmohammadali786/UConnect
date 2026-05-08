@@ -20,6 +20,8 @@ import type { PostTag, Draft } from "@/context/PostsContext";
 const ND = Platform.OS !== "web";
 const TAGS: PostTag[] = ["General", "Academic", "Campus Life", "Rant", "Advice", "Meme", "Question", "Achievement", "Event", "Confession"];
 const TAG_COLORS: Record<string, string> = { General: "#6B7280", Academic: "#3B82F6", "Campus Life": "#8B5CF6", Rant: "#EF4444", Advice: "#F59E0B", Meme: "#EC4899", Question: "#06B6D4", Achievement: "#00A86B", Event: "#F97316", Confession: "#A855F7" };
+const MAX_VIDEO_DURATION_SECONDS = 30;
+const MAX_VIDEO_DURATION_MS = MAX_VIDEO_DURATION_SECONDS * 1000;
 
 const AUTO_DELETE_OPTIONS = [
   { label: "Never", value: "never" },
@@ -125,12 +127,12 @@ export default function CreatePostScreen() {
       if (status !== "granted") { showError("Permission denied", "Allow photo access in Settings."); return; }
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-        videoMaxDuration: 30,
+        videoMaxDuration: MAX_VIDEO_DURATION_SECONDS,
         quality: 0.7,
       });
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0];
-        if (asset.duration && asset.duration > 30000) { showError("Video too long", "Videos must be 30 seconds or less."); return; }
+        if (asset.duration && asset.duration > MAX_VIDEO_DURATION_MS) { showError("Video too long", "Videos must be 30 seconds or less."); return; }
         setVideoUri(asset.uri);
         setVideoMeta({ fileType: asset.mimeType ?? undefined, fileName: asset.fileName ?? undefined });
         showSuccess("Video added", "Up to 30 seconds.");

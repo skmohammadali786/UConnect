@@ -230,7 +230,8 @@ export async function uploadVideoUriToGumlet(
   }
 
   const method = create.data.method ?? "PUT";
-  if (!isDataUri && Platform.OS !== "web") {
+  const shouldUseFileSystemUpload = !isDataUri && Platform.OS !== "web";
+  if (shouldUseFileSystemUpload) {
     if (method === "POST" && create.data.fields && Object.keys(create.data.fields).length > 0) {
       const uploadResult = await FileSystem.uploadAsync(create.data.uploadUrl, uri, {
         httpMethod: "POST",
