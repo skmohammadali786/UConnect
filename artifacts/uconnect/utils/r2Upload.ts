@@ -264,7 +264,7 @@ export async function uploadVideoUriToGumlet(
     }
   } else {
     const { body } = await resolveUploadPayload(uri, fileType);
-    const uploadBody = body instanceof Blob ? body : new Blob([body], { type: fileType });
+    const videoBlob = body instanceof Blob ? body : new Blob([body], { type: fileType });
     let uploadResponse: Response;
 
     if (method === "POST" && create.data.fields && Object.keys(create.data.fields).length > 0) {
@@ -272,7 +272,7 @@ export async function uploadVideoUriToGumlet(
       Object.entries(create.data.fields).forEach(([key, value]) => formData.append(key, value));
       formData.append(
         create.data.fieldName ?? "file",
-        uploadBody,
+        videoBlob,
         options.fileName ?? `video-${Date.now()}.mp4`,
       );
 
@@ -293,7 +293,7 @@ export async function uploadVideoUriToGumlet(
       uploadResponse = await fetch(create.data.uploadUrl, {
         method,
         headers: uploadHeaders,
-        body: uploadBody,
+        body: videoBlob,
       });
     }
 
