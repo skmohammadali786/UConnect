@@ -58,6 +58,20 @@ function inferMimeTypeFromUri(uri: string): string | null {
   return ext ? EXTENSION_MIME_MAP[ext] ?? null : null;
 }
 
+function resolveMimeTypeForUpload(
+  uri: string,
+  fileType?: string,
+): { fileType: string; isDataUri: boolean } {
+  const dataMatch = DATA_URI_REGEX.exec(uri);
+  const resolvedType = normalizeFileType(
+    fileType ?? dataMatch?.[1] ?? inferMimeTypeFromUri(uri),
+  );
+  if (!resolvedType) {
+    throw new Error("fileType is required");
+  }
+  return { fileType: resolvedType, isDataUri: Boolean(dataMatch) };
+}
+
 async function resolveUploadPayload(
   uri: string,
   fileType?: string,
@@ -202,7 +216,7 @@ export async function uploadVideoUriToGumlet(
     throw new Error("Remote URLs must be uploaded separately");
   }
 
-  const { body, fileType } = await resolveUploadPayload(uri, options.fileType);
+  const { fileType, isDataUri } = resolveMimeTypeForUpload(uri, options.fileType);
   assertAllowedType(fileType, "video");
 
   const create = await supabase.functions.invoke<GumletCreateUploadResponse>(
@@ -216,40 +230,76 @@ export async function uploadVideoUriToGumlet(
   }
 
   const method = create.data.method ?? "PUT";
-  let uploadResponse: Response;
+  if (!isDataUri && Platform.OS !== "web") {
+    if (method === "POST" && create.data.fields && Object.keys(create.data.fields).length > 0) {
+      const uploadResult = await FileSystem.uploadAsync(create.data.uploadUrl, uri, {
+        httpMethod: "POST",
+        uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+        fieldName: create.data.fieldName ?? "file",
+        parameters: create.data.fields,
+        mimeType: fileType,
+      });
+      if (uploadResult.status < 200 || uploadResult.status >= 300) {
+        throw new Error(`Gumlet upload failed with ${uploadResult.status}`);
+      }
+    } else {
+      if (method === "POST") {
+        throw new Error("Gumlet returned POST upload method without multipart form fields");
+      }
 
-  if (method === "POST" && create.data.fields && Object.keys(create.data.fields).length > 0) {
-    const formData = new FormData();
-    Object.entries(create.data.fields).forEach(([key, value]) => formData.append(key, value));
-    const videoFile =
-      body instanceof Blob
-        ? body
-        : new Blob([body], { type: fileType });
-    formData.append(create.data.fieldName ?? "file", videoFile, options.fileName ?? `video-${Date.now()}.mp4`);
+      const uploadHeaders: Record<string, string> = { ...(create.data.headers ?? {}) };
+      if (!Object.keys(uploadHeaders).some((key) => key.toLowerCase() === "content-type")) {
+        uploadHeaders["Content-Type"] = fileType;
+      }
 
-    uploadResponse = await fetch(create.data.uploadUrl, {
-      method,
-      body: formData,
-    });
+      const uploadResult = await FileSystem.uploadAsync(create.data.uploadUrl, uri, {
+        httpMethod: method,
+        uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+        headers: uploadHeaders,
+        mimeType: fileType,
+      });
+      if (uploadResult.status < 200 || uploadResult.status >= 300) {
+        throw new Error(`Gumlet upload failed with ${uploadResult.status}`);
+      }
+    }
   } else {
-    if (method === "POST") {
-      throw new Error("Gumlet returned POST upload method without multipart form fields");
+    const { body } = await resolveUploadPayload(uri, fileType);
+    const uploadBody = body instanceof Blob ? body : new Blob([body], { type: fileType });
+    let uploadResponse: Response;
+
+    if (method === "POST" && create.data.fields && Object.keys(create.data.fields).length > 0) {
+      const formData = new FormData();
+      Object.entries(create.data.fields).forEach(([key, value]) => formData.append(key, value));
+      formData.append(
+        create.data.fieldName ?? "file",
+        uploadBody,
+        options.fileName ?? `video-${Date.now()}.mp4`,
+      );
+
+      uploadResponse = await fetch(create.data.uploadUrl, {
+        method,
+        body: formData,
+      });
+    } else {
+      if (method === "POST") {
+        throw new Error("Gumlet returned POST upload method without multipart form fields");
+      }
+
+      const uploadHeaders: Record<string, string> = { ...(create.data.headers ?? {}) };
+      if (!Object.keys(uploadHeaders).some((key) => key.toLowerCase() === "content-type")) {
+        uploadHeaders["Content-Type"] = fileType;
+      }
+
+      uploadResponse = await fetch(create.data.uploadUrl, {
+        method,
+        headers: uploadHeaders,
+        body: uploadBody,
+      });
     }
 
-    const uploadHeaders: Record<string, string> = { ...(create.data.headers ?? {}) };
-    if (!Object.keys(uploadHeaders).some((key) => key.toLowerCase() === "content-type")) {
-      uploadHeaders["Content-Type"] = fileType;
+    if (!uploadResponse.ok) {
+      throw new Error(`Gumlet upload failed with ${uploadResponse.status}`);
     }
-
-    uploadResponse = await fetch(create.data.uploadUrl, {
-      method,
-      headers: uploadHeaders,
-      body,
-    });
-  }
-
-  if (!uploadResponse.ok) {
-    throw new Error(`Gumlet upload failed with ${uploadResponse.status}`);
   }
 
   const maxPolls = 20;

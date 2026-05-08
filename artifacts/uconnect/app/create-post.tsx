@@ -66,6 +66,7 @@ export default function CreatePostScreen() {
   const [autoDelete, setAutoDelete] = useState("never");
   const [mediaUris, setMediaUris] = useState<string[]>([]);
   const [videoUri, setVideoUri] = useState<string | null>(null);
+  const [videoMeta, setVideoMeta] = useState<{ fileType?: string; fileName?: string } | null>(null);
   const canPostAnonymously = Boolean(user?.isVerified);
 
   const draftsAnim = useRef(new Animated.Value(0)).current;
@@ -126,12 +127,12 @@ export default function CreatePostScreen() {
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
         videoMaxDuration: 30,
         quality: 0.7,
-        base64: true,
       });
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0];
         if (asset.duration && asset.duration > 30000) { showError("Video too long", "Videos must be 30 seconds or less."); return; }
         setVideoUri(asset.base64 ? `data:${asset.mimeType || "video/mp4"};base64,${asset.base64}` : asset.uri);
+        setVideoMeta({ fileType: asset.mimeType ?? undefined, fileName: asset.fileName ?? undefined });
         showSuccess("Video added", "Up to 30 seconds.");
       }
     } catch { showError("Failed", "Could not pick video. Try again."); }
@@ -177,7 +178,10 @@ export default function CreatePostScreen() {
           finalVideoUrl = videoUri;
           videoProvider = "gumlet";
         } else {
-          const uploadedVideo = await uploadVideoUriToGumlet(videoUri);
+          const uploadedVideo = await uploadVideoUriToGumlet(videoUri, {
+            fileType: videoMeta?.fileType,
+            fileName: videoMeta?.fileName,
+          });
           finalVideoUrl = uploadedVideo.publicUrl;
           videoProvider = "gumlet";
           videoAssetId = uploadedVideo.assetId;
@@ -338,7 +342,7 @@ export default function CreatePostScreen() {
                 <View style={[styles.mediaPreviewWrap, styles.videoPreviewWrap, { backgroundColor: colors.secondary }]}>
                   <Feather name="video" size={24} color={colors.primary} />
                   <Text style={[styles.videoPreviewText, { color: colors.mutedForeground }]}>Video</Text>
-                  <TouchableOpacity onPress={() => setVideoUri(null)} style={styles.removeMediaBtn}>
+                  <TouchableOpacity onPress={() => { setVideoUri(null); setVideoMeta(null); }} style={styles.removeMediaBtn}>
                     <Feather name="x" size={11} color="#FFF" />
                   </TouchableOpacity>
                 </View>
