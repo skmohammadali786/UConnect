@@ -169,7 +169,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
         console.error("Failed to update Gumlet playback URL", error);
         return;
       }
-      if (!postsRef.current.some((p) => p.id === postId)) return;
+      if (!postsRef.current.some((p) => p.id === postId && p.videoAssetId === assetId)) return;
       applyPosts(postsRef.current.map((p) => (p.id === postId ? { ...p, videoUrl: playbackUrl } : p)));
       return;
     }
