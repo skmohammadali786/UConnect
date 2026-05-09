@@ -1,5 +1,6 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import * as FileSystem from "expo-file-system/legacy";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Platform, Share, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -63,12 +64,16 @@ export default function ScanConnectScreen() {
         });
       });
 
-      await Share.share({
-        title: `Connect with @${qrUsername} on UConnect`,
-        message: `Scan this QR to view my UConnect profile instantly.
-${qrValue}`,
-        url: `data:image/png;base64,${base64}`,
-      });
+      const message = `Scan this QR to view my UConnect profile instantly.\n${qrValue}`;
+      const title = `Connect with @${qrUsername} on UConnect`;
+
+      if (Platform.OS === "android" && FileSystem.cacheDirectory) {
+        const fileUri = `${FileSystem.cacheDirectory}uconnect-qr-${qrUsername}.png`;
+        await FileSystem.writeAsStringAsync(fileUri, base64, { encoding: "base64" });
+        await Share.share({ title, message, url: fileUri });
+      } else {
+        await Share.share({ title, message, url: qrValue });
+      }
     } finally {
       setSharingQr(false);
     }
