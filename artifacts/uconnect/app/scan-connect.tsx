@@ -1,8 +1,6 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import * as FileSystem from "expo-file-system/legacy";
 import { router, useLocalSearchParams } from "expo-router";
-import * as Sharing from "expo-sharing";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Platform, Share, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -65,23 +63,12 @@ export default function ScanConnectScreen() {
         });
       });
 
-      const fileUri = `${FileSystem.cacheDirectory ?? ""}uconnect-qr-${qrUsername}.png`;
-      if (!fileUri) throw new Error("Unable to access local storage");
-
-      await FileSystem.writeAsStringAsync(fileUri, base64, { encoding: "base64" });
-
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri, {
-          mimeType: "image/png",
-          dialogTitle: `Connect with @${qrUsername} on UConnect`,
-        });
-      } else {
-        await Share.share({
-          title: `Connect with @${qrUsername} on UConnect`,
-          message: `Scan this QR to view my UConnect profile instantly.`,
-          url: fileUri,
-        });
-      }
+      await Share.share({
+        title: `Connect with @${qrUsername} on UConnect`,
+        message: `Scan this QR to view my UConnect profile instantly.
+${qrValue}`,
+        url: `data:image/png;base64,${base64}`,
+      });
     } finally {
       setSharingQr(false);
     }
