@@ -8,6 +8,9 @@ import { useChat } from "@/context/ChatContext";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 
+const OFFICIAL_UCONNECT_BADGE_COLOR = "#EE4B2B";
+const DEFAULT_VERIFIED_BADGE_COLOR = "#16A34A";
+
 interface Profile {
   id: string;
   username: string;
@@ -15,6 +18,7 @@ interface Profile {
   displayName: string;
   avatar: string | null;
   chatPublicKey: string | null;
+  isVerified: boolean;
 }
 
 export default function NewChatScreen() {
@@ -33,7 +37,7 @@ export default function NewChatScreen() {
       try {
         let query = supabase
           .from("profiles")
-          .select("id, username, display_name, college, avatar, chat_public_key")
+          .select("id, username, display_name, college, avatar, chat_public_key, is_verified")
           .neq("id", user?.id ?? "")
           .limit(25);
         if (q) {
@@ -49,6 +53,7 @@ export default function NewChatScreen() {
           college: r.college,
           avatar: r.avatar ?? null,
           chatPublicKey: r.chat_public_key ?? null,
+          isVerified: Boolean(r.is_verified),
         })));
       } catch { setProfiles([]); }
       setLoading(false);
@@ -98,7 +103,7 @@ export default function NewChatScreen() {
           <TouchableOpacity
             onPress={async () => {
               try {
-                const convId = await startConversation(item.id, item.username, false, item.chatPublicKey);
+                const convId = await startConversation(item.id, item.username, false, item.chatPublicKey, item.avatar, item.isVerified);
                 router.replace({ pathname: "/chat/[id]" as any, params: { id: convId } });
               } catch {}
             }}
@@ -114,9 +119,16 @@ export default function NewChatScreen() {
               </View>
             )}
             <View style={{ flex: 1 }}>
-              <Text style={[styles.username, { color: colors.foreground }]} numberOfLines={1}>
-                {item.displayName || item.username}
-              </Text>
+              <View style={styles.nameRow}>
+                <Text style={[styles.username, { color: colors.foreground }]} numberOfLines={1}>
+                  {item.displayName || item.username}
+                </Text>
+                {item.isVerified ? (
+                  <View style={[styles.verifiedBadge, { backgroundColor: item.username?.toLowerCase() === "uconnect" ? OFFICIAL_UCONNECT_BADGE_COLOR : DEFAULT_VERIFIED_BADGE_COLOR }]}>
+                    <Feather name="check" size={9} color="#FFF" />
+                  </View>
+                ) : null}
+              </View>
               <Text style={[styles.college, { color: colors.mutedForeground }]} numberOfLines={1}>
                 @{item.username} · {item.college}
               </Text>
@@ -139,8 +151,10 @@ const styles = StyleSheet.create({
   userItem: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1 },
   avatar: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
   avatarImage: { width: 44, height: 44, borderRadius: 22 },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   avatarText: { fontSize: 18, fontFamily: "Inter_700Bold" },
   username: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  verifiedBadge: { width: 15, height: 15, borderRadius: 8, alignItems: "center", justifyContent: "center" },
   college: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
   emptyText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
 });

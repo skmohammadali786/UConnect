@@ -10,6 +10,9 @@ import { useChat } from "@/context/ChatContext";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/Toast";
 
+const OFFICIAL_UCONNECT_BADGE_COLOR = "#EE4B2B";
+const DEFAULT_VERIFIED_BADGE_COLOR = "#16A34A";
+
 export default function ChatScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -118,6 +121,11 @@ export default function ChatScreen() {
             </View>
           )}
           <Text style={[styles.headerName, { color: colors.foreground }]}>{displayName}</Text>
+          {!(conv.isAnonymous && !conv.isRevealed) && conv.participantIsVerified ? (
+            <View style={[styles.verifiedBadge, { backgroundColor: conv.participantUsername?.toLowerCase() === "uconnect" ? OFFICIAL_UCONNECT_BADGE_COLOR : DEFAULT_VERIFIED_BADGE_COLOR }]}>
+              <Feather name="check" size={9} color="#FFF" />
+            </View>
+          ) : null}
         </TouchableOpacity>
         <View style={styles.headerActions}>
           {conv.isAnonymous && !conv.isRevealed && (
@@ -216,6 +224,7 @@ const styles = StyleSheet.create({
   avatar: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
   avatarImage: { width: 36, height: 36, borderRadius: 18 },
   headerName: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  verifiedBadge: { width: 15, height: 15, borderRadius: 8, alignItems: "center", justifyContent: "center" },
   headerActions: { flexDirection: "row", gap: 4 },
   headerBtn: { padding: 6 },
   anonBanner: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingVertical: 8, borderBottomWidth: 1 },

@@ -18,6 +18,7 @@ export interface Conversation {
   participantId: string;
   participantUsername: string;
   participantAvatar: string | null;
+  participantIsVerified: boolean;
   participantPublicKey: string | null;
   isAnonymous: boolean;
   isRevealed: boolean;
@@ -31,7 +32,14 @@ export interface Conversation {
 interface ChatContextType {
   conversations: Conversation[];
   sendMessage: (conversationId: string, content: string, senderId: string) => Promise<boolean>;
-  startConversation: (participantId: string, participantUsername: string, isAnonymous: boolean, participantPublicKey?: string | null) => Promise<string>;
+  startConversation: (
+    participantId: string,
+    participantUsername: string,
+    isAnonymous: boolean,
+    participantPublicKey?: string | null,
+    participantAvatar?: string | null,
+    participantIsVerified?: boolean,
+  ) => Promise<string>;
   markRead: (conversationId: string) => void;
   revealIdentity: (conversationId: string) => void;
   blockUser: (conversationId: string) => Promise<boolean>;
@@ -82,7 +90,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     try {
       const { data: convRows } = await supabase
         .from("conversations")
-        .select("*, user_a_profile:profiles!conversations_user_a_fkey(username, avatar, chat_public_key), user_b_profile:profiles!conversations_user_b_fkey(username, avatar, chat_public_key)")
+        .select("*, user_a_profile:profiles!conversations_user_a_fkey(username, avatar, chat_public_key, is_verified), user_b_profile:profiles!conversations_user_b_fkey(username, avatar, chat_public_key, is_verified)")
         .or(`user_a.eq.${userId},user_b.eq.${userId}`)
         .order("last_message_at", { ascending: false });
 
@@ -137,6 +145,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           participantId,
           participantUsername,
           participantAvatar: participantProfile?.avatar ?? null,
+          participantIsVerified: Boolean(participantProfile?.is_verified),
           participantPublicKey,
           isAnonymous: row.is_anonymous,
           isRevealed: row.is_revealed,
@@ -328,18 +337,45 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     return true;
   };
 
-  const startConversation = async (participantId: string, participantUsername: string, isAnonymous: boolean, participantPublicKey?: string | null): Promise<string> => {
+  const startConversation = async (
+    participantId: string,
+    participantUsername: string,
+    isAnonymous: boolean,
+    participantPublicKey?: string | null,
+    participantAvatar?: string | null,
+    participantIsVerified?: boolean,
+  ): Promise<string> => {
     const existing = conversations.find((c) => c.participantId === participantId);
     if (existing) return existing.id;
+
+    let resolvedUsername = participantUsername;
+    let resolvedAvatar = participantAvatar ?? null;
+    let resolvedPublicKey = participantPublicKey ?? null;
+    let resolvedIsVerified = Boolean(participantIsVerified);
+
+    try {
+      const { data: participantProfile } = await supabase
+        .from("profiles")
+        .select("username, avatar, chat_public_key, is_verified")
+        .eq("id", participantId)
+        .maybeSingle();
+      if (participantProfile) {
+        resolvedUsername = participantProfile.username ?? resolvedUsername;
+        resolvedAvatar = participantProfile.avatar ?? resolvedAvatar;
+        resolvedPublicKey = participantProfile.chat_public_key ?? resolvedPublicKey;
+        resolvedIsVerified = Boolean(participantProfile.is_verified);
+      }
+    } catch {}
 
     if (!user) {
       const newConvId = generateId();
       const newConv: Conversation = {
         id: newConvId,
         participantId,
-        participantUsername,
-        participantAvatar: null,
-        participantPublicKey: participantPublicKey ?? null,
+        participantUsername: resolvedUsername,
+        participantAvatar: resolvedAvatar,
+        participantIsVerified: resolvedIsVerified,
+        participantPublicKey: resolvedPublicKey,
         isAnonymous,
         isRevealed: !isAnonymous,
         isBlocked: false,
@@ -366,9 +402,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     const newConv: Conversation = {
       id: data.id,
       participantId,
-      participantUsername,
-      participantAvatar: null,
-      participantPublicKey: participantPublicKey ?? null,
+      participantUsername: resolvedUsername,
+      participantAvatar: resolvedAvatar,
+      participantIsVerified: resolvedIsVerified,
+      participantPublicKey: resolvedPublicKey,
       isAnonymous,
       isRevealed: !isAnonymous,
       isBlocked: false,
