@@ -29,10 +29,17 @@ export interface Conversation {
   messages: Message[];
 }
 
+interface ConversationParticipantDetails {
+  username?: string;
+  avatar?: string | null;
+  publicKey?: string | null;
+  isVerified?: boolean;
+}
+
 interface ChatContextType {
   conversations: Conversation[];
   sendMessage: (conversationId: string, content: string, senderId: string) => Promise<boolean>;
-  startConversation: (participantId: string, participantUsername: string, isAnonymous: boolean, participantPublicKey?: string | null) => Promise<string>;
+  startConversation: (participantId: string, participantUsername: string, isAnonymous: boolean, participantDetails?: ConversationParticipantDetails) => Promise<string>;
   markRead: (conversationId: string) => void;
   revealIdentity: (conversationId: string) => void;
   blockUser: (conversationId: string) => Promise<boolean>;
@@ -46,6 +53,13 @@ interface EncryptionReadiness {
   senderKeyPair: { publicKeyRaw: string; privateKeyJwk: JsonWebKey } | null;
   senderProfilePublicKey: string | null;
   recipientPublicKey: string | null;
+}
+
+interface ParticipantSnapshot {
+  username: string | null;
+  avatar: string | null;
+  publicKey: string | null;
+  isVerified: boolean;
 }
 
 function generateId() {
@@ -77,6 +91,45 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         setChatKeyPair(null);
       });
   }, [userId]);
+
+  const applyParticipantSnapshot = useCallback((conversationId: string, snapshot: Partial<ParticipantSnapshot>) => {
+    setConversations((prev) =>
+      prev.map((conversation) => {
+        if (conversation.id !== conversationId) return conversation;
+        return {
+          ...conversation,
+          participantUsername: snapshot.username ?? conversation.participantUsername,
+          participantAvatar: snapshot.avatar !== undefined ? snapshot.avatar : conversation.participantAvatar,
+          participantPublicKey: snapshot.publicKey !== undefined ? snapshot.publicKey : conversation.participantPublicKey,
+          participantIsVerified: snapshot.isVerified ?? conversation.participantIsVerified,
+        };
+      })
+    );
+  }, []);
+
+  const fetchParticipantSnapshot = useCallback(async (participantId: string): Promise<ParticipantSnapshot | null> => {
+    if (!participantId) return null;
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("username, avatar, is_verified, chat_public_key")
+      .eq("id", participantId)
+      .maybeSingle();
+    if (error || !data) return null;
+    return {
+      username: data.username ?? null,
+      avatar: data.avatar ?? null,
+      publicKey: data.chat_public_key ?? null,
+      isVerified: Boolean(data.is_verified),
+    };
+  }, []);
+
+  const refreshConversationParticipant = useCallback(async (conversationId: string, participantId: string) => {
+    const snapshot = await fetchParticipantSnapshot(participantId);
+    if (snapshot) {
+      applyParticipantSnapshot(conversationId, snapshot);
+    }
+    return snapshot;
+  }, [applyParticipantSnapshot, fetchParticipantSnapshot]);
 
   const loadConversations = useCallback(async () => {
     if (!userId) return;
@@ -217,15 +270,16 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     if (!recipientPublicKey && conv.participantId) {
       const { data: recipientProfile } = await supabase
         .from("profiles")
-        .select("chat_public_key")
+        .select("username, avatar, is_verified, chat_public_key")
         .eq("id", conv.participantId)
         .single();
       recipientPublicKey = recipientProfile?.chat_public_key ?? null;
-      if (recipientPublicKey) {
-        setConversations((prev) =>
-          prev.map((c) => (c.id === conv.id ? { ...c, participantPublicKey: recipientPublicKey } : c))
-        );
-      }
+      applyParticipantSnapshot(conv.id, {
+        username: recipientProfile?.username ?? undefined,
+        avatar: recipientProfile?.avatar ?? null,
+        publicKey: recipientPublicKey,
+        isVerified: recipientProfile?.is_verified !== undefined ? Boolean(recipientProfile.is_verified) : undefined,
+      });
     }
 
     return {
@@ -234,12 +288,22 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       senderProfilePublicKey,
       recipientPublicKey,
     };
-  }, [chatKeyPair, userId]);
+  }, [applyParticipantSnapshot, chatKeyPair, userId]);
 
   const sendMessage = async (conversationId: string, content: string, senderId: string): Promise<boolean> => {
     const conv = conversations.find((c) => c.id === conversationId);
     if (!conv) return false;
-    const readiness = await verifyEncryptionReadiness(conv);
+    const participantSnapshot = await refreshConversationParticipant(conversationId, conv.participantId);
+    const conversationForSend = participantSnapshot
+      ? {
+          ...conv,
+          participantUsername: participantSnapshot.username ?? conv.participantUsername,
+          participantAvatar: participantSnapshot.avatar,
+          participantPublicKey: participantSnapshot.publicKey,
+          participantIsVerified: participantSnapshot.isVerified,
+        }
+      : conv;
+    const readiness = await verifyEncryptionReadiness(conversationForSend);
     const activeKeyPair = readiness.senderKeyPair;
     const participantPublicKey = readiness.recipientPublicKey;
 
@@ -306,11 +370,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       if (conversationError) {
         console.error(`Failed to update conversation metadata for ${conversationId}:`, conversationError.message);
       }
-        if (conv?.participantId) {
-          safeInsertNotification({
-            user_id: conv.participantId,
-            type: "message",
-            title: `New message from @${user.username}`,
+        if (conversationForSend.participantId) {
+           safeInsertNotification({
+             user_id: conversationForSend.participantId,
+             type: "message",
+             title: `New message from @${user.username}`,
             body: encrypted ? "You received an end-to-end encrypted message." : "You received a new message.",
             action_id: conversationId,
             action_type: "chat",
@@ -330,19 +394,28 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     return true;
   };
 
-  const startConversation = async (participantId: string, participantUsername: string, isAnonymous: boolean, participantPublicKey?: string | null): Promise<string> => {
+  const startConversation = async (participantId: string, participantUsername: string, isAnonymous: boolean, participantDetails?: ConversationParticipantDetails): Promise<string> => {
     const existing = conversations.find((c) => c.participantId === participantId);
-    if (existing) return existing.id;
+    if (existing) {
+      applyParticipantSnapshot(existing.id, {
+        username: participantDetails?.username ?? participantUsername,
+        avatar: participantDetails?.avatar,
+        publicKey: participantDetails?.publicKey,
+        isVerified: participantDetails?.isVerified,
+      });
+      refreshConversationParticipant(existing.id, participantId).catch(() => {});
+      return existing.id;
+    }
 
     if (!user) {
       const newConvId = generateId();
       const newConv: Conversation = {
         id: newConvId,
         participantId,
-        participantUsername,
-        participantAvatar: null,
-        participantPublicKey: participantPublicKey ?? null,
-        participantIsVerified: false,
+        participantUsername: participantDetails?.username ?? participantUsername,
+        participantAvatar: participantDetails?.avatar ?? null,
+        participantPublicKey: participantDetails?.publicKey ?? null,
+        participantIsVerified: Boolean(participantDetails?.isVerified),
         isAnonymous,
         isRevealed: !isAnonymous,
         isBlocked: false,
@@ -366,19 +439,15 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       throw new Error(error?.message ?? "Failed to start conversation");
     }
 
-    const { data: participantProfile } = await supabase
-      .from("profiles")
-      .select("avatar, is_verified, chat_public_key")
-      .eq("id", participantId)
-      .single();
+    const participantProfile = await fetchParticipantSnapshot(participantId);
 
     const newConv: Conversation = {
       id: data.id,
       participantId,
-      participantUsername,
-      participantAvatar: participantProfile?.avatar ?? null,
-      participantPublicKey: participantPublicKey ?? participantProfile?.chat_public_key ?? null,
-      participantIsVerified: Boolean(participantProfile?.is_verified),
+      participantUsername: participantProfile?.username ?? participantDetails?.username ?? participantUsername,
+      participantAvatar: participantDetails?.avatar ?? participantProfile?.avatar ?? null,
+      participantPublicKey: participantDetails?.publicKey ?? participantProfile?.publicKey ?? null,
+      participantIsVerified: participantDetails?.isVerified ?? participantProfile?.isVerified ?? false,
       isAnonymous,
       isRevealed: !isAnonymous,
       isBlocked: false,

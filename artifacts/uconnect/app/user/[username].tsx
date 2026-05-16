@@ -139,8 +139,12 @@ export default function UserProfileScreen() {
   const handleMessage = async () => {
     if (!profile) return;
     try {
-      const convId = await startConversation(profile.id, profile.username, false);
-      router.push({ pathname: "/chat/[id]" as any, params: { id: convId, username: profile.username } });
+      const convId = await startConversation(profile.id, profile.username, false, {
+        username: profile.username,
+        avatar: profile.avatar ?? null,
+        isVerified: Boolean(profile.isVerified),
+      });
+      router.push({ pathname: "/chat/[id]" as any, params: { id: convId, participantId: profile.id, username: profile.username } });
     } catch {}
   };
 

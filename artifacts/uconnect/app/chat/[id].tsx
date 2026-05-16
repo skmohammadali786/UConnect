@@ -16,7 +16,7 @@ const DEFAULT_VERIFIED_BADGE_COLOR = "#16A34A";
 export default function ChatScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { id, username } = useLocalSearchParams<{ id: string; username?: string }>();
+  const { id, participantId, username } = useLocalSearchParams<{ id: string; participantId?: string; username?: string }>();
   const { conversations, sendMessage, markRead, revealIdentity, blockUser, startConversation } = useChat();
   const { user } = useAuth();
   const { showError, showInfo } = useToast();
@@ -31,15 +31,18 @@ export default function ChatScreen() {
     : 0;
 
   useEffect(() => {
-    if (!user || !id || conv) return;
-    startConversation(id, username ?? "user", false)
+    const resolvedParticipantId = participantId ?? id;
+    if (!user || !resolvedParticipantId || conv) return;
+    startConversation(resolvedParticipantId, username ?? "user", false, {
+      username: username ?? "user",
+    })
       .then((convId) => {
         if (convId !== id) {
-          router.replace({ pathname: "/chat/[id]" as any, params: { id: convId } });
+          router.replace({ pathname: "/chat/[id]" as any, params: { id: convId, participantId: resolvedParticipantId, username } });
         }
       })
       .catch(() => {});
-  }, [id, username, user?.id, conv?.id]);
+  }, [id, participantId, username, user?.id, conv?.id]);
 
   useEffect(() => {
     if (!conv || incomingUnreadCount === 0) return;
