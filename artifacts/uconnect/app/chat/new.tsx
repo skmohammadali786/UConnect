@@ -1,7 +1,17 @@
 import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, FlatList, Image, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  FlatList,
+  Image,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useChat } from "@/context/ChatContext";
@@ -37,7 +47,9 @@ export default function NewChatScreen() {
       try {
         let query = supabase
           .from("profiles")
-          .select("id, username, display_name, college, avatar, chat_public_key, is_verified")
+          .select(
+            "id, username, display_name, college, avatar, chat_public_key, is_verified",
+          )
           .neq("id", user?.id ?? "")
           .limit(25);
         if (q) {
@@ -46,16 +58,20 @@ export default function NewChatScreen() {
           query = query.order("followers", { ascending: false });
         }
         const { data } = await query;
-        setProfiles((data ?? []).map((r: any) => ({
-          id: r.id,
-          username: r.username,
+        setProfiles(
+          (data ?? []).map((r: any) => ({
+            id: r.id,
+            username: r.username,
             displayName: r.display_name,
             college: r.college,
             avatar: r.avatar ?? null,
             chatPublicKey: r.chat_public_key ?? null,
             isVerified: Boolean(r.is_verified),
-          })));
-      } catch { setProfiles([]); }
+          })),
+        );
+      } catch {
+        setProfiles([]);
+      }
       setLoading(false);
     }, 300);
     return () => clearTimeout(timer);
@@ -63,15 +79,31 @@ export default function NewChatScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, backgroundColor: colors.headerBg, borderBottomColor: colors.border }]}>
+      <View
+        style={[
+          styles.header,
+          {
+            paddingTop: Platform.OS === "web" ? 67 : insets.top + 8,
+            backgroundColor: colors.headerBg,
+            borderBottomColor: colors.border,
+          },
+        ]}
+      >
         <TouchableOpacity onPress={() => router.back()}>
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.foreground }]}>New Message</Text>
+        <Text style={[styles.title, { color: colors.foreground }]}>
+          New Message
+        </Text>
         <View style={{ width: 30 }} />
       </View>
       <View style={[styles.searchWrap, { borderBottomColor: colors.border }]}>
-        <View style={[styles.searchBar, { backgroundColor: colors.input, borderColor: colors.border }]}>
+        <View
+          style={[
+            styles.searchBar,
+            { backgroundColor: colors.input, borderColor: colors.border },
+          ]}
+        >
           <Feather name="search" size={16} color={colors.mutedForeground} />
           <TextInput
             value={search}
@@ -88,12 +120,23 @@ export default function NewChatScreen() {
       <FlatList
         data={profiles}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={profiles.length === 0 && !loading ? { flex: 1, justifyContent: "center", alignItems: "center", padding: 24 } : undefined}
+        contentContainerStyle={
+          profiles.length === 0 && !loading
+            ? {
+                flex: 1,
+                justifyContent: "center",
+                alignItems: "center",
+                padding: 24,
+              }
+            : undefined
+        }
         ListEmptyComponent={
           !loading ? (
             <View style={{ alignItems: "center", gap: 8, paddingTop: 40 }}>
               <Feather name="users" size={32} color={colors.mutedForeground} />
-              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
+              <Text
+                style={[styles.emptyText, { color: colors.mutedForeground }]}
+              >
                 {search ? "No users found" : "Search for people to message"}
               </Text>
             </View>
@@ -103,13 +146,25 @@ export default function NewChatScreen() {
           <TouchableOpacity
             onPress={async () => {
               try {
-                const convId = await startConversation(item.id, item.username, false, {
-                  username: item.username,
-                  avatar: item.avatar,
-                  publicKey: item.chatPublicKey,
-                  isVerified: item.isVerified,
+                const convId = await startConversation(
+                  item.id,
+                  item.username,
+                  false,
+                  {
+                    username: item.username,
+                    avatar: item.avatar,
+                    publicKey: item.chatPublicKey,
+                    isVerified: item.isVerified,
+                  },
+                );
+                router.replace({
+                  pathname: "/chat/[id]" as any,
+                  params: {
+                    id: convId,
+                    participantId: item.id,
+                    username: item.username,
+                  },
                 });
-                router.replace({ pathname: "/chat/[id]" as any, params: { id: convId, participantId: item.id, username: item.username } });
               } catch {}
             }}
             style={[styles.userItem, { borderBottomColor: colors.separator }]}
@@ -117,7 +172,12 @@ export default function NewChatScreen() {
             {item.avatar ? (
               <Image source={{ uri: item.avatar }} style={styles.avatarImage} />
             ) : (
-              <View style={[styles.avatar, { backgroundColor: colors.primary + "20" }]}>
+              <View
+                style={[
+                  styles.avatar,
+                  { backgroundColor: colors.primary + "20" },
+                ]}
+              >
                 <Text style={[styles.avatarText, { color: colors.primary }]}>
                   {(item.displayName ?? item.username).charAt(0).toUpperCase()}
                 </Text>
@@ -125,20 +185,40 @@ export default function NewChatScreen() {
             )}
             <View style={{ flex: 1 }}>
               <View style={styles.nameRow}>
-                <Text style={[styles.username, { color: colors.foreground }]} numberOfLines={1}>
+                <Text
+                  style={[styles.username, { color: colors.foreground }]}
+                  numberOfLines={1}
+                >
                   {item.displayName || item.username}
                 </Text>
                 {item.isVerified && (
-                  <View style={[styles.verifiedBadge, { backgroundColor: item.username?.toLowerCase() === "uconnect" ? OFFICIAL_UCONNECT_BADGE_COLOR : DEFAULT_VERIFIED_BADGE_COLOR }]}>
+                  <View
+                    style={[
+                      styles.verifiedBadge,
+                      {
+                        backgroundColor:
+                          item.username?.toLowerCase() === "uconnect"
+                            ? OFFICIAL_UCONNECT_BADGE_COLOR
+                            : DEFAULT_VERIFIED_BADGE_COLOR,
+                      },
+                    ]}
+                  >
                     <MaterialIcons name="verified" size={12} color="#fff" />
                   </View>
                 )}
               </View>
-              <Text style={[styles.college, { color: colors.mutedForeground }]} numberOfLines={1}>
+              <Text
+                style={[styles.college, { color: colors.mutedForeground }]}
+                numberOfLines={1}
+              >
                 @{item.username} · {item.college}
               </Text>
             </View>
-            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+            <Feather
+              name="chevron-right"
+              size={18}
+              color={colors.mutedForeground}
+            />
           </TouchableOpacity>
         )}
       />
@@ -148,18 +228,56 @@ export default function NewChatScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: 1 },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+  },
   title: { fontSize: 18, fontFamily: "Inter_700Bold" },
   searchWrap: { padding: 12, borderBottomWidth: 1 },
-  searchBar: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, height: 40, gap: 8 },
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 40,
+    gap: 8,
+  },
   searchInput: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular" },
-  userItem: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1 },
-  avatar: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
+  userItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   avatarImage: { width: 44, height: 44, borderRadius: 22 },
   avatarText: { fontSize: 18, fontFamily: "Inter_700Bold" },
   nameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   username: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  verifiedBadge: { width: 16, height: 16, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+  verifiedBadge: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   college: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
-  emptyText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
+  emptyText: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+  },
 });
