@@ -101,6 +101,11 @@ export default function RootLayout() {
   });
 
   const handleDeepLink = useCallback(async (url: string) => {
+    const isRecoveryType = (params: URLSearchParams) => {
+      const rawType = (params.get("type") || params.get("mode") || "").toLowerCase();
+      return rawType === "recovery" || rawType === "password_recovery";
+    };
+
     const postId = extractPostIdFromLink(url);
     if (postId) {
       router.push({ pathname: "/post/[id]" as any, params: { id: postId } });
@@ -124,10 +129,14 @@ export default function RootLayout() {
     const hash = url.split("#")[1];
     if (hash) {
       const p = new URLSearchParams(hash);
+      const isRecovery = isRecoveryType(p);
       const access_token = p.get("access_token");
       const refresh_token = p.get("refresh_token");
       if (access_token && refresh_token) {
         await supabase.auth.setSession({ access_token, refresh_token });
+        if (isRecovery) {
+          router.replace("/auth/reset-password");
+        }
         return;
       }
     }
@@ -135,8 +144,14 @@ export default function RootLayout() {
     const query = url.split("?")[1]?.split("#")[0];
     if (query) {
       const p = new URLSearchParams(query);
+      const isRecovery = isRecoveryType(p);
       const code = p.get("code");
-      if (code) await supabase.auth.exchangeCodeForSession(code);
+      if (code) {
+        await supabase.auth.exchangeCodeForSession(code);
+        if (isRecovery) {
+          router.replace("/auth/reset-password");
+        }
+      }
     }
   }, []);
 

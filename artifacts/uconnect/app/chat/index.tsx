@@ -1,4 +1,4 @@
-import { Feather, MaterialIcons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Easing, FlatList, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -91,7 +91,7 @@ export default function ChatListScreen() {
                   </Text>
                   {!item.isAnonymous && item.participantIsVerified && (
                     <View style={[styles.verifiedBadge, { backgroundColor: item.participantUsername?.toLowerCase() === "uconnect" ? OFFICIAL_UCONNECT_BADGE_COLOR : DEFAULT_VERIFIED_BADGE_COLOR }]}>
-                      <MaterialIcons name="verified" size={12} color="#fff" />
+                      <Feather name="check" size={10} color="#fff" />
                     </View>
                   )}
                 </View>

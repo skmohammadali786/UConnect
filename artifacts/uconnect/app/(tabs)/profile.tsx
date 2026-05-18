@@ -519,7 +519,7 @@ const styles = StyleSheet.create({
   signInBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#FFF" },
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: 1 },
   topBarTitle: { fontSize: 22, fontFamily: "Inter_700Bold" },
-  coverBanner: { height: 160, position: "relative", borderBottomLeftRadius: 24, borderBottomRightRadius: 24, overflow: "hidden", width: "92%", alignSelf: "center" },
+  coverBanner: { position: "relative", borderBottomLeftRadius: 24, borderBottomRightRadius: 24, overflow: "hidden", width: "92%", alignSelf: "center", aspectRatio: 16 / 7 },
   coverImage: { width: "100%", height: "100%" },
   coverGradient: { position: "absolute", inset: 0 },
   bannerGlow: { position: "absolute", width: 220, height: 220, borderRadius: 110, top: -90, right: -70 },

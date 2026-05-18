@@ -1,4 +1,4 @@
-import { Feather, MaterialIcons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -232,7 +232,7 @@ export default function ChatScreen() {
                   },
                 ]}
               >
-                <MaterialIcons name="verified" size={12} color="#fff" />
+                <Feather name="check" size={10} color="#fff" />
               </View>
             )}
           </View>
