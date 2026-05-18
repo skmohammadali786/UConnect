@@ -135,7 +135,7 @@ export default function RootLayout() {
       if (access_token && refresh_token) {
         await supabase.auth.setSession({ access_token, refresh_token });
         if (isRecovery) {
-          router.replace("/auth/reset-password");
+          router.replace("/auth/reset-password" as any);
         }
         return;
       }
@@ -149,7 +149,7 @@ export default function RootLayout() {
       if (code) {
         await supabase.auth.exchangeCodeForSession(code);
         if (isRecovery) {
-          router.replace("/auth/reset-password");
+          router.replace("/auth/reset-password" as any);
         }
       }
     }
