@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import * as Linking from "expo-linking";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -8,6 +9,7 @@ import { AppInput } from "@/components/AppInput";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabase";
 
 export default function LoginScreen() {
   const colors = useColors();
@@ -26,11 +28,19 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [verifyModalVisible, setVerifyModalVisible] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetNotice, setResetNotice] = useState("");
 
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (incomingEmail) setEmail(String(incomingEmail));
+    if (incomingEmail) {
+      const normalizedEmail = String(incomingEmail);
+      setEmail(normalizedEmail);
+      setResetEmail(normalizedEmail);
+    }
   }, [incomingEmail]);
 
   const shake = () => {
@@ -104,6 +114,35 @@ export default function LoginScreen() {
     setVerifyModalVisible(true);
   };
 
+  const handleForgotPassword = async () => {
+    const normalized = resetEmail.trim().toLowerCase();
+    if (!normalized) {
+      setError("Please enter your account email to reset password.");
+      shake();
+      return;
+    }
+    if (!validateEmail(normalized)) {
+      setError("Please enter a valid email address for password reset.");
+      shake();
+      return;
+    }
+
+    setError("");
+    setResetNotice("");
+    setResetLoading(true);
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalized, {
+      redirectTo: Linking.createURL("auth/callback"),
+    });
+    setResetLoading(false);
+
+    if (resetError) {
+      setError(mapAuthError(resetError.message));
+      shake();
+      return;
+    }
+    setResetNotice("Reset link sent. Open your email and follow the link to set a new password.");
+  };
+
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <ScrollView
@@ -162,6 +201,56 @@ export default function LoginScreen() {
               rightIcon={showPassword ? "eye-off" : "eye"}
               onRightIconPress={() => setShowPassword((v) => !v)}
             />
+
+            {isSignIn && (
+              <View style={styles.forgotSection}>
+                <Pressable
+                  onPress={() => {
+                    setError("");
+                    setResetNotice("");
+                    setResetEmail((prev) => (prev || email).trim());
+                    setShowForgotPassword((v) => !v);
+                  }}
+                >
+                  <Text style={[styles.forgotLink, { color: colors.primary }]}>
+                    {showForgotPassword ? "Hide password reset" : "Forgot password?"}
+                  </Text>
+                </Pressable>
+                {showForgotPassword && (
+                  <View style={[styles.resetCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <AppInput
+                      label="Account Email"
+                      placeholder="yourname@gmail.com"
+                      value={resetEmail}
+                      onChangeText={(t) => {
+                        setResetEmail(t);
+                        setError("");
+                        setResetNotice("");
+                      }}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      leftIcon="mail"
+                    />
+                    <AppButton
+                      title="Send Reset Link"
+                      onPress={handleForgotPassword}
+                      loading={resetLoading}
+                      fullWidth
+                      size="md"
+                    />
+                    {resetNotice ? (
+                      <View style={[styles.resetNoticeBox, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "35" }]}>
+                        <Feather name="mail" size={14} color={colors.primary} />
+                        <Text style={[styles.resetNoticeText, { color: colors.primary }]}>
+                          {resetNotice}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
+                )}
+              </View>
+            )}
 
             {!isSignIn && (
               <AppInput
@@ -263,6 +352,11 @@ const styles = StyleSheet.create({
   switchRow: { flexDirection: "row", justifyContent: "center", alignItems: "center" },
   switchText: { fontSize: 14, fontFamily: "Inter_400Regular" },
   switchLink: { fontSize: 14, fontFamily: "Inter_700Bold" },
+  forgotSection: { gap: 8, marginTop: -4 },
+  forgotLink: { fontSize: 13, fontFamily: "Inter_600SemiBold", textAlign: "right" },
+  resetCard: { borderWidth: 1, borderRadius: 12, padding: 12, gap: 10 },
+  resetNoticeBox: { borderWidth: 1, borderRadius: 10, padding: 10, flexDirection: "row", alignItems: "center", gap: 8 },
+  resetNoticeText: { flex: 1, fontSize: 12, lineHeight: 18, fontFamily: "Inter_500Medium" },
   infoBox: { flexDirection: "row", alignItems: "flex-start", gap: 10, padding: 14, borderRadius: 12, borderWidth: 1 },
   infoText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 18 },
 });

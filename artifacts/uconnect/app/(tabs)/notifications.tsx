@@ -41,6 +41,21 @@ const NOTIFICATION_COLORS: Record<string, string> = {
   system: "#6B7280",
 };
 
+const NOTIFICATION_EMOJIS: Record<string, string> = {
+  reply: "💬",
+  mention: "📣",
+  upvote: "🔥",
+  follow: "🤝",
+  message: "✉️",
+  event: "📅",
+  team: "👥",
+  internship: "💼",
+  confession: "🤫",
+  note: "📝",
+  invite: "🎉",
+  system: "🔔",
+};
+
 export default function NotificationsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -153,24 +168,40 @@ export default function NotificationsScreen() {
               styles.item,
               elevatedCard,
               {
-                backgroundColor: item.isRead ? colors.card : colors.primary + "0E",
-                borderColor: item.isRead ? colors.border : colors.primary + "35",
+                backgroundColor: item.isRead ? colors.card : colors.primary + "12",
+                borderColor: item.isRead ? colors.border : colors.primary + "45",
               },
             ]}
           >
-            <View style={[styles.iconWrap, { backgroundColor: (NOTIFICATION_COLORS[item.type] || "#6B7280") + "20" }]}> 
+            <View style={[styles.iconWrap, { backgroundColor: (NOTIFICATION_COLORS[item.type] || "#6B7280") + "20" }]}>
+              <Text style={styles.emoji}>{NOTIFICATION_EMOJIS[item.type] || "🔔"}</Text>
               <Feather
                 name={NOTIFICATION_ICONS[item.type] || "bell"}
-                size={18}
+                size={16}
                 color={NOTIFICATION_COLORS[item.type] || colors.mutedForeground}
               />
             </View>
             <View style={styles.textWrap}>
-              <Text style={[styles.itemTitle, { color: colors.foreground }]}>{item.title}</Text>
-              <Text style={[styles.itemBody, { color: colors.mutedForeground }]} numberOfLines={2}>{item.body}</Text>
-              <Text style={[styles.itemTime, { color: colors.mutedForeground }]}>{formatRelativeTime(item.createdAt)}</Text>
+              <View style={styles.titleRow}>
+                <Text style={[styles.itemTitle, { color: colors.foreground }]} numberOfLines={1}>
+                  {item.title}
+                </Text>
+                {!item.isRead ? (
+                  <View style={[styles.newPill, { backgroundColor: colors.primary + "20", borderColor: colors.primary + "35" }]}>
+                    <Text style={[styles.newPillText, { color: colors.primary }]}>NEW</Text>
+                  </View>
+                ) : null}
+              </View>
+              <Text style={[styles.itemBody, { color: colors.mutedForeground }]} numberOfLines={2}>
+                {item.body}
+              </Text>
+              <View style={styles.metaRow}>
+                <Text style={[styles.itemTime, { color: colors.mutedForeground }]}>{formatRelativeTime(item.createdAt)}</Text>
+                <Text style={[styles.itemType, { color: NOTIFICATION_COLORS[item.type] || colors.mutedForeground }]}>
+                  {NOTIFICATION_EMOJIS[item.type] || "🔔"} {item.type}
+                </Text>
+              </View>
             </View>
-            {!item.isRead && <View style={[styles.unreadDot, { backgroundColor: colors.primary }]} />}
           </TouchableOpacity>
         )}
         ListEmptyComponent={
@@ -207,19 +238,24 @@ const styles = StyleSheet.create({
   markAll: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   item: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     padding: 14,
     gap: 12,
     borderWidth: 1,
     borderRadius: 16,
     marginBottom: 10,
   },
-  iconWrap: { width: 42, height: 42, borderRadius: 21, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  iconWrap: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", flexShrink: 0, position: "relative" },
+  emoji: { position: "absolute", top: -7, right: -5, fontSize: 14 },
   textWrap: { flex: 1, gap: 3 },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   itemTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   itemBody: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18 },
+  metaRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 2, gap: 8 },
   itemTime: { fontSize: 11, fontFamily: "Inter_400Regular" },
-  unreadDot: { width: 8, height: 8, borderRadius: 4, marginTop: 6 },
+  itemType: { fontSize: 11, fontFamily: "Inter_600SemiBold", textTransform: "capitalize" },
+  newPill: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
+  newPillText: { fontSize: 10, fontFamily: "Inter_700Bold" },
   empty: { alignItems: "center", gap: 12, paddingTop: 90, paddingHorizontal: 24 },
   emptyIconWrap: { width: 88, height: 88, borderRadius: 24, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   emptyText: { fontSize: 18, fontFamily: "Inter_700Bold" },

@@ -161,7 +161,7 @@ export default function EditProfileScreen() {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
-        aspect: [3, 1],
+        aspect: [16, 7],
         quality: 0.75,
         base64: true,
       });
@@ -543,7 +543,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 17, fontFamily: "Inter_700Bold" },
   saveBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8 },
   saveBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  bannerPicker: { borderRadius: 14, borderWidth: 1, overflow: "hidden", height: 120 },
+  bannerPicker: { borderRadius: 14, borderWidth: 1, overflow: "hidden", width: "100%", aspectRatio: 16 / 7 },
   bannerImage: { width: "100%", height: "100%" },
   bannerFallback: { flex: 1, alignItems: "center", justifyContent: "center", gap: 6 },
   bannerText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
