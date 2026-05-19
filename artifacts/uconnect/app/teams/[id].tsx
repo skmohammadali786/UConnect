@@ -163,6 +163,7 @@ export default function TeamDetailScreen() {
   const membership = team && user ? getMembership(team.id) : null;
   const isAdmin = team && user ? isTeamAdmin(team.id) : false;
   const isMember = Boolean(team && user && (isAdmin || membership));
+  const lastTeamIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (team && user) {
@@ -173,12 +174,22 @@ export default function TeamDetailScreen() {
 
   useEffect(() => {
     if (!team) return;
-    if (isMember) {
-      setActiveTab((prev) => (prev === "details" ? "feed" : prev));
-    } else {
+    const isNewTeam = lastTeamIdRef.current !== team.id;
+    if (isNewTeam) {
+      lastTeamIdRef.current = team.id;
+      setActiveTab(isMember ? "feed" : "details");
+      return;
+    }
+    if (!isMember) {
       setActiveTab("details");
     }
   }, [team?.id, isMember]);
+
+  useEffect(() => {
+    if (!team) {
+      lastTeamIdRef.current = null;
+    }
+  }, [team?.id]);
 
   if (!team) {
     return (
@@ -209,7 +220,6 @@ export default function TeamDetailScreen() {
     });
     showSuccess("Request sent!", "The admin will review your request soon.");
   };
-
   const handleCancel = async () => {
     if (!user) return;
     setRequested(false);

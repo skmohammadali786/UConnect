@@ -323,6 +323,7 @@ export default function CreatePostScreen() {
               <TextInput
                 value={customTag}
                 onChangeText={(value) => setCustomTag(value.replace(/\s{2,}/g, " "))}
+                onBlur={() => setCustomTag((value) => value.trim().replace(/^#+/, "").replace(/\s{2,}/g, " "))}
                 placeholder="Custom tag (optional)"
                 placeholderTextColor={colors.placeholder}
                 style={[styles.customTagInput, { color: colors.foreground }]}
