@@ -107,7 +107,7 @@ export default function TeamsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { teams, requestJoin, cancelRequest, getPendingRequests } = useTeams();
+  const { teams, requestJoin, cancelRequest, getPendingRequests, getMyTeams } = useTeams();
   const { showSuccess, showInfo } = useToast();
   const [selectedType, setSelectedType] = useState("All");
   const [requestedIds, setRequestedIds] = useState<Set<string>>(new Set());
@@ -134,6 +134,7 @@ export default function TeamsScreen() {
   }, [teams, user?.id]);
 
   const pendingRequests = user ? getPendingRequests(user.id) : [];
+  const myTeams = user ? getMyTeams(user.id) : [];
 
   const filteredTeams = selectedType === "All" ? teams : teams.filter((t) => t.type === selectedType);
 
@@ -182,6 +183,24 @@ export default function TeamsScreen() {
           </Text>
           <Feather name="chevron-right" size={16} color="#EF4444" />
         </TouchableOpacity>
+      )}
+
+      {myTeams.length > 0 && (
+        <View style={styles.myTeamsSection}>
+          <Text style={[styles.myTeamsTitle, { color: colors.foreground }]}>My Teams</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.myTeamsRow}>
+            {myTeams.map((team) => (
+              <TouchableOpacity
+                key={team.id}
+                onPress={() => router.push({ pathname: "/teams/[id]" as any, params: { id: team.id } })}
+                style={[styles.myTeamChip, { backgroundColor: colors.card, borderColor: colors.border }]}
+              >
+                <Text style={[styles.myTeamName, { color: colors.foreground }]} numberOfLines={1}>{team.title}</Text>
+                <Text style={[styles.myTeamMeta, { color: colors.mutedForeground }]}>{team.type}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
       )}
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.typeScroll, { backgroundColor: colors.background, borderBottomColor: colors.border }]} contentContainerStyle={styles.typeFilter}>
@@ -238,6 +257,12 @@ const styles = StyleSheet.create({
   createBtn: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   pendingBanner: { flexDirection: "row", alignItems: "center", gap: 10, margin: 12, marginBottom: 0, borderRadius: 12, borderWidth: 1, padding: 12 },
   pendingText: { flex: 1, fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  myTeamsSection: { marginTop: 12, marginHorizontal: 16, gap: 10 },
+  myTeamsTitle: { fontSize: 15, fontFamily: "Inter_700Bold" },
+  myTeamsRow: { gap: 10, paddingBottom: 4 },
+  myTeamChip: { width: 180, borderRadius: 14, borderWidth: 1, padding: 12, gap: 6 },
+  myTeamName: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  myTeamMeta: { fontSize: 12, fontFamily: "Inter_400Regular" },
   typeFilter: { paddingHorizontal: 16, paddingVertical: 6, gap: 8 },
   typeScroll: { borderBottomWidth: 1, flexGrow: 0 },
   typeChip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1, height: 34, alignItems: "center", justifyContent: "center" },

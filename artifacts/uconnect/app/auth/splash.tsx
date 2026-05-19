@@ -27,7 +27,7 @@ export default function SplashScreen() {
   const isDark = themeMode === "dark" || (themeMode === "system" && systemTheme === "dark");
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: isDark ? "#0A0A0A" : "#FFFFFF" }]}>
       <View style={styles.logoContainer}>
         <View style={[styles.logoWrap, isDark ? styles.logoWrapDark : styles.logoWrapLight]}>
           <Image
@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
   },
   logoWrapLight: { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E5E7EB" },
   logoWrapDark: { backgroundColor: "#111827", borderWidth: 1, borderColor: "#374151" },
-  logoImg: { width: 88, height: 88 },
+  logoImg: { width: 76, height: 76 },
   appName: { fontSize: 28, fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
   tagline: { fontSize: 14, fontFamily: "Inter_400Regular" },
   loader: { position: "absolute", bottom: 80 },

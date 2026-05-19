@@ -305,8 +305,13 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
                 key={i}
                 onPress={(e) => { e.stopPropagation(); openImage(uri); }}
                 activeOpacity={0.9}
+                style={[styles.mediaThumbWrap, { backgroundColor: colors.secondary }]}
               >
-                <Image source={{ uri }} style={[styles.mediaThumb, post.mediaUrls.length === 1 && styles.mediaThumbSingle]} resizeMode="cover" />
+                <Image
+                  source={{ uri }}
+                  style={[styles.mediaThumb, post.mediaUrls.length === 1 && styles.mediaThumbSingle]}
+                  resizeMode="contain"
+                />
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -474,7 +479,8 @@ const styles = StyleSheet.create({
   repostedBadgeText: { fontSize: 12, fontFamily: "Inter_500Medium" },
   content: { fontSize: 15, lineHeight: 22, marginBottom: 12 },
   mediaRow: { marginBottom: 12 },
-  mediaThumb: { width: 120, height: 120, borderRadius: 10 },
+  mediaThumbWrap: { borderRadius: 10, overflow: "hidden", alignItems: "center", justifyContent: "center" },
+  mediaThumb: { width: 120, height: 120 },
   mediaThumbSingle: { width: 240, height: 160 },
   videoThumb: { flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 10, padding: 14, marginBottom: 12 },
   playBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },

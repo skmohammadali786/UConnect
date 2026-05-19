@@ -59,7 +59,8 @@ export default function CreatePostScreen() {
   const { settings } = useSettings();
   const { showSuccess, showInfo, showError } = useToast();
   const [content, setContent] = useState("");
-  const [tag, setTag] = useState<PostTag>("General");
+  const [presetTag, setPresetTag] = useState<PostTag>("General");
+  const [customTag, setCustomTag] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(settings.defaultAnonymous);
   const [anonymousTouched, setAnonymousTouched] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -196,7 +197,7 @@ export default function CreatePostScreen() {
         authorAvatar: isAnonymous ? null : (user.avatar || null),
         college: user.college,
         isAnonymous,
-        tag,
+        tag: activeTag,
         content: content.trim(),
         mediaUrls: uploadedMedia,
         videoUrl: finalVideoUrl,
@@ -215,14 +216,16 @@ export default function CreatePostScreen() {
 
   const handleSaveDraft = async () => {
     if (!content.trim()) return;
-    await saveDraft({ content: content.trim(), tag, isAnonymous });
+    await saveDraft({ content: content.trim(), tag: activeTag, isAnonymous });
     showInfo("Draft saved", "You can come back to finish it anytime.");
     setContent("");
   };
 
   const handleLoadDraft = (draft: Draft) => {
     setContent(draft.content);
-    setTag(draft.tag);
+    const isPreset = TAGS.includes(draft.tag as PostTag);
+    setPresetTag(isPreset ? draft.tag : "General");
+    setCustomTag(isPreset ? "" : draft.tag);
     setIsAnonymous(draft.isAnonymous);
     setShowDrafts(false);
     showInfo("Draft loaded", "Edit and post when you're ready.");
@@ -234,7 +237,8 @@ export default function CreatePostScreen() {
     if (drafts.length <= 1) setShowDrafts(false);
   };
 
-  const tagColor = TAG_COLORS[tag] || colors.mutedForeground;
+  const activeTag = customTag.trim() ? customTag.trim() : presetTag;
+  const tagColor = TAG_COLORS[activeTag] || colors.mutedForeground;
   const charsLeft = 500 - content.length;
   const charColor = charsLeft < 50 ? "#EF4444" : charsLeft < 100 ? "#F59E0B" : colors.mutedForeground;
   const selectedDeleteOption = AUTO_DELETE_OPTIONS.find((o) => o.value === autoDelete);
@@ -301,22 +305,35 @@ export default function CreatePostScreen() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 4 }}>
               {TAGS.map((t) => {
                 const tc = TAG_COLORS[t];
+                const isActive = presetTag === t && !customTag.trim();
                 return (
                   <TouchableOpacity
                     key={t}
-                    onPress={() => setTag(t)}
-                    style={[styles.tagChip, { backgroundColor: tag === t ? tc + "20" : colors.card, borderColor: tag === t ? tc : colors.border }]}
+                    onPress={() => { setPresetTag(t); setCustomTag(""); }}
+                    style={[styles.tagChip, { backgroundColor: isActive ? tc + "20" : colors.card, borderColor: isActive ? tc : colors.border }]}
                   >
-                    <Text style={[styles.tagChipText, { color: tag === t ? tc : colors.mutedForeground }]}>{t}</Text>
+                    <Text style={[styles.tagChipText, { color: isActive ? tc : colors.mutedForeground }]}>{t}</Text>
                   </TouchableOpacity>
                 );
               })}
             </ScrollView>
+            <View style={[styles.customTagRow, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+              <Feather name="edit-2" size={14} color={colors.mutedForeground} />
+              <TextInput
+                value={customTag}
+                onChangeText={(value) => setCustomTag(value.replace(/^#+/, "").replace(/\s{2,}/g, " "))}
+                placeholder="Custom tag (optional)"
+                placeholderTextColor={colors.placeholder}
+                style={[styles.customTagInput, { color: colors.foreground }]}
+                autoCapitalize="words"
+                maxLength={28}
+              />
+            </View>
           </View>
 
           <View style={[styles.activeTag, { backgroundColor: tagColor + "10", borderColor: tagColor + "30" }]}>
             <View style={[styles.tagDot, { backgroundColor: tagColor }]} />
-            <Text style={[styles.activeTagText, { color: tagColor }]}>#{tag}</Text>
+            <Text style={[styles.activeTagText, { color: tagColor }]}>#{activeTag}</Text>
           </View>
 
           <TextInput
@@ -333,8 +350,8 @@ export default function CreatePostScreen() {
           {(mediaUris.length > 0 || videoUri) && (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mediaPreviewRow} contentContainerStyle={{ gap: 10 }}>
               {mediaUris.map((uri, i) => (
-                <View key={i} style={styles.mediaPreviewWrap}>
-                  <Image source={{ uri }} style={styles.mediaPreviewImg} resizeMode="cover" />
+                <View key={i} style={[styles.mediaPreviewWrap, { backgroundColor: colors.secondary }]}>
+                  <Image source={{ uri }} style={styles.mediaPreviewImg} resizeMode="contain" />
                   <TouchableOpacity onPress={() => setMediaUris((prev) => prev.filter((_, idx) => idx !== i))} style={styles.removeMediaBtn}>
                     <Feather name="x" size={11} color="#FFF" />
                   </TouchableOpacity>
@@ -487,6 +504,8 @@ const styles = StyleSheet.create({
   sectionLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", letterSpacing: 0.8 },
   tagChip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1.5 },
   tagChipText: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  customTagRow: { flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8 },
+  customTagInput: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular" },
   activeTag: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 10, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 14, alignSelf: "flex-start" },
   tagDot: { width: 6, height: 6, borderRadius: 3 },
   activeTagText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
