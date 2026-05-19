@@ -757,7 +757,10 @@ declare
   v_status text;
   v_code text;
 begin
-  if auth.uid() is null or auth.uid() <> p_user_id then
+  if auth.uid() is null then
+    raise exception 'Authentication required';
+  end if;
+  if auth.uid() <> p_user_id then
     raise exception 'Unauthorized';
   end if;
 
@@ -801,13 +804,13 @@ declare
   v_ticket_id uuid;
 begin
   if auth.uid() is null then
-    raise exception 'Unauthorized';
+    raise exception 'Authentication required';
   end if;
 
   if not exists (
     select 1 from events e where e.id = p_event_id and e.organizer_id = auth.uid()
   ) then
-    raise exception 'Unauthorized';
+    raise exception 'Not event organizer';
   end if;
 
   select id into v_ticket_id

@@ -237,7 +237,8 @@ export default function CreatePostScreen() {
     if (drafts.length <= 1) setShowDrafts(false);
   };
 
-  const activeTag = customTag.trim() ? customTag.trim() : presetTag;
+  const trimmedCustomTag = customTag.trim().replace(/^#+/, "");
+  const activeTag = trimmedCustomTag ? trimmedCustomTag : presetTag;
   const tagColor = TAG_COLORS[activeTag] || colors.mutedForeground;
   const charsLeft = 500 - content.length;
   const charColor = charsLeft < 50 ? "#EF4444" : charsLeft < 100 ? "#F59E0B" : colors.mutedForeground;
@@ -321,7 +322,7 @@ export default function CreatePostScreen() {
               <Feather name="edit-2" size={14} color={colors.mutedForeground} />
               <TextInput
                 value={customTag}
-                onChangeText={(value) => setCustomTag(value.replace(/^#+/, "").replace(/\s{2,}/g, " "))}
+                onChangeText={(value) => setCustomTag(value.replace(/\s{2,}/g, " "))}
                 placeholder="Custom tag (optional)"
                 placeholderTextColor={colors.placeholder}
                 style={[styles.customTagInput, { color: colors.foreground }]}
