@@ -505,6 +505,7 @@ begin
 end;
 $$;
 
+drop trigger if exists add_team_owner_membership_after_insert on teams;
 create trigger add_team_owner_membership_after_insert
 after insert on teams
 for each row execute function add_team_owner_membership();
@@ -521,6 +522,7 @@ begin
 end;
 $$;
 
+drop trigger if exists add_team_member_after_approval on team_requests;
 create trigger add_team_member_after_approval
 after update on team_requests
 for each row
@@ -656,6 +658,23 @@ create policy "Team admins can update events" on team_events for update
 create policy "Team admins can delete events" on team_events for delete
   using (is_team_admin(team_id, auth.uid()));
 
+create index if not exists idx_team_members_team
+  on team_members(team_id, joined_at desc);
+create index if not exists idx_team_members_user
+  on team_members(user_id, joined_at desc);
+create index if not exists idx_team_posts_team
+  on team_posts(team_id, created_at desc);
+create index if not exists idx_team_polls_team
+  on team_polls(team_id, created_at desc);
+create index if not exists idx_team_poll_votes_poll
+  on team_poll_votes(poll_id, created_at desc);
+create index if not exists idx_team_task_lists_team
+  on team_task_lists(team_id, created_at desc);
+create index if not exists idx_team_task_items_list
+  on team_task_items(task_list_id, created_at desc);
+create index if not exists idx_team_events_team
+  on team_events(team_id, created_at desc);
+
 -- ─── EVENTS ──────────────────────────────────────────────────────────────────
 create table if not exists events (
   id uuid primary key default uuid_generate_v4(),
@@ -706,6 +725,11 @@ create policy "Ticket owners and hosts can view" on event_tickets for select
 create policy "Event hosts can insert tickets" on event_tickets for insert
   with check (exists (select 1 from events e where e.id = event_tickets.event_id and e.organizer_id = auth.uid()));
 
+create index if not exists idx_event_tickets_event
+  on event_tickets(event_id, issued_at desc);
+create index if not exists idx_event_tickets_user
+  on event_tickets(user_id, issued_at desc);
+
 create table if not exists event_checkins (
   id uuid primary key default uuid_generate_v4(),
   event_id uuid not null references events(id) on delete cascade,
@@ -719,6 +743,90 @@ create policy "Hosts can view checkins" on event_checkins for select
   using (exists (select 1 from events e where e.id = event_checkins.event_id and e.organizer_id = auth.uid()));
 create policy "Hosts can insert checkins" on event_checkins for insert
   with check (exists (select 1 from events e where e.id = event_checkins.event_id and e.organizer_id = auth.uid()));
+
+create index if not exists idx_event_checkins_event
+  on event_checkins(event_id, checked_in_at desc);
+
+create or replace function issue_event_ticket(p_event_id uuid, p_user_id uuid)
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_status text;
+  v_code text;
+begin
+  if auth.uid() is null or auth.uid() <> p_user_id then
+    raise exception 'Unauthorized';
+  end if;
+
+  select status into v_status
+  from event_rsvps
+  where user_id = p_user_id and event_id = p_event_id;
+
+  if v_status is null then
+    raise exception 'RSVP required';
+  end if;
+  if v_status <> 'approved' then
+    raise exception 'RSVP not approved';
+  end if;
+
+  select code into v_code
+  from event_tickets
+  where event_id = p_event_id and user_id = p_user_id;
+
+  if v_code is not null then
+    return v_code;
+  end if;
+
+  v_code := replace(uuid_generate_v4()::text, '-', '');
+  insert into event_tickets(event_id, user_id, code)
+  values (p_event_id, p_user_id, v_code)
+  on conflict (event_id, user_id) do update set code = excluded.code
+  returning code into v_code;
+
+  return v_code;
+end;
+$$;
+
+create or replace function checkin_event_ticket(p_event_id uuid, p_ticket_code text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_ticket_id uuid;
+begin
+  if auth.uid() is null then
+    raise exception 'Unauthorized';
+  end if;
+
+  if not exists (
+    select 1 from events e where e.id = p_event_id and e.organizer_id = auth.uid()
+  ) then
+    raise exception 'Unauthorized';
+  end if;
+
+  select id into v_ticket_id
+  from event_tickets
+  where event_id = p_event_id and code = p_ticket_code;
+
+  if v_ticket_id is null then
+    raise exception 'Invalid ticket';
+  end if;
+
+  insert into event_checkins(event_id, ticket_id, checked_in_by)
+  values (p_event_id, v_ticket_id, auth.uid())
+  on conflict (ticket_id) do update
+    set checked_in_at = excluded.checked_in_at,
+        checked_in_by = excluded.checked_in_by;
+end;
+$$;
+
+grant execute on function issue_event_ticket(uuid, uuid) to authenticated;
+grant execute on function checkin_event_ticket(uuid, text) to authenticated;
 
 -- ─── INTERNSHIPS ─────────────────────────────────────────────────────────────
 create table if not exists internships (
