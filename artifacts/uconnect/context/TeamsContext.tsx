@@ -198,7 +198,12 @@ export function TeamsProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const getMyTeams = useCallback(
-    (userId: string) => teams.filter((t) => t.posterId === userId || memberships.some((m) => m.teamId === t.id && m.userId === userId)),
+    (userId: string) => {
+      const membershipTeamIds = new Set(
+        memberships.filter((m) => m.userId === userId).map((m) => m.teamId),
+      );
+      return teams.filter((t) => t.posterId === userId || membershipTeamIds.has(t.id));
+    },
     [teams, memberships],
   );
 

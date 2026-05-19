@@ -480,6 +480,10 @@ export default function TeamDetailScreen() {
       showInfo("Sign in required");
       return;
     }
+    const currentPoll = feedItems.find((item) => item.type === "poll" && item.id === pollId);
+    if (!currentPoll || currentPoll.type !== "poll") return;
+    if (optionIndex < 0 || optionIndex >= currentPoll.options.length) return;
+    if (currentPoll.userVoteIndex === optionIndex) return;
     try {
       await supabase.from("team_poll_votes").upsert({
         poll_id: pollId,
