@@ -223,7 +223,7 @@ export default function CreatePostScreen() {
 
   const handleLoadDraft = (draft: Draft) => {
     setContent(draft.content);
-    const isPreset = TAGS.includes(draft.tag as PostTag);
+    const isPreset = TAGS.includes(draft.tag);
     setPresetTag(isPreset ? draft.tag : "General");
     setCustomTag(isPreset ? "" : draft.tag);
     setIsAnonymous(draft.isAnonymous);

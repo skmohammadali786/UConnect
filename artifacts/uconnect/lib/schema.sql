@@ -783,7 +783,8 @@ begin
   v_code := replace(uuid_generate_v4()::text, '-', '');
   insert into event_tickets(event_id, user_id, code)
   values (p_event_id, p_user_id, v_code)
-  on conflict (event_id, user_id) do update set code = excluded.code
+  on conflict (event_id, user_id) do update
+    set code = event_tickets.code
   returning code into v_code;
 
   return v_code;
