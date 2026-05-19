@@ -27,14 +27,24 @@ export interface Team {
   createdAt: string;
 }
 
+export interface TeamMembership {
+  teamId: string;
+  userId: string;
+  role: "admin" | "member";
+  joinedAt: string;
+}
+
 interface TeamsContextType {
   teams: Team[];
+  memberships: TeamMembership[];
   createTeam: (data: Omit<Team, "id" | "members" | "requests" | "createdAt">) => Promise<Team>;
   requestJoin: (teamId: string, request: Omit<TeamRequest, "requestedAt" | "status">) => Promise<void>;
   cancelRequest: (teamId: string, userId: string) => Promise<void>;
   approveRequest: (teamId: string, userId: string) => Promise<void>;
   denyRequest: (teamId: string, userId: string) => Promise<void>;
   getMyTeams: (userId: string) => Team[];
+  getMembership: (teamId: string) => TeamMembership | null;
+  isTeamAdmin: (teamId: string) => boolean;
   getPendingRequests: (userId: string) => { team: Team; request: TeamRequest }[];
 }
 
@@ -60,6 +70,7 @@ function rowToTeam(row: any, requests: TeamRequest[] = []): Team {
 export function TeamsProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [teams, setTeams] = useState<Team[]>([]);
+  const [memberships, setMemberships] = useState<TeamMembership[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -92,9 +103,30 @@ export function TeamsProvider({ children }: { children: React.ReactNode }) {
             });
           }
           setTeams(data.map((row: any) => rowToTeam(row, reqMap.get(row.id) ?? [])));
+        } else {
+          setTeams([]);
         }
       } catch {
         setTeams([]);
+      }
+
+      if (user) {
+        try {
+          const { data: memberRows } = await supabase
+            .from("team_members")
+            .select("team_id,user_id,role,joined_at")
+            .eq("user_id", user.id);
+          setMemberships((memberRows ?? []).map((row: any) => ({
+            teamId: row.team_id,
+            userId: row.user_id,
+            role: row.role as TeamMembership["role"],
+            joinedAt: row.joined_at,
+          })));
+        } catch {
+          setMemberships([]);
+        }
+      } else {
+        setMemberships([]);
       }
     })();
   }, [user?.id]);
@@ -165,7 +197,30 @@ export function TeamsProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user]);
 
-  const getMyTeams = useCallback((userId: string) => teams.filter((t) => t.posterId === userId), [teams]);
+  const getMyTeams = useCallback(
+    (userId: string) => {
+      const membershipTeamIds = new Set(
+        memberships.filter((m) => m.userId === userId).map((m) => m.teamId),
+      );
+      return teams.filter((t) => t.posterId === userId || membershipTeamIds.has(t.id));
+    },
+    [teams, memberships],
+  );
+
+  const getMembership = useCallback(
+    (teamId: string) => memberships.find((m) => m.teamId === teamId) ?? null,
+    [memberships],
+  );
+
+  const isTeamAdmin = useCallback(
+    (teamId: string) => {
+      if (!user) return false;
+      const membership = memberships.find((m) => m.teamId === teamId);
+      if (membership?.role === "admin") return true;
+      return teams.some((t) => t.id === teamId && t.posterId === user.id);
+    },
+    [memberships, teams, user?.id],
+  );
 
   const getPendingRequests = useCallback((userId: string) => {
     const result: { team: Team; request: TeamRequest }[] = [];
@@ -177,7 +232,7 @@ export function TeamsProvider({ children }: { children: React.ReactNode }) {
   }, [teams]);
 
   return (
-    <TeamsContext.Provider value={{ teams, createTeam, requestJoin, cancelRequest, approveRequest, denyRequest, getMyTeams, getPendingRequests }}>
+    <TeamsContext.Provider value={{ teams, memberships, createTeam, requestJoin, cancelRequest, approveRequest, denyRequest, getMyTeams, getMembership, isTeamAdmin, getPendingRequests }}>
       {children}
     </TeamsContext.Provider>
   );

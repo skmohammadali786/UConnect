@@ -2,9 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 
-export type PostTag =
-  | "General" | "Academic" | "Campus Life" | "Rant" | "Advice"
-  | "Meme" | "Question" | "Achievement" | "Event" | "Confession";
+export type PostTag = string;
 
 export interface Comment {
   id: string;

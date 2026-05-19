@@ -435,6 +435,246 @@ create policy "Team owners can update request status" on team_requests for updat
   using (exists (select 1 from teams t where t.id = team_requests.team_id and t.poster_id = auth.uid()));
 create policy "Requesters can delete own request" on team_requests for delete using (auth.uid() = user_id);
 
+-- ─── TEAM MEMBERSHIPS ─────────────────────────────────────────────────────────
+create table if not exists team_members (
+  id uuid primary key default uuid_generate_v4(),
+  team_id uuid not null references teams(id) on delete cascade,
+  user_id uuid not null references profiles(id) on delete cascade,
+  role text not null default 'member' check (role in ('admin', 'member')),
+  joined_at timestamptz not null default now(),
+  unique(team_id, user_id)
+);
+alter table team_members enable row level security;
+create policy "Members can view team members" on team_members for select
+  using (
+    auth.uid() = user_id
+    or exists (select 1 from team_members m where m.team_id = team_members.team_id and m.user_id = auth.uid())
+    or exists (select 1 from teams t where t.id = team_members.team_id and t.poster_id = auth.uid())
+  );
+create policy "Admins can manage memberships" on team_members for all
+  using (
+    exists (
+      select 1 from team_members m
+      where m.team_id = team_members.team_id
+        and m.user_id = auth.uid()
+        and m.role = 'admin'
+    )
+  )
+  with check (
+    exists (
+      select 1 from team_members m
+      where m.team_id = team_members.team_id
+        and m.user_id = auth.uid()
+        and m.role = 'admin'
+    )
+  );
+
+create or replace function is_team_member(p_team_id uuid, p_user_id uuid)
+returns boolean
+language sql
+stable
+as $$
+  select exists (
+    select 1 from team_members m where m.team_id = p_team_id and m.user_id = p_user_id
+  )
+  or exists (
+    select 1 from teams t where t.id = p_team_id and t.poster_id = p_user_id
+  );
+$$;
+
+create or replace function is_team_admin(p_team_id uuid, p_user_id uuid)
+returns boolean
+language sql
+stable
+as $$
+  select exists (
+    select 1 from team_members m where m.team_id = p_team_id and m.user_id = p_user_id and m.role = 'admin'
+  )
+  or exists (
+    select 1 from teams t where t.id = p_team_id and t.poster_id = p_user_id
+  );
+$$;
+
+create or replace function add_team_owner_membership()
+returns trigger language plpgsql as $$
+begin
+  insert into team_members(team_id, user_id, role)
+  values (new.id, new.poster_id, 'admin')
+  on conflict do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists add_team_owner_membership_after_insert on teams;
+create trigger add_team_owner_membership_after_insert
+after insert on teams
+for each row execute function add_team_owner_membership();
+
+create or replace function add_team_member_on_approval()
+returns trigger language plpgsql as $$
+begin
+  if new.status = 'approved' then
+    insert into team_members(team_id, user_id, role)
+    values (new.team_id, new.user_id, 'member')
+    on conflict do nothing;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists add_team_member_after_approval on team_requests;
+create trigger add_team_member_after_approval
+after update on team_requests
+for each row
+when (new.status = 'approved')
+execute function add_team_member_on_approval();
+
+-- ─── TEAM FEED: POSTS ─────────────────────────────────────────────────────────
+create table if not exists team_posts (
+  id uuid primary key default uuid_generate_v4(),
+  team_id uuid not null references teams(id) on delete cascade,
+  author_id uuid not null references profiles(id) on delete cascade,
+  author_username text not null,
+  author_avatar text,
+  content text not null default '',
+  media_urls text[] not null default '{}',
+  created_at timestamptz not null default now()
+);
+alter table team_posts enable row level security;
+create policy "Team posts viewable by members" on team_posts for select
+  using (is_team_member(team_id, auth.uid()));
+create policy "Team admins can create posts" on team_posts for insert
+  with check (is_team_admin(team_id, auth.uid()));
+create policy "Team admins can update posts" on team_posts for update
+  using (is_team_admin(team_id, auth.uid()));
+create policy "Team admins can delete posts" on team_posts for delete
+  using (is_team_admin(team_id, auth.uid()));
+
+-- ─── TEAM POLLS ───────────────────────────────────────────────────────────────
+create table if not exists team_polls (
+  id uuid primary key default uuid_generate_v4(),
+  team_id uuid not null references teams(id) on delete cascade,
+  question text not null,
+  options text[] not null,
+  created_by uuid not null references profiles(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+alter table team_polls enable row level security;
+create policy "Team polls viewable by members" on team_polls for select
+  using (is_team_member(team_id, auth.uid()));
+create policy "Team admins can create polls" on team_polls for insert
+  with check (is_team_admin(team_id, auth.uid()));
+create policy "Team admins can update polls" on team_polls for update
+  using (is_team_admin(team_id, auth.uid()));
+create policy "Team admins can delete polls" on team_polls for delete
+  using (is_team_admin(team_id, auth.uid()));
+
+create table if not exists team_poll_votes (
+  id uuid primary key default uuid_generate_v4(),
+  poll_id uuid not null references team_polls(id) on delete cascade,
+  user_id uuid not null references profiles(id) on delete cascade,
+  option_index int not null,
+  created_at timestamptz not null default now(),
+  unique(poll_id, user_id)
+);
+alter table team_poll_votes enable row level security;
+create policy "Members can view poll votes" on team_poll_votes for select
+  using (exists (select 1 from team_polls p where p.id = team_poll_votes.poll_id and is_team_member(p.team_id, auth.uid())));
+create policy "Members can manage own poll votes" on team_poll_votes for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- ─── TEAM TASKS ───────────────────────────────────────────────────────────────
+create table if not exists team_task_lists (
+  id uuid primary key default uuid_generate_v4(),
+  team_id uuid not null references teams(id) on delete cascade,
+  title text not null,
+  created_by uuid not null references profiles(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+alter table team_task_lists enable row level security;
+create policy "Task lists viewable by members" on team_task_lists for select
+  using (is_team_member(team_id, auth.uid()));
+create policy "Team admins can create task lists" on team_task_lists for insert
+  with check (is_team_admin(team_id, auth.uid()));
+create policy "Team admins can update task lists" on team_task_lists for update
+  using (is_team_admin(team_id, auth.uid()));
+create policy "Team admins can delete task lists" on team_task_lists for delete
+  using (is_team_admin(team_id, auth.uid()));
+
+create table if not exists team_task_items (
+  id uuid primary key default uuid_generate_v4(),
+  task_list_id uuid not null references team_task_lists(id) on delete cascade,
+  title text not null,
+  is_completed boolean not null default false,
+  completed_by uuid references profiles(id) on delete set null,
+  completed_at timestamptz,
+  created_at timestamptz not null default now()
+);
+alter table team_task_items enable row level security;
+create policy "Task items viewable by members" on team_task_items for select
+  using (
+    exists (
+      select 1 from team_task_lists l where l.id = team_task_items.task_list_id and is_team_member(l.team_id, auth.uid())
+    )
+  );
+create policy "Members can update task items" on team_task_items for update
+  using (
+    exists (
+      select 1 from team_task_lists l where l.id = team_task_items.task_list_id and is_team_member(l.team_id, auth.uid())
+    )
+  );
+create policy "Team admins can create task items" on team_task_items for insert
+  with check (
+    exists (
+      select 1 from team_task_lists l where l.id = team_task_items.task_list_id and is_team_admin(l.team_id, auth.uid())
+    )
+  );
+create policy "Team admins can delete task items" on team_task_items for delete
+  using (
+    exists (
+      select 1 from team_task_lists l where l.id = team_task_items.task_list_id and is_team_admin(l.team_id, auth.uid())
+    )
+  );
+
+-- ─── TEAM EVENTS ──────────────────────────────────────────────────────────────
+create table if not exists team_events (
+  id uuid primary key default uuid_generate_v4(),
+  team_id uuid not null references teams(id) on delete cascade,
+  title text not null,
+  description text not null default '',
+  event_date text not null default 'TBD',
+  location text not null default 'TBD',
+  created_by uuid not null references profiles(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+alter table team_events enable row level security;
+create policy "Team events viewable by members" on team_events for select
+  using (is_team_member(team_id, auth.uid()));
+create policy "Team admins can create events" on team_events for insert
+  with check (is_team_admin(team_id, auth.uid()));
+create policy "Team admins can update events" on team_events for update
+  using (is_team_admin(team_id, auth.uid()));
+create policy "Team admins can delete events" on team_events for delete
+  using (is_team_admin(team_id, auth.uid()));
+
+create index if not exists idx_team_members_team
+  on team_members(team_id, joined_at desc);
+create index if not exists idx_team_members_user
+  on team_members(user_id, joined_at desc);
+create index if not exists idx_team_posts_team
+  on team_posts(team_id, created_at desc);
+create index if not exists idx_team_polls_team
+  on team_polls(team_id, created_at desc);
+create index if not exists idx_team_poll_votes_poll
+  on team_poll_votes(poll_id, created_at desc);
+create index if not exists idx_team_task_lists_team
+  on team_task_lists(team_id, created_at desc);
+create index if not exists idx_team_task_items_list
+  on team_task_items(task_list_id, created_at desc);
+create index if not exists idx_team_events_team
+  on team_events(team_id, created_at desc);
+
 -- ─── EVENTS ──────────────────────────────────────────────────────────────────
 create table if not exists events (
   id uuid primary key default uuid_generate_v4(),
@@ -466,6 +706,131 @@ create table if not exists event_rsvps (
 alter table event_rsvps enable row level security;
 create policy "Users can manage own RSVPs" on event_rsvps for all using (auth.uid() = user_id);
 create policy "RSVPs viewable" on event_rsvps for select using (true);
+
+-- ─── EVENT TICKETS ────────────────────────────────────────────────────────────
+create table if not exists event_tickets (
+  id uuid primary key default uuid_generate_v4(),
+  event_id uuid not null references events(id) on delete cascade,
+  user_id uuid not null references profiles(id) on delete cascade,
+  code text not null unique,
+  issued_at timestamptz not null default now(),
+  unique(event_id, user_id)
+);
+alter table event_tickets enable row level security;
+create policy "Ticket owners and hosts can view" on event_tickets for select
+  using (
+    auth.uid() = user_id
+    or exists (select 1 from events e where e.id = event_tickets.event_id and e.organizer_id = auth.uid())
+  );
+create policy "Event hosts can insert tickets" on event_tickets for insert
+  with check (exists (select 1 from events e where e.id = event_tickets.event_id and e.organizer_id = auth.uid()));
+
+create index if not exists idx_event_tickets_event
+  on event_tickets(event_id, issued_at desc);
+create index if not exists idx_event_tickets_user
+  on event_tickets(user_id, issued_at desc);
+
+create table if not exists event_checkins (
+  id uuid primary key default uuid_generate_v4(),
+  event_id uuid not null references events(id) on delete cascade,
+  ticket_id uuid not null references event_tickets(id) on delete cascade,
+  checked_in_by uuid not null references profiles(id) on delete cascade,
+  checked_in_at timestamptz not null default now(),
+  unique(ticket_id)
+);
+alter table event_checkins enable row level security;
+create policy "Hosts can view checkins" on event_checkins for select
+  using (exists (select 1 from events e where e.id = event_checkins.event_id and e.organizer_id = auth.uid()));
+create policy "Hosts can insert checkins" on event_checkins for insert
+  with check (exists (select 1 from events e where e.id = event_checkins.event_id and e.organizer_id = auth.uid()));
+
+create index if not exists idx_event_checkins_event
+  on event_checkins(event_id, checked_in_at desc);
+
+create or replace function issue_event_ticket(p_event_id uuid, p_user_id uuid)
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_status text;
+  v_code text;
+begin
+  if auth.uid() is null then
+    raise exception 'Authentication required';
+  end if;
+  if auth.uid() <> p_user_id then
+    raise exception 'Unauthorized';
+  end if;
+
+  select status into v_status
+  from event_rsvps
+  where user_id = p_user_id and event_id = p_event_id;
+
+  if v_status is null then
+    raise exception 'RSVP required';
+  end if;
+  if v_status <> 'approved' then
+    raise exception 'RSVP not approved';
+  end if;
+
+  select code into v_code
+  from event_tickets
+  where event_id = p_event_id and user_id = p_user_id;
+
+  if v_code is not null then
+    return v_code;
+  end if;
+
+  v_code := replace(uuid_generate_v4()::text, '-', '');
+  insert into event_tickets(event_id, user_id, code)
+  values (p_event_id, p_user_id, v_code)
+  on conflict (event_id, user_id) do update
+    set code = event_tickets.code
+  returning code into v_code;
+
+  return v_code;
+end;
+$$;
+
+create or replace function checkin_event_ticket(p_event_id uuid, p_ticket_code text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_ticket_id uuid;
+begin
+  if auth.uid() is null then
+    raise exception 'Authentication required';
+  end if;
+
+  if not exists (
+    select 1 from events e where e.id = p_event_id and e.organizer_id = auth.uid()
+  ) then
+    raise exception 'Not event organizer';
+  end if;
+
+  select id into v_ticket_id
+  from event_tickets
+  where event_id = p_event_id and code = p_ticket_code;
+
+  if v_ticket_id is null then
+    raise exception 'Invalid ticket';
+  end if;
+
+  insert into event_checkins(event_id, ticket_id, checked_in_by)
+  values (p_event_id, v_ticket_id, auth.uid())
+  on conflict (ticket_id) do update
+    set checked_in_at = excluded.checked_in_at,
+        checked_in_by = excluded.checked_in_by;
+end;
+$$;
+
+grant execute on function issue_event_ticket(uuid, uuid) to authenticated;
+grant execute on function checkin_event_ticket(uuid, text) to authenticated;
 
 -- ─── INTERNSHIPS ─────────────────────────────────────────────────────────────
 create table if not exists internships (
