@@ -115,10 +115,6 @@ export default function EventDetailScreen() {
     loadRsvpStatus();
   }, [loadRsvpStatus]);
 
-  useEffect(() => {
-    loadTicket();
-  }, [loadTicket]);
-
   const isHost = !!user && event?.organizerId === user.id;
 
   const loadTicket = useCallback(async () => {
@@ -148,6 +144,10 @@ export default function EventDetailScreen() {
     }
     setTicketLoading(false);
   }, [user?.id, id, rsvpStatus]);
+
+  useEffect(() => {
+    loadTicket();
+  }, [loadTicket]);
 
   const loadAttendees = useCallback(async () => {
     if (!id || !isHost) {
@@ -254,7 +254,7 @@ export default function EventDetailScreen() {
       } catch {}
       setLoading(false);
     } else {
-      if (!hasRsvp) showSuccess("RSVP confirmed!", event?.title);
+      if (!canCancel) showSuccess("RSVP confirmed!", event?.title);
     }
   };
 
