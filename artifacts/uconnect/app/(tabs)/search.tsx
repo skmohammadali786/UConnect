@@ -136,8 +136,11 @@ export default function SearchScreen() {
             });
           });
 
-          const source = hashCounts.size > 0 ? hashCounts : tagCounts;
-          const ranked = Array.from(source.entries())
+          const combined = new Map<string, number>(tagCounts);
+          hashCounts.forEach((count, tag) => {
+            combined.set(tag, (combined.get(tag) ?? 0) + count);
+          });
+          const ranked = Array.from(combined.entries())
             .sort((a, b) => b[1] - a[1])
             .slice(0, 24)
             .map(([tag, count], i) => ({ tag, posts: count, hot: i < 4 }));
@@ -299,7 +302,13 @@ export default function SearchScreen() {
           if (normalizedPostTag === selectedTag) return true;
           return extractHashtags(p.content ?? "").includes(selectedTag);
         }
-        const q = query.toLowerCase();
+        const q = query.toLowerCase().trim();
+        const normalizedHashQuery = q.startsWith("#") ? q.replace(/^#+/, "").replace(/\s+/g, "") : null;
+        if (normalizedHashQuery) {
+          const normalizedPostTag = (p.tag ?? "").trim().toLowerCase().replace(/\s+/g, "");
+          if (normalizedPostTag === normalizedHashQuery) return true;
+          return extractHashtags(p.content ?? "").includes(normalizedHashQuery);
+        }
         return (
           p.content.toLowerCase().includes(q) ||
           p.tag.toLowerCase().includes(q) ||
