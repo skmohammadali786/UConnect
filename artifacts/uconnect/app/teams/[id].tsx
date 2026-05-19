@@ -351,6 +351,22 @@ export default function TeamDetailScreen() {
     loadFeed();
   }, [loadFeed]);
 
+  useEffect(() => {
+    if (!team?.id || !isMember) return;
+    const channel = supabase
+      .channel(`team-feed-${team.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "team_posts", filter: `team_id=eq.${team.id}` }, () => loadFeed())
+      .on("postgres_changes", { event: "*", schema: "public", table: "team_polls", filter: `team_id=eq.${team.id}` }, () => loadFeed())
+      .on("postgres_changes", { event: "*", schema: "public", table: "team_poll_votes" }, () => loadFeed())
+      .on("postgres_changes", { event: "*", schema: "public", table: "team_task_lists", filter: `team_id=eq.${team.id}` }, () => loadFeed())
+      .on("postgres_changes", { event: "*", schema: "public", table: "team_task_items" }, () => loadFeed())
+      .on("postgres_changes", { event: "*", schema: "public", table: "team_events", filter: `team_id=eq.${team.id}` }, () => loadFeed())
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [team?.id, isMember, loadFeed]);
+
   const handlePickMedia = async () => {
     if (Platform.OS === "web") {
       showInfo("Photo upload", "Photo picking works best on the mobile app.");
@@ -587,7 +603,7 @@ export default function TeamDetailScreen() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
               {item.mediaUrls.map((uri) => (
                 <View key={uri} style={[styles.feedMediaWrap, { backgroundColor: colors.secondary }]}>
-                  <Image source={{ uri }} style={styles.feedMedia} resizeMode="contain" />
+                  <Image source={{ uri }} style={styles.feedMedia} resizeMode="cover" />
                 </View>
               ))}
             </ScrollView>
@@ -746,7 +762,7 @@ export default function TeamDetailScreen() {
                 />
                 {postMedia && (
                   <View style={[styles.feedMediaPreview, { backgroundColor: colors.secondary }]}>
-                    <Image source={{ uri: postMedia }} style={styles.feedMedia} resizeMode="contain" />
+                    <Image source={{ uri: postMedia }} style={styles.feedMedia} resizeMode="cover" />
                     <TouchableOpacity onPress={() => setPostMedia(null)} style={[styles.removeMediaBtn, { backgroundColor: colors.overlay }]}>
                       <Feather name="x" size={13} color="#FFF" />
                     </TouchableOpacity>

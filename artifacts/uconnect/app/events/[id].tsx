@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import * as Clipboard from "expo-clipboard";
 import { ActivityIndicator, Modal, Platform, ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
@@ -95,28 +95,29 @@ export default function EventDetailScreen() {
     })();
   }, [id]);
 
-  useEffect(() => {
-    if (!user || !id) return;
-    (async () => {
-      try {
-        const { data } = await supabase
-          .from("event_rsvps")
-          .select("status")
-          .eq("user_id", user.id)
-          .eq("event_id", id)
-          .maybeSingle();
-        setRsvpStatus(data?.status ?? null);
-      } catch {}
-    })();
+  const loadRsvpStatus = useCallback(async () => {
+    if (!user || !id) {
+      setRsvpStatus(null);
+      return;
+    }
+    try {
+      const { data } = await supabase
+        .from("event_rsvps")
+        .select("status")
+        .eq("user_id", user.id)
+        .eq("event_id", id)
+        .maybeSingle();
+      setRsvpStatus(data?.status ?? null);
+    } catch {}
   }, [user?.id, id]);
 
   useEffect(() => {
-    loadTicket();
-  }, [user?.id, id, rsvpStatus]);
+    loadRsvpStatus();
+  }, [loadRsvpStatus]);
 
   const isHost = !!user && event?.organizerId === user.id;
 
-  const loadTicket = async () => {
+  const loadTicket = useCallback(async () => {
     if (!user || !id || rsvpStatus !== "approved") {
       setTicketCode(null);
       return;
@@ -142,9 +143,13 @@ export default function EventDetailScreen() {
       setTicketCode(null);
     }
     setTicketLoading(false);
-  };
+  }, [user?.id, id, rsvpStatus]);
 
-  const loadAttendees = async () => {
+  useEffect(() => {
+    loadTicket();
+  }, [loadTicket]);
+
+  const loadAttendees = useCallback(async () => {
     if (!id || !isHost) {
       setAttendees([]);
       return;
@@ -189,11 +194,28 @@ export default function EventDetailScreen() {
         checkedInAt: ticketId ? (checkinByTicket.get(ticketId) ?? null) : null,
       };
     }));
-  };
+  }, [id, isHost]);
 
   useEffect(() => {
     loadAttendees();
-  }, [id, isHost]);
+  }, [loadAttendees]);
+
+  useEffect(() => {
+    if (!id) return;
+    const channel = supabase
+      .channel(`event-sync-${id}-${user?.id ?? "anon"}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "event_rsvps", filter: `event_id=eq.${id}` }, () => {
+        loadAttendees();
+        loadRsvpStatus();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "event_tickets", filter: `event_id=eq.${id}` }, () => {
+        loadTicket();
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id, user?.id, loadRsvpStatus, loadAttendees, loadTicket]);
 
   const handleShare = async () => {
     if (!event?.id) return;
@@ -211,13 +233,13 @@ export default function EventDetailScreen() {
 
   const handleRSVP = async () => {
     if (!event || !id || loading) return;
-    const hasRsvp = !!rsvpStatus;
-    const nextStatus = hasRsvp ? null : event.requiresApproval ? "pending" : "approved";
+    const canCancel = rsvpStatus === "pending" || rsvpStatus === "approved";
+    const nextStatus = canCancel ? null : event.requiresApproval ? "pending" : "approved";
     setRsvpStatus(nextStatus);
     if (user) {
       setLoading(true);
       try {
-        if (!hasRsvp) {
+        if (!canCancel) {
           await supabase.rpc("rsvp_event", { p_user_id: user.id, p_event_id: id, p_request_note: "" });
           showSuccess(event.requiresApproval ? "Request sent!" : "RSVP confirmed!", event?.title);
           if (!event.requiresApproval) {
@@ -232,7 +254,7 @@ export default function EventDetailScreen() {
       } catch {}
       setLoading(false);
     } else {
-      if (!hasRsvp) showSuccess("RSVP confirmed!", event?.title);
+      if (!canCancel) showSuccess("RSVP confirmed!", event?.title);
     }
   };
 
@@ -438,21 +460,25 @@ export default function EventDetailScreen() {
                     {a.checkedInAt ? `Checked in ${formatRelativeTime(a.checkedInAt)}` : "Not checked in"}
                   </Text>
                 )}
-                <TextInput
-                  placeholder="Optional decision reason"
-                  placeholderTextColor={colors.placeholder}
-                  style={[styles.reasonInput, { color: colors.foreground, backgroundColor: colors.input, borderColor: colors.border }]}
-                  value={reasonDrafts[a.userId] ?? ""}
-                  onChangeText={(t) => setReasonDrafts((prev) => ({ ...prev, [a.userId]: t }))}
-                />
-                <View style={styles.attendeeActions}>
-                  <TouchableOpacity disabled={actioningUserId === a.userId} onPress={() => handleHostDecision(a.userId, "approved")} style={[styles.attendeeApprove, { backgroundColor: "#00A86B18", borderColor: "#00A86B55" }]}>
-                    <Text style={[styles.attendeeActionText, { color: "#00A86B" }]}>Approve</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity disabled={actioningUserId === a.userId} onPress={() => handleHostDecision(a.userId, "rejected")} style={[styles.attendeeReject, { backgroundColor: "#EF444418", borderColor: "#EF444455" }]}>
-                    <Text style={[styles.attendeeActionText, { color: "#EF4444" }]}>Reject</Text>
-                  </TouchableOpacity>
-                </View>
+                {a.status === "pending" ? (
+                  <>
+                    <TextInput
+                      placeholder="Optional decision reason"
+                      placeholderTextColor={colors.placeholder}
+                      style={[styles.reasonInput, { color: colors.foreground, backgroundColor: colors.input, borderColor: colors.border }]}
+                      value={reasonDrafts[a.userId] ?? ""}
+                      onChangeText={(t) => setReasonDrafts((prev) => ({ ...prev, [a.userId]: t }))}
+                    />
+                    <View style={styles.attendeeActions}>
+                      <TouchableOpacity disabled={actioningUserId === a.userId} onPress={() => handleHostDecision(a.userId, "approved")} style={[styles.attendeeApprove, { backgroundColor: "#00A86B18", borderColor: "#00A86B55" }]}>
+                        <Text style={[styles.attendeeActionText, { color: "#00A86B" }]}>Approve</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity disabled={actioningUserId === a.userId} onPress={() => handleHostDecision(a.userId, "rejected")} style={[styles.attendeeReject, { backgroundColor: "#EF444418", borderColor: "#EF444455" }]}>
+                        <Text style={[styles.attendeeActionText, { color: "#EF4444" }]}>Reject</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                ) : null}
               </View>
             ))}
           </View>
@@ -461,9 +487,19 @@ export default function EventDetailScreen() {
       <View style={[styles.bottomBar, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 8 }]}>
         {!isHost ? (
           <AppButton
-            title={rsvpStatus ? "Cancel RSVP" : event.requiresApproval ? "Request to Attend" : "RSVP — I'm Going!"}
+            title={
+              rsvpStatus === "pending"
+                ? "Cancel Request"
+                : rsvpStatus === "approved"
+                  ? "Leave Event"
+                  : rsvpStatus === "rejected"
+                    ? "Request Again"
+                    : event.requiresApproval
+                      ? "Request to Attend"
+                      : "RSVP — I'm Going!"
+            }
             onPress={handleRSVP}
-            variant={rsvpStatus ? "outline" : "primary"}
+            variant={rsvpStatus === "pending" || rsvpStatus === "approved" ? "outline" : "primary"}
             fullWidth
             size="lg"
           />

@@ -48,6 +48,7 @@ function EventCard({ item, index, rsvpStates, onRSVP, colors }: any) {
   const status = rsvpState?.status;
   const isGoing = status === "approved";
   const isPending = status === "pending";
+  const canCancel = status === "approved" || status === "pending";
 
   useEffect(() => {
     Animated.timing(anim, { toValue: 1, duration: 300, delay: index * 65, useNativeDriver: true }).start();
@@ -100,7 +101,9 @@ function EventCard({ item, index, rsvpStates, onRSVP, colors }: any) {
             onPress={(e) => { e.stopPropagation?.(); onRSVP(item.id); }}
             style={[styles.attendBtn, { backgroundColor: isGoing ? colors.primary : "transparent", borderColor: isGoing ? colors.primary : colors.border }]}
           >
-            <Text style={[styles.attendBtnText, { color: isGoing ? "#FFF" : colors.foreground }]}>{status ? "Cancel" : "Attend"}</Text>
+            <Text style={[styles.attendBtnText, { color: isGoing ? "#FFF" : colors.foreground }]}>
+              {canCancel ? "Cancel" : status === "rejected" ? "Request Again" : "Attend"}
+            </Text>
           </TouchableOpacity>
         </View>
         {rsvpState?.reason ? <Text style={[styles.reasonText, { color: colors.mutedForeground }]}>Reason: {rsvpState.reason}</Text> : null}
@@ -175,7 +178,7 @@ export default function EventsScreen() {
     const existing = rsvpStates[id];
     const updated = { ...rsvpStates };
 
-    if (existing) {
+    if (existing && (existing.status === "pending" || existing.status === "approved")) {
       await supabase.rpc("unrsvp_event", { p_user_id: user.id, p_event_id: id });
       delete updated[id];
     } else {

@@ -310,7 +310,7 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
                 <Image
                   source={{ uri }}
                   style={[styles.mediaThumb, post.mediaUrls.length === 1 && styles.mediaThumbSingle]}
-                  resizeMode="contain"
+                  resizeMode="cover"
                 />
               </TouchableOpacity>
             ))}
