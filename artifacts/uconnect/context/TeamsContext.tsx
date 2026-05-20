@@ -204,10 +204,19 @@ export function TeamsProvider({ children }: { children: React.ReactNode }) {
   const approveRequest = useCallback(async (teamId: string, userId: string) => {
     setTeams((prev) => prev.map((t) => {
       if (t.id !== teamId) return t;
-      return { ...t, requests: t.requests.map((r) => r.userId === userId ? { ...r, status: "approved" as const } : r) };
+      return {
+        ...t,
+        members: Math.min(t.maxMembers, t.members + 1),
+        requests: t.requests.map((r) => r.userId === userId ? { ...r, status: "approved" as const } : r),
+      };
     }));
     if (user) {
       await supabase.from("team_requests").update({ status: "approved" }).eq("team_id", teamId).eq("user_id", userId);
+      await supabase.from("team_members").upsert({
+        team_id: teamId,
+        user_id: userId,
+        role: "member",
+      }, { onConflict: "team_id,user_id" });
       refreshTeamsAndMemberships();
     }
   }, [user, refreshTeamsAndMemberships]);

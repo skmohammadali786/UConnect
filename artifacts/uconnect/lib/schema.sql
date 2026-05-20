@@ -529,6 +529,29 @@ for each row
 when (new.status = 'approved')
 execute function add_team_member_on_approval();
 
+create or replace function sync_team_members_count()
+returns trigger language plpgsql as $$
+declare
+  v_team_id uuid;
+begin
+  v_team_id := coalesce(new.team_id, old.team_id);
+  update teams
+  set members = (
+    select greatest(1, count(*)::int)
+    from team_members m
+    where m.team_id = v_team_id
+  )
+  where id = v_team_id;
+  return coalesce(new, old);
+end;
+$$;
+
+drop trigger if exists sync_team_members_count_after_change on team_members;
+create trigger sync_team_members_count_after_change
+after insert or delete on team_members
+for each row execute function sync_team_members_count();
+
+
 -- ─── TEAM FEED: POSTS ─────────────────────────────────────────────────────────
 create table if not exists team_posts (
   id uuid primary key default uuid_generate_v4(),
@@ -657,6 +680,20 @@ create policy "Team admins can update events" on team_events for update
   using (is_team_admin(team_id, auth.uid()));
 create policy "Team admins can delete events" on team_events for delete
   using (is_team_admin(team_id, auth.uid()));
+
+-- Public team feed visibility for authenticated users
+create policy "Authenticated users can view team posts" on team_posts for select
+  using (auth.uid() is not null);
+create policy "Authenticated users can view team polls" on team_polls for select
+  using (auth.uid() is not null);
+create policy "Authenticated users can view team poll votes" on team_poll_votes for select
+  using (auth.uid() is not null);
+create policy "Authenticated users can view team task lists" on team_task_lists for select
+  using (auth.uid() is not null);
+create policy "Authenticated users can view team task items" on team_task_items for select
+  using (auth.uid() is not null);
+create policy "Authenticated users can view team events" on team_events for select
+  using (auth.uid() is not null);
 
 create index if not exists idx_team_members_team
   on team_members(team_id, joined_at desc);
@@ -831,6 +868,53 @@ $$;
 
 grant execute on function issue_event_ticket(uuid, uuid) to authenticated;
 grant execute on function checkin_event_ticket(uuid, text) to authenticated;
+
+create or replace function issue_event_ticket_by_host(p_event_id uuid, p_user_id uuid)
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_code text;
+begin
+  if auth.uid() is null then
+    raise exception 'Authentication required';
+  end if;
+
+  if not exists (
+    select 1 from events e where e.id = p_event_id and e.organizer_id = auth.uid()
+  ) then
+    raise exception 'Not event organizer';
+  end if;
+
+  if not exists (
+    select 1 from event_rsvps r where r.event_id = p_event_id and r.user_id = p_user_id and r.status = 'approved'
+  ) then
+    raise exception 'RSVP not approved';
+  end if;
+
+  select code into v_code
+  from event_tickets
+  where event_id = p_event_id and user_id = p_user_id;
+
+  if v_code is not null then
+    return v_code;
+  end if;
+
+  v_code := replace(uuid_generate_v4()::text, '-', '');
+  insert into event_tickets(event_id, user_id, code)
+  values (p_event_id, p_user_id, v_code)
+  on conflict (event_id, user_id) do update
+    set code = event_tickets.code
+  returning code into v_code;
+
+  return v_code;
+end;
+$$;
+
+grant execute on function issue_event_ticket_by_host(uuid, uuid) to authenticated;
+
 
 -- ─── INTERNSHIPS ─────────────────────────────────────────────────────────────
 create table if not exists internships (
