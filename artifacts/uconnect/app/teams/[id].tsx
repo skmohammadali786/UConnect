@@ -242,7 +242,7 @@ export default function TeamDetailScreen() {
   };
 
   const loadFeed = useCallback(async () => {
-    if (!team || !isMember) {
+    if (!team) {
       setFeedItems([]);
       setFeedLoading(false);
       return;
@@ -345,14 +345,14 @@ export default function TeamDetailScreen() {
       setFeedItems([]);
     }
     setFeedLoading(false);
-  }, [team?.id, isMember, user?.id]);
+  }, [team?.id, user?.id]);
 
   useEffect(() => {
     loadFeed();
   }, [loadFeed]);
 
   useEffect(() => {
-    if (!team?.id || !isMember) return;
+    if (!team?.id) return;
     const channel = supabase
       .channel(`team-feed-${team.id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "team_posts", filter: `team_id=eq.${team.id}` }, () => loadFeed())
@@ -365,7 +365,7 @@ export default function TeamDetailScreen() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [team?.id, isMember, loadFeed]);
+  }, [team?.id, loadFeed]);
 
   const handlePickMedia = async () => {
     if (Platform.OS === "web") {
@@ -716,18 +716,17 @@ export default function TeamDetailScreen() {
         <View style={{ width: 38 }} />
       </View>
 
-      {(isAdmin || isMember) && (
-        <View style={[styles.tabBar, { borderBottomColor: colors.border }]}>
-          {(isAdmin
-            ? [
-              { key: "feed", label: "Feed" },
-              { key: "details", label: "Details" },
-              { key: "requests", label: `Requests${pendingRequests.length > 0 ? ` (${pendingRequests.length})` : ""}` },
-            ]
-            : [
-              { key: "feed", label: "Feed" },
-              { key: "details", label: "Details" },
-            ]).map((t) => (
+      <View style={[styles.tabBar, { borderBottomColor: colors.border }]}>
+        {((isAdmin || isMember)
+          ? [
+            { key: "feed", label: "Feed" },
+            { key: "details", label: "Details" },
+            { key: "requests", label: `Requests${pendingRequests.length > 0 ? ` (${pendingRequests.length})` : ""}` },
+          ]
+          : [
+            { key: "feed", label: "Feed" },
+            { key: "details", label: "Details" },
+          ]).map((t) => (
               <TouchableOpacity
                 key={t.key}
                 onPress={() => setActiveTab(t.key as any)}
@@ -736,20 +735,12 @@ export default function TeamDetailScreen() {
                 <Text style={[styles.tabText, { color: activeTab === t.key ? colors.primary : colors.mutedForeground }]}>{t.label}</Text>
               </TouchableOpacity>
             ))}
-        </View>
-      )}
+      </View>
 
       <ScrollView contentContainerStyle={{ padding: 20, gap: 18, paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
         {activeTab === "feed" ? (
           <>
-            {!isMember && (
-              <View style={styles.noRequests}>
-                <Feather name="lock" size={34} color={colors.mutedForeground} />
-                <Text style={[styles.noRequestsTitle, { color: colors.foreground }]}>Join the team to view updates</Text>
-                <Text style={[styles.noRequestsSub, { color: colors.mutedForeground }]}>Once approved, you'll see the team feed here.</Text>
-              </View>
-            )}
-            {isMember && isAdmin && (
+            {isAdmin && (
               <View style={[styles.feedComposer, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <Text style={[styles.feedComposerTitle, { color: colors.foreground }]}>Post an update</Text>
                 <TextInput
@@ -792,7 +783,7 @@ export default function TeamDetailScreen() {
                 </TouchableOpacity>
               </View>
             )}
-            {isMember && (
+            {(
               <>
                 {feedLoading ? (
                   <View style={styles.feedLoading}>

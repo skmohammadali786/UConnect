@@ -295,6 +295,12 @@ export default function EventDetailScreen() {
         showInfo("Request updated", "Status saved, but notification could not be sent.");
       }
       if (decision === "approved") {
+        try {
+          await supabase.rpc("issue_event_ticket_by_host", {
+            p_event_id: id,
+            p_user_id: targetUserId,
+          });
+        } catch {}
         showSuccess(`Approved ${target?.name ?? "request"}`, event.title);
       } else {
         showInfo(`Rejected ${target?.name ?? "request"}`, reason ?? "Request updated");
