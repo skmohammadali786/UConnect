@@ -150,7 +150,7 @@ export function TeamsProvider({ children }: { children: React.ReactNode }) {
       setTeams((prev) => [newTeam, ...prev]);
       return newTeam;
     }
-    const { data: row } = await supabase.from("teams").insert({
+    const { data: row, error } = await supabase.from("teams").insert({
       title: data.title,
       type: data.type,
       description: data.description,
@@ -161,6 +161,9 @@ export function TeamsProvider({ children }: { children: React.ReactNode }) {
       poster_username: user.username,
       college: user.college,
     }).select().single();
+    if (error || !row) {
+      throw error ?? new Error("Failed to create team");
+    }
     const newTeam = rowToTeam(row);
     setTeams((prev) => [newTeam, ...prev]);
     refreshTeamsAndMemberships();
@@ -168,6 +171,21 @@ export function TeamsProvider({ children }: { children: React.ReactNode }) {
   }, [user, refreshTeamsAndMemberships]);
 
   const requestJoin = useCallback(async (teamId: string, request: Omit<TeamRequest, "requestedAt" | "status">) => {
+    if (user) {
+      const { error } = await supabase.from("team_requests").upsert({
+        team_id: teamId,
+        user_id: request.userId,
+        username: request.username,
+        display_name: request.displayName,
+        college: request.college,
+        message: request.message,
+        status: "pending",
+      }, { onConflict: "team_id,user_id" });
+      if (error) throw error;
+      refreshTeamsAndMemberships();
+      return;
+    }
+
     const newReq: TeamRequest = { ...request, requestedAt: new Date().toISOString(), status: "pending" };
     setTeams((prev) => prev.map((t) => {
       if (t.id !== teamId) return t;
@@ -179,29 +197,31 @@ export function TeamsProvider({ children }: { children: React.ReactNode }) {
       }
       return { ...t, requests: [...t.requests, newReq] };
     }));
-    if (user) {
-      await supabase.from("team_requests").upsert({
-        team_id: teamId,
-        user_id: request.userId,
-        username: request.username,
-        display_name: request.displayName,
-        college: request.college,
-        message: request.message,
-        status: "pending",
-      }, { onConflict: "team_id,user_id" });
-      refreshTeamsAndMemberships();
-    }
   }, [user, refreshTeamsAndMemberships]);
 
   const cancelRequest = useCallback(async (teamId: string, userId: string) => {
-    setTeams((prev) => prev.map((t) => t.id !== teamId ? t : { ...t, requests: t.requests.filter((r) => r.userId !== userId) }));
     if (user) {
-      await supabase.from("team_requests").delete().eq("team_id", teamId).eq("user_id", userId);
+      const { error } = await supabase.from("team_requests").delete().eq("team_id", teamId).eq("user_id", userId);
+      if (error) throw error;
       refreshTeamsAndMemberships();
+      return;
     }
+    setTeams((prev) => prev.map((t) => t.id !== teamId ? t : { ...t, requests: t.requests.filter((r) => r.userId !== userId) }));
   }, [user, refreshTeamsAndMemberships]);
 
   const approveRequest = useCallback(async (teamId: string, userId: string) => {
+    if (user) {
+      const { error: requestError } = await supabase.from("team_requests").update({ status: "approved" }).eq("team_id", teamId).eq("user_id", userId);
+      if (requestError) throw requestError;
+      const { error: memberError } = await supabase.from("team_members").upsert({
+        team_id: teamId,
+        user_id: userId,
+        role: "member",
+      }, { onConflict: "team_id,user_id" });
+      if (memberError) throw memberError;
+      refreshTeamsAndMemberships();
+      return;
+    }
     setTeams((prev) => prev.map((t) => {
       if (t.id !== teamId) return t;
       return {
@@ -210,23 +230,16 @@ export function TeamsProvider({ children }: { children: React.ReactNode }) {
         requests: t.requests.map((r) => r.userId === userId ? { ...r, status: "approved" as const } : r),
       };
     }));
-    if (user) {
-      await supabase.from("team_requests").update({ status: "approved" }).eq("team_id", teamId).eq("user_id", userId);
-      await supabase.from("team_members").upsert({
-        team_id: teamId,
-        user_id: userId,
-        role: "member",
-      }, { onConflict: "team_id,user_id" });
-      refreshTeamsAndMemberships();
-    }
   }, [user, refreshTeamsAndMemberships]);
 
   const denyRequest = useCallback(async (teamId: string, userId: string) => {
-    setTeams((prev) => prev.map((t) => t.id !== teamId ? t : { ...t, requests: t.requests.map((r) => r.userId === userId ? { ...r, status: "rejected" as const } : r) }));
     if (user) {
-      await supabase.from("team_requests").update({ status: "rejected" }).eq("team_id", teamId).eq("user_id", userId);
+      const { error } = await supabase.from("team_requests").update({ status: "rejected" }).eq("team_id", teamId).eq("user_id", userId);
+      if (error) throw error;
       refreshTeamsAndMemberships();
+      return;
     }
+    setTeams((prev) => prev.map((t) => t.id !== teamId ? t : { ...t, requests: t.requests.map((r) => r.userId === userId ? { ...r, status: "rejected" as const } : r) }));
   }, [user, refreshTeamsAndMemberships]);
 
   const getMyTeams = useCallback(

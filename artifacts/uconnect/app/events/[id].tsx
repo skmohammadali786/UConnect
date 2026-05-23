@@ -124,19 +124,21 @@ export default function EventDetailScreen() {
     }
     setTicketLoading(true);
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("event_tickets")
         .select("code")
         .eq("event_id", id)
         .eq("user_id", user.id)
         .maybeSingle();
+      if (error) throw error;
       if (data?.code) {
         setTicketCode(data.code);
       } else {
-        const { data: issued } = await supabase.rpc("issue_event_ticket", {
+        const { data: issued, error: issueError } = await supabase.rpc("issue_event_ticket", {
           p_event_id: id,
           p_user_id: user.id,
         });
+        if (issueError) throw issueError;
         setTicketCode(typeof issued === "string" ? issued : null);
       }
     } catch {
@@ -234,24 +236,31 @@ export default function EventDetailScreen() {
   const handleRSVP = async () => {
     if (!event || !id || loading) return;
     const canCancel = rsvpStatus === "pending" || rsvpStatus === "approved";
+    const previousStatus = rsvpStatus;
     const nextStatus = canCancel ? null : event.requiresApproval ? "pending" : "approved";
     setRsvpStatus(nextStatus);
     if (user) {
       setLoading(true);
       try {
         if (!canCancel) {
-          await supabase.rpc("rsvp_event", { p_user_id: user.id, p_event_id: id, p_request_note: "" });
+          const { error } = await supabase.rpc("rsvp_event", { p_user_id: user.id, p_event_id: id, p_request_note: "" });
+          if (error) throw error;
           showSuccess(event.requiresApproval ? "Request sent!" : "RSVP confirmed!", event?.title);
           if (!event.requiresApproval) {
-            const { data: issued } = await supabase.rpc("issue_event_ticket", { p_event_id: id, p_user_id: user.id });
+            const { data: issued, error: issueError } = await supabase.rpc("issue_event_ticket", { p_event_id: id, p_user_id: user.id });
+            if (issueError) throw issueError;
             setTicketCode(typeof issued === "string" ? issued : null);
           }
         } else {
-          await supabase.rpc("unrsvp_event", { p_user_id: user.id, p_event_id: id });
+          const { error } = await supabase.rpc("unrsvp_event", { p_user_id: user.id, p_event_id: id });
+          if (error) throw error;
           showSuccess("RSVP cancelled");
           setTicketCode(null);
         }
-      } catch {}
+      } catch {
+        setRsvpStatus(previousStatus);
+        showError("RSVP failed", "Please try again.");
+      }
       setLoading(false);
     } else {
       if (!canCancel) showSuccess("RSVP confirmed!", event?.title);
@@ -264,12 +273,13 @@ export default function EventDetailScreen() {
     const reason = reasonDrafts[targetUserId]?.trim() || null;
     const target = attendees.find((a) => a.userId === targetUserId);
     try {
-      await supabase.rpc("review_event_attendee", {
+      const { error } = await supabase.rpc("review_event_attendee", {
         p_event_id: id,
         p_user_id: targetUserId,
         p_decision: decision,
         p_reason: reason,
       });
+      if (error) throw error;
       setAttendees((prev) =>
         prev.map((a) =>
           a.userId === targetUserId ? { ...a, status: decision, decisionReason: reason } : a,
@@ -295,12 +305,13 @@ export default function EventDetailScreen() {
         showInfo("Request updated", "Status saved, but notification could not be sent.");
       }
       if (decision === "approved") {
-        try {
-          await supabase.rpc("issue_event_ticket_by_host", {
-            p_event_id: id,
-            p_user_id: targetUserId,
-          });
-        } catch {}
+        const { error: issueError } = await supabase.rpc("issue_event_ticket_by_host", {
+          p_event_id: id,
+          p_user_id: targetUserId,
+        });
+        if (issueError) {
+          showInfo("Approved, ticket pending", "Approval was saved but ticket generation failed.");
+        }
         showSuccess(`Approved ${target?.name ?? "request"}`, event.title);
       } else {
         showInfo(`Rejected ${target?.name ?? "request"}`, reason ?? "Request updated");

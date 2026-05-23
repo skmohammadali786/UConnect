@@ -210,31 +210,48 @@ export default function TeamDetailScreen() {
   const handleJoinRequest = async (message: string) => {
     if (!user) { showInfo("Sign in required"); return; }
     setJoinVisible(false);
-    setRequested(true);
-    await requestJoin(team.id, {
-      userId: user.id,
-      username: user.username,
-      displayName: user.displayName || user.username,
-      college: user.college,
-      message,
-    });
-    showSuccess("Request sent!", "The admin will review your request soon.");
+    try {
+      await requestJoin(team.id, {
+        userId: user.id,
+        username: user.username,
+        displayName: user.displayName || user.username,
+        college: user.college,
+        message,
+      });
+      setRequested(true);
+      showSuccess("Request sent!", "The admin will review your request soon.");
+    } catch {
+      setRequested(false);
+      showError("Request failed", "Please try again.");
+    }
   };
   const handleCancel = async () => {
     if (!user) return;
-    setRequested(false);
-    await cancelRequest(team.id, user.id);
-    showInfo("Request cancelled");
+    try {
+      await cancelRequest(team.id, user.id);
+      setRequested(false);
+      showInfo("Request cancelled");
+    } catch {
+      showError("Cancel failed", "Please try again.");
+    }
   };
 
   const handleApprove = async (userId: string, displayName: string) => {
-    await approveRequest(team.id, userId);
-    showSuccess(`Approved ${displayName}`, "They can now join your team!");
+    try {
+      await approveRequest(team.id, userId);
+      showSuccess(`Approved ${displayName}`, "They can now join your team!");
+    } catch {
+      showError("Approve failed", "Please try again.");
+    }
   };
 
   const handleDeny = async (userId: string, displayName: string) => {
-    await denyRequest(team.id, userId);
-    showInfo(`Request from ${displayName} denied`);
+    try {
+      await denyRequest(team.id, userId);
+      showInfo(`Request from ${displayName} denied`);
+    } catch {
+      showError("Deny failed", "Please try again.");
+    }
   };
 
   const viewProfile = (username: string) => {
@@ -404,7 +421,7 @@ export default function TeamDetailScreen() {
         const uploaded = await uploadMediaUriToR2(postMedia, { fileType: postMediaMeta?.fileType, kind: "image" });
         mediaUrls = [uploaded.publicUrl];
       }
-      await supabase.from("team_posts").insert({
+      const { error } = await supabase.from("team_posts").insert({
         team_id: team.id,
         author_id: user.id,
         author_username: user.username,
@@ -412,6 +429,7 @@ export default function TeamDetailScreen() {
         content: postContent.trim(),
         media_urls: mediaUrls,
       });
+      if (error) throw error;
       setPostContent("");
       setPostMedia(null);
       setPostMediaMeta(null);
@@ -431,12 +449,13 @@ export default function TeamDetailScreen() {
       return;
     }
     try {
-      await supabase.from("team_polls").insert({
+      const { error } = await supabase.from("team_polls").insert({
         team_id: team.id,
         question,
         options,
         created_by: user.id,
       });
+      if (error) throw error;
       setPollQuestion("");
       setPollOptions(["", ""]);
       setPollModalVisible(false);
@@ -462,7 +481,8 @@ export default function TeamDetailScreen() {
         .select()
         .single();
       if (error) throw error;
-      await supabase.from("team_task_items").insert(items.map((item) => ({ task_list_id: listRow.id, title: item })));
+      const { error: itemsError } = await supabase.from("team_task_items").insert(items.map((item) => ({ task_list_id: listRow.id, title: item })));
+      if (itemsError) throw itemsError;
       setTaskTitle("");
       setTaskItems([""]);
       setTaskModalVisible(false);
@@ -481,7 +501,7 @@ export default function TeamDetailScreen() {
       return;
     }
     try {
-      await supabase.from("team_events").insert({
+      const { error } = await supabase.from("team_events").insert({
         team_id: team.id,
         title,
         description: eventDescription.trim() || title,
@@ -489,6 +509,7 @@ export default function TeamDetailScreen() {
         location: eventLocation.trim() || "TBD",
         created_by: user.id,
       });
+      if (error) throw error;
       setEventTitle("");
       setEventDate("");
       setEventLocation("");
@@ -511,11 +532,12 @@ export default function TeamDetailScreen() {
     if (optionIndex < 0 || optionIndex >= currentPoll.options.length) return;
     if (currentPoll.userVoteIndex === optionIndex) return;
     try {
-      await supabase.from("team_poll_votes").upsert({
+      const { error } = await supabase.from("team_poll_votes").upsert({
         poll_id: pollId,
         user_id: user.id,
         option_index: optionIndex,
       });
+      if (error) throw error;
       setFeedItems((prev) =>
         prev.map((item) => {
           if (item.type !== "poll" || item.id !== pollId) return item;
@@ -540,11 +562,12 @@ export default function TeamDetailScreen() {
     if (!targetItem) return;
     const next = !targetItem.isCompleted;
     try {
-      await supabase.from("team_task_items").update({
+      const { error } = await supabase.from("team_task_items").update({
         is_completed: next,
         completed_by: next ? user.id : null,
         completed_at: next ? new Date().toISOString() : null,
       }).eq("id", itemId);
+      if (error) throw error;
       setFeedItems((prev) =>
         prev.map((item) => {
           if (item.type !== "task" || item.id !== listId) return item;
