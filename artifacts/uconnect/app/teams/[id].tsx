@@ -404,7 +404,7 @@ export default function TeamDetailScreen() {
         const uploaded = await uploadMediaUriToR2(postMedia, { fileType: postMediaMeta?.fileType, kind: "image" });
         mediaUrls = [uploaded.publicUrl];
       }
-      await supabase.from("team_posts").insert({
+      const { error } = await supabase.from("team_posts").insert({
         team_id: team.id,
         author_id: user.id,
         author_username: user.username,
@@ -412,6 +412,7 @@ export default function TeamDetailScreen() {
         content: postContent.trim(),
         media_urls: mediaUrls,
       });
+      if (error) throw error;
       setPostContent("");
       setPostMedia(null);
       setPostMediaMeta(null);
@@ -431,12 +432,13 @@ export default function TeamDetailScreen() {
       return;
     }
     try {
-      await supabase.from("team_polls").insert({
+      const { error } = await supabase.from("team_polls").insert({
         team_id: team.id,
         question,
         options,
         created_by: user.id,
       });
+      if (error) throw error;
       setPollQuestion("");
       setPollOptions(["", ""]);
       setPollModalVisible(false);
@@ -462,7 +464,8 @@ export default function TeamDetailScreen() {
         .select()
         .single();
       if (error) throw error;
-      await supabase.from("team_task_items").insert(items.map((item) => ({ task_list_id: listRow.id, title: item })));
+      const { error: itemsError } = await supabase.from("team_task_items").insert(items.map((item) => ({ task_list_id: listRow.id, title: item })));
+      if (itemsError) throw itemsError;
       setTaskTitle("");
       setTaskItems([""]);
       setTaskModalVisible(false);
@@ -481,7 +484,7 @@ export default function TeamDetailScreen() {
       return;
     }
     try {
-      await supabase.from("team_events").insert({
+      const { error } = await supabase.from("team_events").insert({
         team_id: team.id,
         title,
         description: eventDescription.trim() || title,
@@ -489,6 +492,7 @@ export default function TeamDetailScreen() {
         location: eventLocation.trim() || "TBD",
         created_by: user.id,
       });
+      if (error) throw error;
       setEventTitle("");
       setEventDate("");
       setEventLocation("");
