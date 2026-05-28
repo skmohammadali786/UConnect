@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "updates": {
-      "url": "https://u.expo.dev/aa59f92d-c74d-4a1b-b39d-6988c449b520",
+      "url": "https://u.expo.dev/fc29fe47-d29f-4636-910d-3a6c25fa777c",
       "enabled": true,
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 0
@@ -81,7 +81,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "aa59f92d-c74d-4a1b-b39d-6988c449b520"
+        "projectId": "fc29fe47-d29f-4636-910d-3a6c25fa777c"
       }
     }
   }
