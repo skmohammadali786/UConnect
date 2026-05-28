@@ -213,12 +213,9 @@ export function TeamsProvider({ children }: { children: React.ReactNode }) {
     if (user) {
       const { error: requestError } = await supabase.from("team_requests").update({ status: "approved" }).eq("team_id", teamId).eq("user_id", userId);
       if (requestError) throw requestError;
-      const { error: memberError } = await supabase.from("team_members").upsert({
-        team_id: teamId,
-        user_id: userId,
-        role: "member",
-      }, { onConflict: "team_id,user_id" });
-      if (memberError) throw memberError;
+      // The database trigger adds the approved requester to team_members.
+      // Avoid a client-side membership write here because RLS can reject the
+      // duplicate/upsert even after the approval itself succeeds.
       refreshTeamsAndMemberships();
       return;
     }
