@@ -536,7 +536,7 @@ export default function TeamDetailScreen() {
         poll_id: pollId,
         user_id: user.id,
         option_index: optionIndex,
-      });
+      }, { onConflict: "poll_id,user_id" });
       if (error) throw error;
       setFeedItems((prev) =>
         prev.map((item) => {
