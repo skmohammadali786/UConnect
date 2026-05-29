@@ -5,6 +5,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Animated, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { safeInsertNotification } from "@/utils/notifications";
 import { useAuth } from "@/context/AuthContext";
 import { useTeams } from "@/context/TeamsContext";
 import { useToast } from "@/components/Toast";
@@ -135,7 +136,7 @@ type TeamFeedItem =
 export default function TeamDetailScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, tab, itemType, itemId } = useLocalSearchParams<{ id: string; tab?: string; itemType?: string; itemId?: string }>();
   const { user } = useAuth();
   const { teams, requestJoin, cancelRequest, approveRequest, denyRequest, getMembership, isTeamAdmin } = useTeams();
   const { showSuccess, showError, showInfo } = useToast();
@@ -164,6 +165,7 @@ export default function TeamDetailScreen() {
   const isAdmin = team && user ? isTeamAdmin(team.id) : false;
   const isMember = Boolean(team && user && (isAdmin || membership));
   const lastTeamIdRef = useRef<string | null>(null);
+  const highlightedFeedItemId = typeof itemId === "string" && typeof itemType === "string" ? itemId : undefined;
 
   useEffect(() => {
     if (team && user) {
@@ -177,13 +179,13 @@ export default function TeamDetailScreen() {
     const isNewTeam = lastTeamIdRef.current !== team.id;
     if (isNewTeam) {
       lastTeamIdRef.current = team.id;
-      setActiveTab(isMember ? "feed" : "details");
+      setActiveTab(tab === "feed" ? "feed" : isMember ? "feed" : "details");
       return;
     }
     if (!isMember) {
       setActiveTab("details");
     }
-  }, [team?.id, isMember]);
+  }, [team?.id, isMember, tab]);
 
   useEffect(() => {
     if (!team) {
@@ -384,6 +386,34 @@ export default function TeamDetailScreen() {
     };
   }, [team?.id, loadFeed]);
 
+  const notifyTeamMembers = useCallback(async (feedItem: { id: string; type: "post" | "poll" | "task" | "event"; title: string; body: string }) => {
+    if (!user || !team) return;
+    try {
+      const { data: memberRows } = await supabase
+        .from("team_members")
+        .select("user_id")
+        .eq("team_id", team.id)
+        .neq("user_id", user.id);
+      const recipientIds = Array.from(new Set((memberRows ?? []).map((row: any) => row.user_id).filter(Boolean)));
+      await Promise.all(recipientIds.map((recipientId) => safeInsertNotification({
+        user_id: recipientId,
+        type: "team",
+        title: feedItem.title,
+        body: feedItem.body,
+        action_id: team.id,
+        action_type: "team",
+        redirect_path: `/teams/${team.id}?tab=feed&itemType=${feedItem.type}&itemId=${feedItem.id}`,
+        entity_type: "team",
+        entity_id: team.id,
+        secondary_entity_type: `team_${feedItem.type}`,
+        secondary_entity_id: feedItem.id,
+        metadata: { teamId: team.id, teamTitle: team.title, feedItemType: feedItem.type, feedItemId: feedItem.id },
+      })));
+    } catch (error) {
+      console.warn("Failed to notify team members:", error);
+    }
+  }, [team?.id, team?.title, user?.id]);
+
   const handlePickMedia = async () => {
     if (Platform.OS === "web") {
       showInfo("Photo upload", "Photo picking works best on the mobile app.");
@@ -421,15 +451,23 @@ export default function TeamDetailScreen() {
         const uploaded = await uploadMediaUriToR2(postMedia, { fileType: postMediaMeta?.fileType, kind: "image" });
         mediaUrls = [uploaded.publicUrl];
       }
-      const { error } = await supabase.from("team_posts").insert({
+      const { data: postRow, error } = await supabase.from("team_posts").insert({
         team_id: team.id,
         author_id: user.id,
         author_username: user.username,
         author_avatar: user.avatar ?? null,
         content: postContent.trim(),
         media_urls: mediaUrls,
-      });
+      }).select("id").single();
       if (error) throw error;
+      if (postRow?.id) {
+        await notifyTeamMembers({
+          id: postRow.id,
+          type: "post",
+          title: `New update in ${team.title}`,
+          body: postContent.trim() || "Admin shared a new photo update.",
+        });
+      }
       setPostContent("");
       setPostMedia(null);
       setPostMediaMeta(null);
@@ -449,13 +487,21 @@ export default function TeamDetailScreen() {
       return;
     }
     try {
-      const { error } = await supabase.from("team_polls").insert({
+      const { data: pollRow, error } = await supabase.from("team_polls").insert({
         team_id: team.id,
         question,
         options,
         created_by: user.id,
-      });
+      }).select("id").single();
       if (error) throw error;
+      if (pollRow?.id) {
+        await notifyTeamMembers({
+          id: pollRow.id,
+          type: "poll",
+          title: `New poll in ${team.title}`,
+          body: question,
+        });
+      }
       setPollQuestion("");
       setPollOptions(["", ""]);
       setPollModalVisible(false);
@@ -483,6 +529,14 @@ export default function TeamDetailScreen() {
       if (error) throw error;
       const { error: itemsError } = await supabase.from("team_task_items").insert(items.map((item) => ({ task_list_id: listRow.id, title: item })));
       if (itemsError) throw itemsError;
+      if (listRow?.id) {
+        await notifyTeamMembers({
+          id: listRow.id,
+          type: "task",
+          title: `New tasks in ${team.title}`,
+          body: title,
+        });
+      }
       setTaskTitle("");
       setTaskItems([""]);
       setTaskModalVisible(false);
@@ -501,15 +555,23 @@ export default function TeamDetailScreen() {
       return;
     }
     try {
-      const { error } = await supabase.from("team_events").insert({
+      const { data: eventRow, error } = await supabase.from("team_events").insert({
         team_id: team.id,
         title,
         description: eventDescription.trim() || title,
         event_date: eventDate.trim() || "TBD",
         location: eventLocation.trim() || "TBD",
         created_by: user.id,
-      });
+      }).select("id").single();
       if (error) throw error;
+      if (eventRow?.id) {
+        await notifyTeamMembers({
+          id: eventRow.id,
+          type: "event",
+          title: `New event in ${team.title}`,
+          body: title,
+        });
+      }
       setEventTitle("");
       setEventDate("");
       setEventLocation("");
@@ -601,7 +663,7 @@ export default function TeamDetailScreen() {
   const renderFeedItem = (item: TeamFeedItem) => {
     if (item.type === "post") {
       return (
-        <View key={`post-${item.id}`} style={[styles.feedCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View key={`post-${item.id}`} style={[styles.feedCard, { backgroundColor: colors.card, borderColor: colors.border }, highlightedFeedItemId === item.id && { borderColor: colors.primary, borderWidth: 2 }]}>
           <View style={styles.feedHeaderRow}>
             {item.authorAvatar ? (
               <Image source={{ uri: item.authorAvatar }} style={styles.feedAvatarImg} />
@@ -636,7 +698,7 @@ export default function TeamDetailScreen() {
     }
     if (item.type === "poll") {
       return (
-        <View key={`poll-${item.id}`} style={[styles.feedCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View key={`poll-${item.id}`} style={[styles.feedCard, { backgroundColor: colors.card, borderColor: colors.border }, highlightedFeedItemId === item.id && { borderColor: colors.primary, borderWidth: 2 }]}>
           <View style={styles.feedHeaderRow}>
             <View style={[styles.feedIcon, { backgroundColor: colors.primary + "15" }]}>
               <Feather name="bar-chart-2" size={16} color={colors.primary} />
@@ -674,7 +736,7 @@ export default function TeamDetailScreen() {
     }
     if (item.type === "task") {
       return (
-        <View key={`task-${item.id}`} style={[styles.feedCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View key={`task-${item.id}`} style={[styles.feedCard, { backgroundColor: colors.card, borderColor: colors.border }, highlightedFeedItemId === item.id && { borderColor: colors.primary, borderWidth: 2 }]}>
           <View style={styles.feedHeaderRow}>
             <View style={[styles.feedIcon, { backgroundColor: "#00A86B20" }]}>
               <Feather name="check-square" size={16} color="#00A86B" />
@@ -705,7 +767,7 @@ export default function TeamDetailScreen() {
       );
     }
     return (
-      <View key={`event-${item.id}`} style={[styles.feedCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View key={`event-${item.id}`} style={[styles.feedCard, { backgroundColor: colors.card, borderColor: colors.border }, highlightedFeedItemId === item.id && { borderColor: colors.primary, borderWidth: 2 }]}>
         <View style={styles.feedHeaderRow}>
           <View style={[styles.feedIcon, { backgroundColor: "#F59E0B20" }]}>
             <Feather name="calendar" size={16} color="#F59E0B" />
