@@ -2293,288 +2293,200 @@ select r.event_id, r.user_id, replace(uuid_generate_v4()::text, '-', '')
 from event_rsvps r
 where r.status = 'approved'
 on conflict (event_id, user_id) do nothing;
+-- Team feed notifications
+-- Run this in Supabase SQL Editor to notify team members when admins add
+-- posts, polls, task lists, or events to a team feed.
 
--- ─── POST REPORT MODERATION WORKFLOW ────────────────────────────────────────
--- See add-post-report-moderation.sql for an idempotent migration that upgrades
--- existing databases and installs submit_post_report/review_post_report.
--- Post report moderation workflow for UConnect
--- Run this in the Supabase SQL Editor after the base schema.
--- Optional: add moderators with:
---   insert into public.app_moderators(user_id) values ('<moderator-profile-uuid>') on conflict do nothing;
-
-create extension if not exists "uuid-ossp";
-
--- Moderators that should receive report notifications in Supabase/app notifications.
-create table if not exists app_moderators (
-  user_id uuid primary key references profiles(id) on delete cascade,
-  created_at timestamptz not null default now()
-);
-
-alter table app_moderators enable row level security;
-
-drop policy if exists "Moderators can view moderators" on app_moderators;
-create policy "Moderators can view moderators" on app_moderators
-for select using (
-  exists (select 1 from app_moderators m where m.user_id = auth.uid())
-);
-
--- Keep report history even if the reported post is deleted.
-alter table reports
-  alter column post_id drop not null,
-  add column if not exists post_author_id uuid references profiles(id) on delete set null,
-  add column if not exists post_author_username text,
-  add column if not exists post_content_preview text,
-  add column if not exists post_was_deleted boolean not null default false,
-  add column if not exists action text not null default 'pending' check (action in ('pending', 'reviewed', 'no_action', 'post_deleted', 'warning_issued', 'other')),
-  add column if not exists resolution_message text,
-  add column if not exists reviewed_by uuid references profiles(id) on delete set null,
-  add column if not exists reviewed_at timestamptz,
-  add column if not exists updated_at timestamptz not null default now();
-
-alter table reports drop constraint if exists reports_post_id_fkey;
-alter table reports
-  add constraint reports_post_id_fkey foreign key (post_id) references posts(id) on delete set null;
-
-alter table reports drop constraint if exists reports_status_check;
-alter table reports
-  add constraint reports_status_check check (status in ('pending', 'reviewed', 'resolved'));
-
-create unique index if not exists reports_reporter_post_unique
-  on reports(reporter_id, post_id)
-  where post_id is not null;
-
-create index if not exists idx_reports_status_created_at on reports(status, created_at desc);
-create index if not exists idx_reports_reporter_created_at on reports(reporter_id, created_at desc);
-create index if not exists idx_reports_post_author_id on reports(post_author_id);
-
-create or replace function set_reports_updated_at()
-returns trigger
-language plpgsql
-as $$
-begin
-  new.updated_at = now();
-  return new;
-end;
-$$;
-
-drop trigger if exists trg_reports_updated_at on reports;
-create trigger trg_reports_updated_at
-before update on reports
-for each row execute function set_reports_updated_at();
-
--- Allows reporters to see their own enriched report history and moderators to review reports.
-drop policy if exists "Users can view own reports" on reports;
-drop policy if exists "Reporters and moderators can view reports" on reports;
-create policy "Reporters and moderators can view reports" on reports
-for select using (
-  auth.uid() = reporter_id
-  or exists (select 1 from app_moderators m where m.user_id = auth.uid())
-);
-
-drop policy if exists "Moderators can update reports" on reports;
-create policy "Moderators can update reports" on reports
-for update using (
-  exists (select 1 from app_moderators m where m.user_id = auth.uid())
+create or replace function create_notification(
+  p_user_id uuid,
+  p_type text,
+  p_title text,
+  p_body text,
+  p_action_id text default null,
+  p_action_type text default null,
+  p_redirect_path text default null,
+  p_entity_type text default null,
+  p_entity_id text default null,
+  p_secondary_entity_type text default null,
+  p_secondary_entity_id text default null,
+  p_metadata jsonb default '{}'::jsonb
 )
-with check (
-  exists (select 1 from app_moderators m where m.user_id = auth.uid())
-);
-
-insert into notification_action_routes(action_type, redirect_template, description) values
-  ('report', '/settings/reports', 'Reporter report history'),
-  ('moderation_report', '/settings/reports', 'Moderation report queue')
-on conflict (action_type) do update
-set redirect_template = excluded.redirect_template,
-    description = excluded.description;
-
--- Submit a report, snapshot the post, and notify app moderators in the notifications table.
-create or replace function submit_post_report(p_post_id uuid, p_reason text)
 returns uuid
 language plpgsql
 security definer
 set search_path = public
 as $$
 declare
-  v_reporter_id uuid := auth.uid();
-  v_report_id uuid;
-  v_post posts%rowtype;
-  v_reporter_username text;
+  v_notification_id uuid;
 begin
-  if v_reporter_id is null then
+  if auth.uid() is null then
     raise exception 'Not authenticated';
   end if;
 
-  select * into v_post from posts where id = p_post_id;
-  if not found then
-    raise exception 'Post not found';
+  select id into v_notification_id
+  from notifications
+  where user_id = p_user_id
+    and action_id is not distinct from p_action_id
+    and action_type is not distinct from p_action_type
+    and secondary_entity_type is not distinct from p_secondary_entity_type
+    and secondary_entity_id is not distinct from p_secondary_entity_id
+    and created_at > now() - interval '10 seconds'
+  order by created_at desc
+  limit 1;
+
+  if v_notification_id is not null then
+    return v_notification_id;
   end if;
 
-  if v_post.author_id = v_reporter_id then
-    raise exception 'You cannot report your own post';
-  end if;
-
-  select username into v_reporter_username from profiles where id = v_reporter_id;
-
-  insert into reports(
-    reporter_id,
-    post_id,
-    reason,
-    status,
-    post_author_id,
-    post_author_username,
-    post_content_preview,
-    post_was_deleted,
-    action
-  ) values (
-    v_reporter_id,
-    p_post_id,
-    trim(p_reason),
-    'pending',
-    v_post.author_id,
-    v_post.author_username,
-    left(v_post.content, 240),
-    false,
-    'pending'
+  insert into notifications(
+    user_id,
+    type,
+    title,
+    body,
+    action_id,
+    action_type,
+    redirect_path,
+    entity_type,
+    entity_id,
+    secondary_entity_type,
+    secondary_entity_id,
+    metadata
   )
-  on conflict (reporter_id, post_id) where post_id is not null do update set
-    reason = excluded.reason,
-    updated_at = now()
-  returning id into v_report_id;
+  values (
+    p_user_id,
+    p_type,
+    p_title,
+    p_body,
+    p_action_id,
+    p_action_type,
+    p_redirect_path,
+    p_entity_type,
+    p_entity_id,
+    p_secondary_entity_type,
+    p_secondary_entity_id,
+    coalesce(p_metadata, '{}'::jsonb)
+  )
+  returning id into v_notification_id;
 
-  insert into notifications(user_id, type, title, body, action_id, action_type, redirect_path, entity_type, entity_id, secondary_entity_type, secondary_entity_id, metadata)
-  select
-    m.user_id,
-    'system',
-    'New post report',
-    coalesce(v_reporter_username, 'A user') || ' reported a post for: ' || trim(p_reason),
-    v_report_id::text,
-    'moderation_report',
-    '/settings/reports',
-    'report',
-    v_report_id::text,
-    'post',
-    p_post_id::text,
-    jsonb_build_object(
-      'report_id', v_report_id,
-      'post_id', p_post_id,
-      'reporter_id', v_reporter_id,
-      'post_author_id', v_post.author_id,
-      'reason', trim(p_reason)
-    )
-  from app_moderators m
-  where m.user_id <> v_reporter_id;
-
-  return v_report_id;
+  return v_notification_id;
 end;
 $$;
 
-grant execute on function submit_post_report(uuid, text) to authenticated;
+grant execute on function create_notification(uuid, text, text, text, text, text, text, text, text, text, text, jsonb) to authenticated;
 
--- Moderation action helper. Use p_delete_post=true for delete actions.
--- It updates every report for the same post, notifies reporters, and notifies the post author.
-create or replace function review_post_report(
-  p_report_id uuid,
-  p_action text,
-  p_resolution_message text default null,
-  p_delete_post boolean default false,
-  p_warning_message text default null
-)
-returns void
+create or replace function notify_team_members_of_feed_item()
+returns trigger
 language plpgsql
 security definer
 set search_path = public
 as $$
 declare
-  v_reviewer_id uuid := auth.uid();
-  v_base reports%rowtype;
-  v_status text;
-  v_reporter_body text;
-  v_author_body text;
-  v_action_label text;
+  v_team_id uuid;
+  v_actor_id uuid;
+  v_team_title text;
+  v_item_type text;
+  v_item_title text;
+  v_body text;
 begin
-  if v_reviewer_id is null then
-    raise exception 'Not authenticated';
+  if tg_table_name = 'team_posts' then
+    v_team_id := new.team_id;
+    v_actor_id := new.author_id;
+    v_item_type := 'post';
+    v_item_title := 'New update';
+    v_body := coalesce(nullif(new.content, ''), 'Admin shared a new photo update.');
+  elsif tg_table_name = 'team_polls' then
+    v_team_id := new.team_id;
+    v_actor_id := new.created_by;
+    v_item_type := 'poll';
+    v_item_title := 'New poll';
+    v_body := new.question;
+  elsif tg_table_name = 'team_task_lists' then
+    v_team_id := new.team_id;
+    v_actor_id := new.created_by;
+    v_item_type := 'task';
+    v_item_title := 'New tasks';
+    v_body := new.title;
+  elsif tg_table_name = 'team_events' then
+    v_team_id := new.team_id;
+    v_actor_id := new.created_by;
+    v_item_type := 'event';
+    v_item_title := 'New event';
+    v_body := new.title;
+  else
+    return new;
   end if;
 
-  if not exists (select 1 from app_moderators m where m.user_id = v_reviewer_id) then
-    raise exception 'Not authorized';
-  end if;
+  select title into v_team_title from teams where id = v_team_id;
 
-  if p_action not in ('reviewed', 'no_action', 'post_deleted', 'warning_issued', 'other') then
-    raise exception 'Invalid moderation action';
-  end if;
-
-  select * into v_base from reports where id = p_report_id;
-  if not found then
-    raise exception 'Report not found';
-  end if;
-
-  v_status := case when p_action in ('no_action', 'post_deleted', 'warning_issued', 'other') then 'resolved' else 'reviewed' end;
-  v_action_label := case p_action
-    when 'post_deleted' then 'Post deleted'
-    when 'warning_issued' then 'Warning issued'
-    when 'no_action' then 'No policy action needed'
-    when 'reviewed' then 'Reviewed'
-    else 'Resolved'
-  end;
-
-  update reports r
-  set status = v_status,
-      action = p_action,
-      resolution_message = coalesce(nullif(trim(p_resolution_message), ''), v_action_label),
-      reviewed_by = v_reviewer_id,
-      reviewed_at = now(),
-      post_was_deleted = r.post_was_deleted or p_delete_post or p_action = 'post_deleted'
-  where (v_base.post_id is not null and r.post_id = v_base.post_id)
-     or (v_base.post_id is null and r.id = v_base.id);
-
-  if p_delete_post and v_base.post_id is not null then
-    delete from posts where id = v_base.post_id;
-  end if;
-
-  v_reporter_body := coalesce(nullif(trim(p_resolution_message), ''), 'Your report has been reviewed. Action: ' || v_action_label || '.');
-
-  insert into notifications(user_id, type, title, body, action_id, action_type, redirect_path, entity_type, entity_id, secondary_entity_type, secondary_entity_id, metadata)
-  select distinct
-    r.reporter_id,
-    'system',
-    'Report update: ' || v_action_label,
-    v_reporter_body,
-    r.id::text,
-    'report',
-    '/settings/reports',
-    'report',
-    r.id::text,
-    'post',
-    coalesce(r.post_id::text, v_base.post_id::text),
-    jsonb_build_object('report_id', r.id, 'action', p_action, 'post_deleted', (p_delete_post or p_action = 'post_deleted'))
-  from reports r
-  where ((v_base.post_id is not null and r.post_id = v_base.post_id) or (v_base.post_id is null and r.id = v_base.id))
-    and r.reporter_id <> v_reviewer_id;
-
-  if v_base.post_author_id is not null and v_base.post_author_id <> v_reviewer_id then
-    v_author_body := case p_action
-      when 'post_deleted' then 'A post you created was removed after moderation review.'
-      when 'warning_issued' then coalesce(nullif(trim(p_warning_message), ''), 'A warning was issued for one of your posts after moderation review.')
-      when 'no_action' then 'A report on your post was reviewed and no action was needed.'
-      else coalesce(nullif(trim(p_warning_message), ''), 'A report on your post was reviewed by moderation.')
-    end;
-
-    insert into notifications(user_id, type, title, body, action_id, action_type, redirect_path, entity_type, entity_id, metadata)
-    values (
-      v_base.post_author_id,
-      'system',
-      'Post moderation update',
-      v_author_body,
-      coalesce(v_base.post_id::text, v_base.id::text),
-      case when v_base.post_id is not null and p_action <> 'post_deleted' and not p_delete_post then 'post' else 'system' end,
-      case when v_base.post_id is not null and p_action <> 'post_deleted' and not p_delete_post then '/post/' || v_base.post_id else '/(tabs)/notifications' end,
-      case when v_base.post_id is not null then 'post' else 'report' end,
-      coalesce(v_base.post_id::text, v_base.id::text),
-      jsonb_build_object('report_id', v_base.id, 'action', p_action, 'post_deleted', (p_delete_post or p_action = 'post_deleted'))
+  insert into notifications(
+    user_id,
+    type,
+    title,
+    body,
+    action_id,
+    action_type,
+    redirect_path,
+    entity_type,
+    entity_id,
+    secondary_entity_type,
+    secondary_entity_id,
+    metadata
+  )
+  select
+    recipients.user_id,
+    'team',
+    v_item_title || ' in ' || coalesce(v_team_title, 'your team'),
+    v_body,
+    v_team_id::text,
+    'team',
+    '/teams/' || v_team_id || '?tab=feed&itemType=' || v_item_type || '&itemId=' || new.id,
+    'team',
+    v_team_id::text,
+    'team_' || v_item_type,
+    new.id::text,
+    jsonb_build_object(
+      'teamId', v_team_id,
+      'teamTitle', v_team_title,
+      'feedItemType', v_item_type,
+      'feedItemId', new.id
+    )
+  from (
+    select user_id from team_members where team_id = v_team_id
+    union
+    select poster_id as user_id from teams where id = v_team_id
+  ) recipients
+  where recipients.user_id <> v_actor_id
+    and not exists (
+      select 1
+      from notifications n
+      where n.user_id = recipients.user_id
+        and n.action_id = v_team_id::text
+        and n.action_type = 'team'
+        and n.secondary_entity_type = 'team_' || v_item_type
+        and n.secondary_entity_id = new.id::text
+        and n.created_at > now() - interval '10 seconds'
     );
-  end if;
+
+  return new;
 end;
 $$;
 
-grant execute on function review_post_report(uuid, text, text, boolean, text) to authenticated;
+drop trigger if exists notify_team_members_after_team_post on team_posts;
+create trigger notify_team_members_after_team_post
+after insert on team_posts
+for each row execute function notify_team_members_of_feed_item();
+
+drop trigger if exists notify_team_members_after_team_poll on team_polls;
+create trigger notify_team_members_after_team_poll
+after insert on team_polls
+for each row execute function notify_team_members_of_feed_item();
+
+drop trigger if exists notify_team_members_after_team_task_list on team_task_lists;
+create trigger notify_team_members_after_team_task_list
+after insert on team_task_lists
+for each row execute function notify_team_members_of_feed_item();
+
+drop trigger if exists notify_team_members_after_team_event on team_events;
+create trigger notify_team_members_after_team_event
+after insert on team_events
+for each row execute function notify_team_members_of_feed_item();
