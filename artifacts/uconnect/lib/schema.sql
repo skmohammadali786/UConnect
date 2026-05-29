@@ -229,18 +229,49 @@ create table if not exists following (
 alter table following enable row level security;
 create policy "Users can manage own following" on following for all using (auth.uid() = follower_id);
 create policy "Following is viewable" on following for select using (true);
+-- ─── APP MODERATORS ─────────────────────────────────────────────────────────
+create table if not exists app_moderators (
+  user_id uuid primary key references profiles(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+alter table app_moderators enable row level security;
+create policy "Moderators can view moderators" on app_moderators for select using (
+  exists (select 1 from app_moderators m where m.user_id = auth.uid())
+);
+
 -- ─── REPORTS ─────────────────────────────────────────────────────────────────
 create table if not exists reports (
   id uuid primary key default uuid_generate_v4(),
   reporter_id uuid not null references profiles(id) on delete cascade,
-  post_id uuid not null references posts(id) on delete cascade,
+  post_id uuid references posts(id) on delete set null,
   reason text not null,
-  status text not null default 'pending',
+  status text not null default 'pending' check (status in ('pending', 'reviewed', 'resolved')),
+  post_author_id uuid references profiles(id) on delete set null,
+  post_author_username text,
+  post_content_preview text,
+  post_was_deleted boolean not null default false,
+  action text not null default 'pending' check (action in ('pending', 'reviewed', 'no_action', 'post_deleted', 'warning_issued', 'other')),
+  resolution_message text,
+  reviewed_by uuid references profiles(id) on delete set null,
+  reviewed_at timestamptz,
+  updated_at timestamptz not null default now(),
   created_at timestamptz not null default now()
 );
+create unique index if not exists reports_reporter_post_unique on reports(reporter_id, post_id) where post_id is not null;
+create index if not exists idx_reports_status_created_at on reports(status, created_at desc);
+create index if not exists idx_reports_reporter_created_at on reports(reporter_id, created_at desc);
+create index if not exists idx_reports_post_author_id on reports(post_author_id);
 alter table reports enable row level security;
 create policy "Users can create reports" on reports for insert with check (auth.uid() = reporter_id);
-create policy "Users can view own reports" on reports for select using (auth.uid() = reporter_id);
+create policy "Reporters and moderators can view reports" on reports for select using (
+  auth.uid() = reporter_id
+  or exists (select 1 from app_moderators m where m.user_id = auth.uid())
+);
+create policy "Moderators can update reports" on reports for update using (
+  exists (select 1 from app_moderators m where m.user_id = auth.uid())
+) with check (
+  exists (select 1 from app_moderators m where m.user_id = auth.uid())
+);
 
 -- ─── CONFESSIONS ─────────────────────────────────────────────────────────────
 create table if not exists confessions (

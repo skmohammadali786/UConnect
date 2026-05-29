@@ -1,10 +1,29 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import { AppState } from "react-native";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { safeInsertNotification } from "@/utils/notifications";
 
-export type NotificationType = "reply" | "mention" | "upvote" | "follow" | "message" | "event" | "system" | "team" | "internship" | "confession" | "note" | "invite";
+export type NotificationType =
+  | "reply"
+  | "mention"
+  | "upvote"
+  | "follow"
+  | "message"
+  | "event"
+  | "system"
+  | "team"
+  | "internship"
+  | "confession"
+  | "note"
+  | "invite"
+  | "report";
 export type NotificationActionType =
   | "post"
   | "profile"
@@ -21,6 +40,8 @@ export type NotificationActionType =
   | "confession"
   | "note"
   | "invite"
+  | "report"
+  | "moderation_report"
   | "system";
 
 export interface Notification {
@@ -47,16 +68,24 @@ interface NotificationsContextType {
   markAllRead: () => void;
   deleteNotification: (id: string) => void;
   clearAllNotifications: () => Promise<boolean>;
-  addNotification: (n: Omit<Notification, "id" | "createdAt" | "isRead">) => void;
+  addNotification: (
+    n: Omit<Notification, "id" | "createdAt" | "isRead">,
+  ) => void;
 }
 
-const NotificationsContext = createContext<NotificationsContextType | undefined>(undefined);
+const NotificationsContext = createContext<
+  NotificationsContextType | undefined
+>(undefined);
 
 function generateId() {
   return Date.now().toString() + Math.random().toString(36).substr(2, 9);
 }
 
-export function NotificationsProvider({ children }: { children: React.ReactNode }) {
+export function NotificationsProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
@@ -69,22 +98,24 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(50);
-      setNotifications((data ?? []).map((row: any) => ({
-        id: row.id,
-        type: row.type as NotificationType,
-        title: row.title,
-        body: row.body,
-        isRead: row.is_read,
-        createdAt: row.created_at,
-        actionId: row.action_id ?? undefined,
-        actionType: row.action_type ?? undefined,
-        redirectPath: row.redirect_path ?? undefined,
-        entityType: row.entity_type ?? undefined,
-        entityId: row.entity_id ?? undefined,
-        secondaryEntityType: row.secondary_entity_type ?? undefined,
-        secondaryEntityId: row.secondary_entity_id ?? undefined,
-        metadata: row.metadata ?? undefined,
-      })));
+      setNotifications(
+        (data ?? []).map((row: any) => ({
+          id: row.id,
+          type: row.type as NotificationType,
+          title: row.title,
+          body: row.body,
+          isRead: row.is_read,
+          createdAt: row.created_at,
+          actionId: row.action_id ?? undefined,
+          actionType: row.action_type ?? undefined,
+          redirectPath: row.redirect_path ?? undefined,
+          entityType: row.entity_type ?? undefined,
+          entityId: row.entity_id ?? undefined,
+          secondaryEntityType: row.secondary_entity_type ?? undefined,
+          secondaryEntityId: row.secondary_entity_id ?? undefined,
+          metadata: row.metadata ?? undefined,
+        })),
+      );
     } catch {
       setNotifications([]);
     }
@@ -102,9 +133,18 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     if (!user) return;
     const channel = supabase
       .channel(`notifications-${user.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` }, () => {
-        loadNotifications();
-      })
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          loadNotifications();
+        },
+      )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
@@ -130,23 +170,37 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   }, [user?.id, loadNotifications]);
 
   const markRead = (id: string) => {
-    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, isRead: true } : n));
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
+    );
     if (user) {
-      supabase.from("notifications").update({ is_read: true }).eq("id", id).then(() => {});
+      supabase
+        .from("notifications")
+        .update({ is_read: true })
+        .eq("id", id)
+        .then(() => {});
     }
   };
 
   const markAllRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     if (user) {
-      supabase.from("notifications").update({ is_read: true }).eq("user_id", user.id).then(() => {});
+      supabase
+        .from("notifications")
+        .update({ is_read: true })
+        .eq("user_id", user.id)
+        .then(() => {});
     }
   };
 
   const deleteNotification = (id: string) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
     if (user) {
-      supabase.from("notifications").delete().eq("id", id).then(() => {});
+      supabase
+        .from("notifications")
+        .delete()
+        .eq("id", id)
+        .then(() => {});
     }
   };
 
@@ -168,8 +222,15 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     return true;
   }, [notifications, user]);
 
-  const addNotification = (n: Omit<Notification, "id" | "createdAt" | "isRead">) => {
-    const newN: Notification = { ...n, id: generateId(), createdAt: new Date().toISOString(), isRead: false };
+  const addNotification = (
+    n: Omit<Notification, "id" | "createdAt" | "isRead">,
+  ) => {
+    const newN: Notification = {
+      ...n,
+      id: generateId(),
+      createdAt: new Date().toISOString(),
+      isRead: false,
+    };
     setNotifications((prev) => [newN, ...prev]);
     if (user) {
       safeInsertNotification({
@@ -196,7 +257,17 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   return (
-    <NotificationsContext.Provider value={{ notifications, unreadCount, markRead, markAllRead, deleteNotification, clearAllNotifications, addNotification }}>
+    <NotificationsContext.Provider
+      value={{
+        notifications,
+        unreadCount,
+        markRead,
+        markAllRead,
+        deleteNotification,
+        clearAllNotifications,
+        addNotification,
+      }}
+    >
       {children}
     </NotificationsContext.Provider>
   );
@@ -204,6 +275,9 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
 
 export function useNotifications() {
   const ctx = useContext(NotificationsContext);
-  if (!ctx) throw new Error("useNotifications must be used within NotificationsProvider");
+  if (!ctx)
+    throw new Error(
+      "useNotifications must be used within NotificationsProvider",
+    );
   return ctx;
 }
