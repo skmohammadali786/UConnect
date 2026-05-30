@@ -164,6 +164,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="vault"
+        options={{
+          title: "Vault",
+          tabBarIcon: ({ color, focused }) => <Feather name={(focused ? "shield" : "hexagon") as any} size={22} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="notifications"
         options={{
           title: "Alerts",

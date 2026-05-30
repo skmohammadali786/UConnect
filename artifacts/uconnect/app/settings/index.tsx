@@ -7,6 +7,7 @@ import { useColors } from "@/hooks/useColors";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
+import { useGhostMode } from "@/context/GhostModeContext";
 import { useToast } from "@/components/Toast";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { TypewriterText } from "@/components/TypewriterText";
@@ -94,6 +95,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { user, logout, deleteAccount } = useAuth();
   const { settings, updateSetting } = useSettings();
+  const { isGhostActive, session } = useGhostMode();
   const { showSuccess, showInfo } = useToast();
   const [logoutConfirm, setLogoutConfirm] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -208,6 +210,7 @@ export default function SettingsScreen() {
         <View style={{ height: 20 }} />
         <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>SAFETY & PRIVACY</Text>
         <SectionCard colors={colors}>
+          <SettingRow icon="cloud-snow" label="Ghost Mode" sub={isGhostActive ? `Active as ${session?.alias}` : "Temporary anonymous existence"} badge={isGhostActive ? "ACTIVE" : undefined} onPress={() => router.push("/settings/ghost-mode" as any)} colors={colors} />
           <SettingRow icon="slash" label="Blocked Users" onPress={() => router.push("/settings/blocked-users" as any)} colors={colors} />
           <SettingRow icon="flag" label="My Reports" sub="See posts you've reported and their status" onPress={() => router.push("/settings/reports" as any)} colors={colors} last />
         </SectionCard>

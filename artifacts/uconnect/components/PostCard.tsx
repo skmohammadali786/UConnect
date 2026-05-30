@@ -201,7 +201,7 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
   };
 
   const handleAuthorPress = () => {
-    if (!post.isAnonymous && post.authorUsername) {
+    if (!post.isAnonymous && !post.isGhost && post.authorUsername) {
       router.push({ pathname: "/user/[username]" as any, params: { username: post.authorUsername } });
     }
   };
@@ -209,7 +209,7 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
   const tagColor = TAG_COLORS[post.tag] || colors.mutedForeground;
   const isOwner = post.authorId === currentUserId;
   const reported = hasReported(post.id);
-  const initials = post.authorUsername?.charAt(0)?.toUpperCase() || "U";
+  const initials = post.isGhost ? "👻" : post.authorUsername?.charAt(0)?.toUpperCase() || "U";
   const hasMedia = post.mediaUrls && post.mediaUrls.length > 0;
   const hasVideo = !!post.videoUrl;
   const isReposted = hasReposted(post.id);
@@ -248,11 +248,15 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
         <View style={styles.cardHeader}>
           <TouchableOpacity
             onPress={handleAuthorPress}
-            disabled={post.isAnonymous}
+            disabled={post.isAnonymous || post.isGhost}
             activeOpacity={0.7}
             style={styles.authorRow}
           >
-            {post.isAnonymous ? (
+            {post.isGhost ? (
+              <View style={[styles.avatarWrap, { backgroundColor: "#0B1020", borderColor: "#7C3AED" }]}>
+                <Feather name="cloud-snow" size={14} color="#A78BFA" />
+              </View>
+            ) : post.isAnonymous ? (
               <View style={[styles.avatarWrap, { backgroundColor: colors.muted, borderColor: "transparent" }]}>
                 <Feather name="user-x" size={14} color={colors.mutedForeground} />
               </View>
@@ -266,16 +270,20 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
             <View>
               <View style={styles.usernameRow}>
                 <Text style={[styles.username, { color: post.isAnonymous ? colors.mutedForeground : colors.foreground }]}>
-                  {post.isAnonymous ? "Anonymous" : `@${post.authorUsername}`}
+                  {post.isGhost ? post.ghostAlias || post.authorUsername : post.isAnonymous ? "Anonymous" : `@${post.authorUsername}`}
                 </Text>
-                {!post.isAnonymous && post.authorIsVerified ? (
+                {post.isGhost ? (
+                  <View style={[styles.ghostBadge, { backgroundColor: "#7C3AED" }]}>
+                    <Text style={styles.ghostBadgeText}>GHOST</Text>
+                  </View>
+                ) : !post.isAnonymous && post.authorIsVerified ? (
                   <View style={[styles.verifiedBadge, { backgroundColor: verifiedBadgeColor }]}>
                     <Feather name="check" size={9} color="#FFF" />
                   </View>
                 ) : null}
               </View>
               <Text style={[styles.meta, { color: colors.mutedForeground }]}>
-                {post.college} · {formatRelativeTime(post.createdAt)}
+                {post.isGhost ? "Ghost transmission" : post.college} · {formatRelativeTime(post.createdAt)}
                 {autoDeleteLabel ? ` · ⏱ ${autoDeleteLabel}` : ""}
               </Text>
             </View>
@@ -466,6 +474,8 @@ const styles = StyleSheet.create({
   usernameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   username: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   verifiedBadge: { width: 15, height: 15, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+  ghostBadge: { borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2, marginLeft: 2 },
+  ghostBadgeText: { color: "#FFF", fontSize: 8, fontFamily: "Inter_700Bold", letterSpacing: 0.8 },
   meta: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },
   tag: {
     paddingHorizontal: 8,

@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
+import { useGhostMode } from "@/context/GhostModeContext";
 
 export type PostTag = string;
 
@@ -19,6 +20,8 @@ export interface Comment {
   authorUsername: string;
   authorAvatar: string | null;
   isAnonymous: boolean;
+  isGhost?: boolean;
+  ghostAlias?: string | null;
   content: string;
   upvotes: number;
   downvotes: number;
@@ -36,6 +39,8 @@ export interface Post {
   authorIsVerified?: boolean;
   college: string;
   isAnonymous: boolean;
+  isGhost?: boolean;
+  ghostAlias?: string | null;
   tag: PostTag;
   content: string;
   mediaUrls: string[];
@@ -122,18 +127,20 @@ function rowToPost(
   return {
     id: row.id,
     authorId: row.author_id,
-    authorUsername: row.is_anonymous ? "anonymous" : row.author_username,
-    authorAvatar: row.is_anonymous ? null : row.author_avatar,
-    authorAuraRingColor: row.is_anonymous
+    authorUsername: row.is_ghost ? (row.ghost_alias_snapshot ?? "Neon Phantom") : row.is_anonymous ? "anonymous" : row.author_username,
+    authorAvatar: row.is_ghost || row.is_anonymous ? null : row.author_avatar,
+    authorAuraRingColor: row.is_ghost || row.is_anonymous
       ? undefined
       : (row.author_aura_ring_color ??
         row.author_avatar_ring_color ??
         "#6366F1"),
-    authorIsVerified: row.is_anonymous
+    authorIsVerified: row.is_ghost || row.is_anonymous
       ? false
       : (row.author_is_verified ?? false),
     college: row.college,
     isAnonymous: row.is_anonymous,
+    isGhost: Boolean(row.is_ghost),
+    ghostAlias: row.ghost_alias_snapshot ?? null,
     tag: row.tag as PostTag,
     content: row.content,
     mediaUrls: row.media_urls ?? [],
@@ -162,8 +169,8 @@ function rowToComment(
     postId: row.post_id,
     parentId: row.parent_id ?? null,
     authorId: row.author_id,
-    authorUsername: row.is_anonymous ? "anonymous" : row.author_username,
-    authorAvatar: row.is_anonymous ? null : row.author_avatar,
+    authorUsername: row.is_ghost ? (row.ghost_alias_snapshot ?? "Neon Phantom") : row.is_anonymous ? "anonymous" : row.author_username,
+    authorAvatar: row.is_ghost || row.is_anonymous ? null : row.author_avatar,
     isAnonymous: row.is_anonymous,
     content: row.content,
     upvotes: row.upvotes ?? 0,
@@ -176,6 +183,7 @@ function rowToComment(
 
 export function PostsProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  const { isGhostActive, session } = useGhostMode();
   const [posts, setPosts] = useState<Post[]>([]);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -268,14 +276,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     try {
       const [postsRes, votesRes, bookmarksRes, repostsRes] = await Promise.all([
-        supabase
-          .from("posts")
-          .select("*")
-          .or(
-            `auto_delete_at.is.null,auto_delete_at.gt.${new Date().toISOString()}`,
-          )
-          .order("created_at", { ascending: false })
-          .limit(100),
+        supabase.rpc("get_secure_posts", { p_limit: 100 }),
         user
           ? supabase
               .from("post_votes")
@@ -304,7 +305,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
         const authorIds = Array.from(
           new Set(
             postsRes.data
-              .filter((row: any) => !row.is_anonymous)
+              .filter((row: any) => !row.is_anonymous && !row.is_ghost)
               .map((row: any) => row.author_id),
           ),
         );
@@ -326,16 +327,18 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
             return rowToPost(
               {
                 ...row,
-                author_username: row.is_anonymous
-                  ? row.author_username
-                  : (profile?.username ?? row.author_username),
-                author_avatar: row.is_anonymous
+                author_username: row.is_ghost
+                  ? (row.ghost_alias_snapshot ?? "Neon Phantom")
+                  : row.is_anonymous
+                    ? row.author_username
+                    : (profile?.username ?? row.author_username),
+                author_avatar: row.is_ghost || row.is_anonymous
                   ? null
                   : (profile?.avatar ?? row.author_avatar),
-                author_aura_ring_color: row.is_anonymous
+                author_aura_ring_color: row.is_ghost || row.is_anonymous
                   ? null
                   : (profile?.avatar_ring_color ?? "#6366F1"),
-                author_is_verified: row.is_anonymous
+                author_is_verified: row.is_ghost || row.is_anonymous
                   ? false
                   : Boolean(profile?.is_verified),
               },
@@ -344,7 +347,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
             );
           })
           .filter(
-            (p) => !p.autoDeleteAt || new Date(p.autoDeleteAt).getTime() > now,
+            (p: Post) => !p.autoDeleteAt || new Date(p.autoDeleteAt).getTime() > now,
           );
         applyPosts(mapped);
         scheduleGumletPlayback(mapped);
@@ -417,24 +420,28 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const { data, error } = await supabase
-        .from("posts")
-        .insert({
-          author_id: user.id,
-          author_username: user.username,
-          author_avatar: user.avatar,
-          college: postData.college,
-          is_anonymous: postData.isAnonymous,
-          tag: postData.tag,
-          content: postData.content,
-          media_urls: postData.mediaUrls,
-          video_url: postData.videoUrl,
-          video_provider: postData.videoProvider ?? "r2",
-          video_asset_id: postData.videoAssetId ?? null,
-          auto_delete_at: postData.autoDeleteAt ?? null,
-        })
-        .select()
-        .single();
+      const postPayload = {
+        author_id: user.id,
+        author_username: user.username,
+        author_avatar: user.avatar,
+        college: postData.college,
+        is_anonymous: postData.isAnonymous,
+        tag: postData.tag,
+        content: postData.content,
+        media_urls: postData.mediaUrls,
+        video_url: postData.videoUrl,
+        video_provider: postData.videoProvider ?? "r2",
+        video_asset_id: postData.videoAssetId ?? null,
+        auto_delete_at: postData.autoDeleteAt ?? null,
+      };
+
+      const { data, error } = isGhostActive && session
+        ? await supabase.rpc("create_ghost_post", { p_post: postPayload })
+        : await supabase
+            .from("posts")
+            .insert(postPayload)
+            .select()
+            .single();
 
       if (error) throw error;
 
@@ -455,7 +462,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
           .eq("id", user.id);
       }
     },
-    [user, applyPosts, scheduleGumletPlayback],
+    [user, applyPosts, scheduleGumletPlayback, isGhostActive, session?.id],
   );
 
   const votePost = useCallback(
@@ -602,19 +609,22 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
 
       if (!user) return false;
 
-      const { data, error } = await supabase
-        .from("comments")
-        .insert({
-          post_id: postId,
-          parent_id: commentData.parentId ?? null,
-          author_id: user.id,
-          author_username: user.username,
-          author_avatar: user.avatar,
-          is_anonymous: commentData.isAnonymous,
-          content: commentData.content,
-        })
-        .select("*")
-        .single();
+      const commentPayload = {
+        post_id: postId,
+        parent_id: commentData.parentId ?? null,
+        author_id: user.id,
+        author_username: user.username,
+        author_avatar: user.avatar,
+        is_anonymous: commentData.isAnonymous,
+        content: commentData.content,
+      };
+      const { data, error } = isGhostActive && session
+        ? await supabase.rpc("create_ghost_comment", { p_comment: commentPayload })
+        : await supabase
+            .from("comments")
+            .insert(commentPayload)
+            .select("*")
+            .single();
 
       if (error || !data) {
         applyPosts(
@@ -679,7 +689,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
         .then(() => {});
       return true;
     },
-    [user, applyPosts, resolveGumletPlaybackUrl],
+    [user, applyPosts, resolveGumletPlaybackUrl, isGhostActive, session?.id],
   );
 
   const voteComment = useCallback(

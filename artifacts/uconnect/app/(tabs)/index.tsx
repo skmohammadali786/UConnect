@@ -18,6 +18,7 @@ import { TypewriterText } from "@/components/TypewriterText";
 import { useSocial } from "@/context/SocialContext";
 import { useChat } from "@/context/ChatContext";
 import { useTheme } from "@/context/ThemeContext";
+import { useGhostMode } from "@/context/GhostModeContext";
 import { supabase } from "@/lib/supabase";
 import { setTabBarVisible } from "@/utils/tabBarVisibility";
 import { AppLogo } from "@/components/AppLogo";
@@ -37,6 +38,7 @@ const SHORTCUTS = [
   { icon: "users", label: "Teams", route: "/teams" },
   { icon: "book-open", label: "Notes", route: "/notes" },
   { icon: "send", label: "Chats", route: "/chat" },
+  { icon: "shield", label: "The Vault", route: "/(tabs)/vault" },
 ];
 
 interface ProfileRow {
@@ -117,6 +119,7 @@ export default function HomeScreen() {
   const { settings } = useSettings();
   const { conversations } = useChat();
   const { showSuccess } = useToast();
+  const { activeCount, isGhostActive } = useGhostMode();
   const [activeFilter, setActiveFilter] = useState<FilterKey>("Latest");
   const [refreshing, setRefreshing] = useState(false);
   const [feedReposts, setFeedReposts] = useState<Array<{ post_id: string; user_id: string; created_at: string; username?: string }>>([]);
@@ -301,6 +304,10 @@ export default function HomeScreen() {
           transform: [{ translateY: shortcutSlide }],
         }}
       >
+        <View style={[styles.ghostActivePill, { backgroundColor: isGhostActive ? "#7C3AED" : colors.primary + "16", borderColor: isGhostActive ? "#A78BFA" : colors.primary + "30" }]}>
+          <Feather name="cloud-snow" size={13} color={isGhostActive ? "#FFF" : colors.primary} />
+          <Text style={[styles.ghostActiveText, { color: isGhostActive ? "#FFF" : colors.primary }]}>👻 {activeCount} Ghosts Active</Text>
+        </View>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -464,6 +471,8 @@ const styles = StyleSheet.create({
     width: 38, height: 38, borderRadius: 10, borderWidth: 1,
     alignItems: "center", justifyContent: "center",
   },
+  ghostActivePill: { marginHorizontal: 16, marginTop: 6, borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8, flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 7 },
+  ghostActiveText: { fontSize: 12, fontFamily: "Inter_700Bold" },
   shortcuts: { paddingHorizontal: 12, paddingVertical: 14, gap: 6 },
   shortcut: { alignItems: "center", gap: 6, marginHorizontal: 6 },
   shortcutIcon: { width: 52, height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center" },
