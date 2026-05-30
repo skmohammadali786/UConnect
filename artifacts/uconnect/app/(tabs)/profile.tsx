@@ -19,6 +19,8 @@ import { TypewriterText } from "@/components/TypewriterText";
 import { supabase } from "@/lib/supabase";
 import { formatRelativeTime } from "@/utils/time";
 import { useSettings } from "@/context/SettingsContext";
+import { useVaultSummary } from "@/hooks/useVault";
+import { VaultRadarCard } from "@/components/vault/VaultRadarCard";
 
 
 type TabId = "posts" | "saved" | "reposts" | "confessions" | "activity";
@@ -34,6 +36,7 @@ export default function ProfileScreen() {
   const { confessions } = useConfessions();
   const { followingIds } = useSocial();
   const { settings } = useSettings();
+  const { data: vaultSummary } = useVaultSummary(user?.id);
   const { showSuccess } = useToast();
   const [activeTab, setActiveTab] = useState<TabId>("posts");
   const [refreshing, setRefreshing] = useState(false);
@@ -338,6 +341,26 @@ export default function ProfileScreen() {
           ))}
         </View>
 
+
+        <View style={[styles.vaultProfileCard, elevatedCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.vaultProfileHeader}>
+            <View>
+              <Text style={[styles.vaultKicker, { color: colors.primary }]}>THE VAULT</Text>
+              <Text style={[styles.vaultTitle, { color: colors.foreground }]}>Reputation Engine</Text>
+            </View>
+            <View style={[styles.vaultLevelPill, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "35" }]}>
+              <Text style={[styles.vaultLevelText, { color: colors.primary }]}>{vaultSummary?.level ?? "Explorer"}</Text>
+            </View>
+          </View>
+          <View style={styles.vaultStatsRow}>
+            <View style={styles.vaultStat}><Text style={[styles.vaultStatNum, { color: colors.primary }]}>{vaultSummary?.score ?? 0}</Text><Text style={[styles.vaultStatLabel, { color: colors.mutedForeground }]}>Vault Score</Text></View>
+            <View style={styles.vaultStat}><Text style={[styles.vaultStatNum, { color: colors.primary }]}>{vaultSummary?.skillStrength ?? 0}%</Text><Text style={[styles.vaultStatLabel, { color: colors.mutedForeground }]}>Skill Strength</Text></View>
+            <View style={styles.vaultStat}><Text style={[styles.vaultStatNum, { color: colors.primary }]}>{vaultSummary?.badges?.length ?? 0}</Text><Text style={[styles.vaultStatLabel, { color: colors.mutedForeground }]}>Badges</Text></View>
+          </View>
+          <View style={[styles.vaultProgress, { backgroundColor: colors.secondary }]}><View style={[styles.vaultProgressFill, { backgroundColor: colors.primary, width: `${vaultSummary?.progress ?? 0}%` }]} /></View>
+          <VaultRadarCard skills={vaultSummary?.skills ?? []} colors={colors} compact />
+        </View>
+
         {user.interests && user.interests.length > 0 && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.interestsRow}>
             {user.interests.map((interest) => (
@@ -547,6 +570,18 @@ const styles = StyleSheet.create({
   metaText: { fontSize: 11, fontFamily: "Inter_500Medium" },
   bio: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 21, marginTop: 4 },
   statsCard: { flexDirection: "row", alignItems: "center", justifyContent: "space-around", borderRadius: 16, borderWidth: 1, paddingVertical: 14 },
+  vaultProfileCard: { marginHorizontal: 16, marginBottom: 16, borderWidth: 1, borderRadius: 22, padding: 14, gap: 14 },
+  vaultProfileHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  vaultKicker: { fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 1.8 },
+  vaultTitle: { fontSize: 18, fontFamily: "Inter_700Bold", marginTop: 2 },
+  vaultLevelPill: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
+  vaultLevelText: { fontSize: 12, fontFamily: "Inter_700Bold" },
+  vaultStatsRow: { flexDirection: "row", gap: 10 },
+  vaultStat: { flex: 1 },
+  vaultStatNum: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  vaultStatLabel: { fontSize: 11, fontFamily: "Inter_500Medium", marginTop: 2 },
+  vaultProgress: { height: 8, borderRadius: 99, overflow: "hidden" },
+  vaultProgressFill: { height: "100%", borderRadius: 99 },
   statItem: { alignItems: "center", gap: 2, flex: 1 },
   statNum: { fontSize: 20, fontFamily: "Inter_700Bold" },
   statLabel: { fontSize: 11, fontFamily: "Inter_400Regular" },

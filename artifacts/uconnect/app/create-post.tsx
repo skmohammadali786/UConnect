@@ -13,6 +13,7 @@ import { usePosts } from "@/context/PostsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useToast } from "@/components/Toast";
+import { useGhostMode } from "@/context/GhostModeContext";
 import { recordAttempt, formatLockTime } from "@/utils/rateLimit";
 import { isRemoteUri, uploadMediaUriToR2, uploadVideoUriToGumlet } from "@/utils/r2Upload";
 import type { PostTag, Draft } from "@/context/PostsContext";
@@ -57,6 +58,7 @@ export default function CreatePostScreen() {
   const { createPost, drafts, saveDraft, deleteDraft } = usePosts();
   const { user } = useAuth();
   const { settings } = useSettings();
+  const { isGhostActive, session } = useGhostMode();
   const { showSuccess, showInfo, showError } = useToast();
   const [content, setContent] = useState("");
   const [presetTag, setPresetTag] = useState<PostTag>("General");
@@ -143,7 +145,7 @@ export default function CreatePostScreen() {
 
   const handlePost = async () => {
     if (!content.trim() || !user) return;
-    if (isAnonymous && !canPostAnonymously) {
+    if (isAnonymous && !isGhostActive && !canPostAnonymously) {
       showInfo("Verification required", "Verify your profile to post anonymously.");
       return;
     }
@@ -193,10 +195,10 @@ export default function CreatePostScreen() {
 
       await createPost({
         authorId: user.id,
-        authorUsername: user.username,
-        authorAvatar: isAnonymous ? null : (user.avatar || null),
+        authorUsername: isGhostActive && session ? session.alias : user.username,
+        authorAvatar: isGhostActive || isAnonymous ? null : (user.avatar || null),
         college: user.college,
-        isAnonymous,
+        isAnonymous: isGhostActive ? false : isAnonymous,
         tag: activeTag,
         content: content.trim(),
         mediaUrls: uploadedMedia,
@@ -205,7 +207,7 @@ export default function CreatePostScreen() {
         videoAssetId,
         autoDeleteAt,
       });
-      showSuccess("Post published!", isAnonymous ? "Posted anonymously" : `Posted as @${user.username}`);
+      showSuccess("Post published!", isGhostActive && session ? `Posted as ${session.alias}` : isAnonymous ? "Posted anonymously" : `Posted as @${user.username}`);
       router.back();
     } catch (err: any) {
       showError("Upload failed", err?.message ?? "Could not publish your post. Please try again.");
@@ -268,10 +270,10 @@ export default function CreatePostScreen() {
             )}
             <View style={{ flex: 1 }}>
               <Text style={[styles.authorName, { color: colors.foreground }]}>
-                {isAnonymous ? "Posting as Anonymous" : `@${user?.username}`}
+                {isGhostActive && session ? `Posting as ${session.alias}` : isAnonymous ? "Posting as Anonymous" : `@${user?.username}`}
               </Text>
               <Text style={[styles.authorSub, { color: colors.mutedForeground }]}>
-                {isAnonymous ? "Your identity is hidden" : user?.college}
+                {isGhostActive ? "Ghost identity snapshot will be permanent" : isAnonymous ? "Your identity is hidden" : user?.college}
               </Text>
             </View>
             <View style={styles.toggleRow}>

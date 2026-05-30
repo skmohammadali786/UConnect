@@ -10,7 +10,7 @@ import { Stack, router, useSegments } from "expo-router";
 import * as Linking from "expo-linking";
 import * as SplashScreen from "expo-splash-screen";
 import * as SystemUI from "expo-system-ui";
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { View, useWindowDimensions } from "react-native";
 import { supabase } from "@/lib/supabase";
 import { extractEventIdFromLink, extractPostIdFromLink, extractReferralCodeFromLink } from "@/utils/postLinks";
@@ -27,6 +27,8 @@ import { ChatProvider } from "@/context/ChatContext";
 import { NotificationsProvider } from "@/context/NotificationsContext";
 import { SettingsProvider } from "@/context/SettingsContext";
 import { ConfessionsProvider } from "@/context/ConfessionsContext";
+import { GhostModeProvider } from "@/context/GhostModeContext";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { SocialProvider } from "@/context/SocialContext";
 import { TeamsProvider } from "@/context/TeamsContext";
@@ -91,6 +93,7 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
+  const [queryClient] = useState(() => new QueryClient());
   const [fontsLoaded, fontError] = useFonts({
     DMSans_500Medium,
     DMSans_700Bold,
@@ -166,31 +169,35 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ErrorBoundary>
-        <ThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          <ThemeProvider>
           <AuthProvider>
             <SettingsProvider>
               <SocialProvider>
                 <TeamsProvider>
-                <PostsProvider>
                   <ChatProvider>
                     <NotificationsProvider>
-                      <ConfessionsProvider>
-                        <ToastProvider>
-                          <GestureHandlerRootView style={{ flex: 1 }}>
-                            <AuthGate>
-                              <RootLayoutNav />
-                            </AuthGate>
-                          </GestureHandlerRootView>
-                        </ToastProvider>
-                      </ConfessionsProvider>
+                      <GhostModeProvider>
+                        <PostsProvider>
+                          <ConfessionsProvider>
+                            <ToastProvider>
+                              <GestureHandlerRootView style={{ flex: 1 }}>
+                                <AuthGate>
+                                  <RootLayoutNav />
+                                </AuthGate>
+                              </GestureHandlerRootView>
+                            </ToastProvider>
+                          </ConfessionsProvider>
+                        </PostsProvider>
+                      </GhostModeProvider>
                     </NotificationsProvider>
                   </ChatProvider>
-                </PostsProvider>
                 </TeamsProvider>
               </SocialProvider>
             </SettingsProvider>
           </AuthProvider>
         </ThemeProvider>
+        </QueryClientProvider>
       </ErrorBoundary>
     </SafeAreaProvider>
   );

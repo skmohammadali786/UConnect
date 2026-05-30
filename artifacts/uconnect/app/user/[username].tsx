@@ -22,6 +22,7 @@ import { useSocial } from "@/context/SocialContext";
 import { useChat } from "@/context/ChatContext";
 import { useToast } from "@/components/Toast";
 import { supabase } from "@/lib/supabase";
+import { useVaultSummary } from "@/hooks/useVault";
 
 const ND = Platform.OS !== "web";
 const OFFICIAL_UCONNECT_BADGE_COLOR = "#EE4B2B";
@@ -46,6 +47,7 @@ export default function UserProfileScreen() {
   const [repostRows, setRepostRows] = useState<
     { post_id: string; created_at: string }[]
   >([]);
+  const { data: vaultSummary } = useVaultSummary(profile?.id);
 
   const key = username?.toLowerCase() || "";
 
@@ -600,6 +602,19 @@ export default function UserProfileScreen() {
                 ))}
               </View>
 
+
+              <View style={[styles.vaultMiniCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View>
+                  <Text style={[styles.vaultMiniKicker, { color: colors.primary }]}>VAULT PROFILE</Text>
+                  <Text style={[styles.vaultMiniTitle, { color: colors.foreground }]}>{vaultSummary?.level ?? "Explorer"}</Text>
+                </View>
+                <View style={styles.vaultMiniStats}>
+                  <View><Text style={[styles.vaultMiniNum, { color: colors.primary }]}>{vaultSummary?.score ?? 0}</Text><Text style={[styles.vaultMiniLabel, { color: colors.mutedForeground }]}>Score</Text></View>
+                  <View><Text style={[styles.vaultMiniNum, { color: colors.primary }]}>{vaultSummary?.skillStrength ?? 0}%</Text><Text style={[styles.vaultMiniLabel, { color: colors.mutedForeground }]}>Radar</Text></View>
+                  <View><Text style={[styles.vaultMiniNum, { color: colors.primary }]}>{vaultSummary?.badges?.length ?? 0}</Text><Text style={[styles.vaultMiniLabel, { color: colors.mutedForeground }]}>Badges</Text></View>
+                </View>
+              </View>
+
               {profile.interests?.length > 0 && (
                 <ScrollView
                   horizontal
@@ -858,6 +873,12 @@ const styles = StyleSheet.create({
   statNum: { fontSize: 18, fontFamily: "Inter_700Bold" },
   statLabel: { fontSize: 11, fontFamily: "Inter_400Regular" },
   statDivider: { width: 1, height: 28 },
+  vaultMiniCard: { marginHorizontal: 16, marginBottom: 16, borderWidth: 1, borderRadius: 20, padding: 14, gap: 12 },
+  vaultMiniKicker: { fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 1.6 },
+  vaultMiniTitle: { fontSize: 18, fontFamily: "Inter_700Bold", marginTop: 2 },
+  vaultMiniStats: { flexDirection: "row", justifyContent: "space-between" },
+  vaultMiniNum: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  vaultMiniLabel: { fontSize: 11, fontFamily: "Inter_500Medium", marginTop: 2 },
   interestsRow: { paddingHorizontal: 16, paddingBottom: 14, gap: 6 },
   chip: {
     paddingHorizontal: 10,

@@ -25,9 +25,11 @@ function rowToComment(row: any, userVote: "up" | "down" | null = null): Comment 
     postId: row.post_id,
     parentId: row.parent_id ?? null,
     authorId: row.author_id,
-    authorUsername: row.is_anonymous ? "anonymous" : (row.author_username ?? "user"),
-    authorAvatar: row.is_anonymous ? null : (row.author_avatar ?? null),
+    authorUsername: row.is_ghost ? (row.ghost_alias_snapshot ?? row.author_username ?? "Neon Phantom") : row.is_anonymous ? "anonymous" : (row.author_username ?? "user"),
+    authorAvatar: row.is_ghost || row.is_anonymous ? null : (row.author_avatar ?? null),
     isAnonymous: row.is_anonymous,
+    isGhost: Boolean(row.is_ghost),
+    ghostAlias: row.ghost_alias_snapshot ?? null,
     content: row.content,
     upvotes: row.upvotes ?? 0,
     downvotes: row.downvotes ?? 0,
@@ -82,21 +84,11 @@ export default function PostDetailScreen() {
       return;
     }
     try {
-      const { data } = await supabase
-        .from("comments")
-        .select("*")
-        .eq("post_id", post.id)
-        .is("parent_id", null)
-        .order("created_at", { ascending: true });
+      const { data: commentRows } = await supabase.rpc("get_secure_comments", { p_post_id: post.id });
+      const data = (commentRows ?? []).filter((row: any) => !row.parent_id);
+      const replyRows = (commentRows ?? []).filter((row: any) => row.parent_id);
 
-      const { data: replyRows } = await supabase
-        .from("comments")
-        .select("*")
-        .eq("post_id", post.id)
-        .not("parent_id", "is", null)
-        .order("created_at", { ascending: true });
-
-      const allRows = [...(data ?? []), ...(replyRows ?? [])];
+      const allRows = [...data, ...replyRows];
       const commentIds = allRows.map((r: any) => r.id);
       let userVoteMap = new Map<string, "up" | "down">();
       if (user && commentIds.length > 0) {
@@ -108,7 +100,7 @@ export default function PostDetailScreen() {
         (voteRows ?? []).forEach((v: any) => userVoteMap.set(v.comment_id, v.vote));
       }
 
-      const topLevel = (data ?? []).map((row: any) => rowToComment(row, userVoteMap.get(row.id) ?? null));
+      const topLevel: Comment[] = (data ?? []).map((row: any) => rowToComment(row, userVoteMap.get(row.id) ?? null));
 
       const replyMap = new Map<string, Comment[]>();
       (replyRows ?? []).forEach((r: any) => {
@@ -117,7 +109,7 @@ export default function PostDetailScreen() {
         replyMap.get(r.parent_id)!.push(c);
       });
 
-      const withReplies = topLevel.map((c) => ({
+      const withReplies: Comment[] = topLevel.map((c: Comment) => ({
         ...c,
         replies: replyMap.get(c.id) ?? [],
       }));
@@ -132,7 +124,7 @@ export default function PostDetailScreen() {
             prevReplyLocalByParent.set(parentId, [...current, r]);
           });
         });
-        const remoteReplies = withReplies.flatMap((c) => c.replies);
+        const remoteReplies = withReplies.flatMap((c: Comment) => c.replies);
         const merged = [...withReplies];
         const mergedById = new Map(merged.map((c) => [c.id, c]));
 
@@ -147,7 +139,7 @@ export default function PostDetailScreen() {
         prevReplyLocalByParent.forEach((locals, parentId) => {
           const parent = mergedById.get(parentId);
           if (!parent) return;
-          const existingReplyIds = new Set(parent.replies.map((r) => r.id));
+          const existingReplyIds = new Set(parent.replies.map((r: Comment) => r.id));
           const pendingReplies = locals.filter((local) => !hasMatchingRemoteComment(local, remoteReplies) && !existingReplyIds.has(local.id));
           if (pendingReplies.length === 0) return;
           const updatedParent = { ...parent, replies: [...parent.replies, ...pendingReplies] };
