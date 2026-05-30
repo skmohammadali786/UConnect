@@ -172,6 +172,8 @@ function rowToComment(
     authorUsername: row.is_ghost ? (row.ghost_alias_snapshot ?? "Neon Phantom") : row.is_anonymous ? "anonymous" : row.author_username,
     authorAvatar: row.is_ghost || row.is_anonymous ? null : row.author_avatar,
     isAnonymous: row.is_anonymous,
+    isGhost: Boolean(row.is_ghost),
+    ghostAlias: row.ghost_alias_snapshot ?? null,
     content: row.content,
     upvotes: row.upvotes ?? 0,
     downvotes: row.downvotes ?? 0,

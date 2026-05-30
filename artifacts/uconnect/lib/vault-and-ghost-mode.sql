@@ -536,7 +536,38 @@ end; $$;
 grant execute on function get_vault_home(uuid) to authenticated, anon;
 grant execute on function nominate_vault_legend(uuid,text,text) to authenticated;
 grant execute on function create_vault_alert(text,text,text,text,text) to authenticated;
+
+create or replace function vote_vault_target(target_type text, target_id uuid, vote text default 'up')
+returns void language plpgsql security definer set search_path = public as $$
+declare v_previous text;
+begin
+  if auth.uid() is null then raise exception 'Not authenticated'; end if;
+  if exists(select 1 from ghost_sessions where user_id=auth.uid() and is_active and expires_at > now()) then
+    raise exception 'Ghost Mode cannot vote in the Vault';
+  end if;
+  if target_type not in ('legend_nomination','wiki_article') then raise exception 'Invalid vote target'; end if;
+  if vote not in ('up','down') then raise exception 'Invalid vote'; end if;
+
+  select vv.vote into v_previous from vault_votes vv where vv.user_id=auth.uid() and vv.target_type=vote_vault_target.target_type and vv.target_id=vote_vault_target.target_id;
+  insert into vault_votes(user_id, target_type, target_id, vote) values(auth.uid(), target_type, target_id, vote)
+  on conflict(user_id, target_type, target_id) do update set vote=excluded.vote;
+
+  if v_previous is null then
+    if target_type='legend_nomination' then
+      update vault_nominations set votes_count = greatest(0, votes_count + case when vote='up' then 1 else -1 end) where id=target_id;
+    else
+      update vault_wiki_articles set upvotes = greatest(0, upvotes + case when vote='up' then 1 else -1 end) where id=target_id;
+    end if;
+  elsif v_previous <> vote then
+    if target_type='legend_nomination' then
+      update vault_nominations set votes_count = greatest(0, votes_count + case when vote='up' then 1 else -1 end + case when v_previous='up' then -1 else 1 end) where id=target_id;
+    else
+      update vault_wiki_articles set upvotes = greatest(0, upvotes + case when vote='up' then 1 else -1 end + case when v_previous='up' then -1 else 1 end) where id=target_id;
+    end if;
+  end if;
+end; $$;
 grant execute on function join_vault_debate(uuid,text,text,text) to authenticated;
+grant execute on function vote_vault_target(text,uuid,text) to authenticated;
 grant execute on function get_active_ghost_count() to authenticated, anon;
 grant execute on function get_active_ghost_session() to authenticated;
 grant execute on function activate_ghost_mode() to authenticated;
