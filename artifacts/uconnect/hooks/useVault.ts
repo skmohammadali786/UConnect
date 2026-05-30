@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
-import { fetchVaultSummary, createVaultAlert, nominateVaultLegend, joinVaultDebate } from "@/services/vault";
+import { fetchVaultSummary, createVaultAlert, nominateVaultLegend, joinVaultDebate, createVaultDebate, createVaultWikiArticle, voteVaultTarget } from "@/services/vault";
 
 export function useVaultSummary(profileUserId?: string) {
   const { user } = useAuth();
@@ -34,5 +34,8 @@ export function useVaultActions() {
     createAlert: useMutation({ mutationFn: createVaultAlert, onSuccess: invalidate }),
     nominateLegend: useMutation({ mutationFn: nominateVaultLegend, onSuccess: invalidate }),
     joinDebate: useMutation({ mutationFn: joinVaultDebate, onSuccess: invalidate }),
+    createDebate: useMutation({ mutationFn: createVaultDebate, onSuccess: invalidate }),
+    createWikiArticle: useMutation({ mutationFn: createVaultWikiArticle, onSuccess: invalidate }),
+    voteTarget: useMutation({ mutationFn: ({ targetType, targetId, vote }: { targetType: "legend_nomination" | "wiki_article"; targetId: string; vote?: "up" | "down" }) => voteVaultTarget(targetType, targetId, vote), onSuccess: invalidate }),
   };
 }

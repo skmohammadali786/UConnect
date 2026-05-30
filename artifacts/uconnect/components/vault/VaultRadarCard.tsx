@@ -2,16 +2,38 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, Line, Polygon, Text as SvgText } from "react-native-svg";
 
-export function VaultRadarCard({ skills, colors, compact = false }: { skills: Array<{ skill_name: string; strength: number; trend?: number }>; colors: any; compact?: boolean }) {
+type RadarSkill = { skill_name?: string | null; strength?: number | null; trend?: number | null };
+
+function clampStrength(value: unknown) {
+  const next = Number(value ?? 0);
+  if (!Number.isFinite(next)) return 0;
+  return Math.min(100, Math.max(0, next));
+}
+
+function skillLabel(value: unknown, index: number) {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : `Skill ${index + 1}`;
+}
+
+export function VaultRadarCard({ skills, colors, compact = false }: { skills?: RadarSkill[] | null; colors: any; compact?: boolean }) {
   const size = compact ? 180 : 230;
   const center = size / 2;
   const radius = compact ? 58 : 76;
-  const data = (skills.length ? skills : ["React", "Design", "Leadership", "Content", "Data", "Speaking"].map((skill_name) => ({ skill_name, strength: 0 }))).slice(0, 7);
+  const fallbackSkills = ["React", "Design", "Leadership", "Content", "Data", "Speaking"].map((skill_name) => ({ skill_name, strength: 0 }));
+  const normalizedSkills = Array.isArray(skills) ? skills : [];
+  const data = (normalizedSkills.length ? normalizedSkills : fallbackSkills)
+    .slice(0, 7)
+    .map((skill, index) => ({
+      skill_name: skillLabel(skill?.skill_name, index),
+      strength: clampStrength(skill?.strength),
+    }));
   const points = data.map((s, i) => {
     const angle = -Math.PI / 2 + (2 * Math.PI * i) / data.length;
-    const r = radius * Math.min(100, Math.max(0, s.strength)) / 100;
+    const r = radius * s.strength / 100;
     return `${center + Math.cos(angle) * r},${center + Math.sin(angle) * r}`;
   }).join(" ");
+  const radarFill = `${colors.primary ?? "#7C3AED"}55`;
+  const radarStroke = colors.primary ?? "#A78BFA";
+
   return (
     <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={styles.titleRow}>
@@ -26,9 +48,9 @@ export function VaultRadarCard({ skills, colors, compact = false }: { skills: Ar
           const y = center + Math.sin(angle) * radius;
           const lx = center + Math.cos(angle) * (radius + 20);
           const ly = center + Math.sin(angle) * (radius + 20);
-          return <React.Fragment key={s.skill_name}><Line x1={center} y1={center} x2={x} y2={y} stroke={colors.border} strokeWidth="1" /><SvgText x={lx} y={ly} fontSize="9" fill={colors.mutedForeground} textAnchor="middle">{s.skill_name.slice(0, 9)}</SvgText></React.Fragment>;
+          return <React.Fragment key={`${s.skill_name}-${i}`}><Line x1={center} y1={center} x2={x} y2={y} stroke={colors.border} strokeWidth="1" /><SvgText x={lx} y={ly} fontSize="9" fill={colors.mutedForeground} textAnchor="middle">{s.skill_name.slice(0, 9)}</SvgText></React.Fragment>;
         })}
-        <Polygon points={points} fill="#7C3AED55" stroke="#A78BFA" strokeWidth="2" />
+        <Polygon points={points} fill={radarFill} stroke={radarStroke} strokeWidth="2" />
       </Svg>
     </View>
   );

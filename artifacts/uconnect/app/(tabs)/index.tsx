@@ -262,41 +262,45 @@ export default function HomeScreen() {
 
   const headerComponent = (
     <View>
-      <Animated.View
-        style={[
-          styles.header,
-          {
-            paddingTop: Platform.OS === "web" ? 67 : insets.top + 4,
-            backgroundColor: colors.headerBg,
-            borderBottomColor: colors.border,
-            opacity: headerFade,
-            transform: [{ translateY: headerSlide }],
-          },
-        ]}
-      >
-        <View style={styles.headerLeft}>
-          <View style={[styles.logoSmall, isDarkTheme ? { backgroundColor: "#111827", borderColor: "#374151" } : { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" }]}>
-            <AppLogo size={32} isDark={isDarkTheme} />
-          </View>
-          <View>
-            <TypewriterText
-              text="UConnect"
-              style={[styles.headerTitle, { color: colors.foreground }]}
-              delay={350}
-              speed={65}
-            />
-            {user?.college && (
-              <Text style={[styles.headerCollege, { color: colors.mutedForeground }]}>{user.college}</Text>
-            )}
-          </View>
-        </View>
-        <TouchableOpacity
-          onPress={() => router.push("/settings")}
-          style={[styles.headerIconBtn, { backgroundColor: colors.input, borderColor: colors.border }]}
+      {!isGhostActive ? (
+        <Animated.View
+          style={[
+            styles.header,
+            {
+              paddingTop: Platform.OS === "web" ? 67 : insets.top + 4,
+              backgroundColor: colors.headerBg,
+              borderBottomColor: colors.border,
+              opacity: headerFade,
+              transform: [{ translateY: headerSlide }],
+            },
+          ]}
         >
-          <Feather name="settings" size={18} color={colors.mutedForeground} />
-        </TouchableOpacity>
-      </Animated.View>
+          <View style={styles.headerLeft}>
+            <View style={[styles.logoSmall, isDarkTheme ? { backgroundColor: "#111827", borderColor: "#374151" } : { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" }]}>
+              <AppLogo size={32} isDark={isDarkTheme} />
+            </View>
+            <View>
+              <TypewriterText
+                text="UConnect"
+                style={[styles.headerTitle, { color: colors.foreground }]}
+                delay={350}
+                speed={65}
+              />
+              {user?.college && (
+                <Text style={[styles.headerCollege, { color: colors.mutedForeground }]}>{user.college}</Text>
+              )}
+            </View>
+          </View>
+          <TouchableOpacity
+            onPress={() => router.push("/settings")}
+            style={[styles.headerIconBtn, { backgroundColor: colors.input, borderColor: colors.border }]}
+          >
+            <Feather name="settings" size={18} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        </Animated.View>
+      ) : (
+        <View style={{ paddingTop: Platform.OS === "web" ? 24 : insets.top + 4 }} />
+      )}
 
       <Animated.View
         style={{
@@ -304,9 +308,9 @@ export default function HomeScreen() {
           transform: [{ translateY: shortcutSlide }],
         }}
       >
-        <View style={[styles.ghostActivePill, { backgroundColor: isGhostActive ? "#7C3AED" : colors.primary + "16", borderColor: isGhostActive ? "#A78BFA" : colors.primary + "30" }]}>
-          <Feather name="cloud-snow" size={13} color={isGhostActive ? "#FFF" : colors.primary} />
-          <Text style={[styles.ghostActiveText, { color: isGhostActive ? "#FFF" : colors.primary }]}>👻 {activeCount} Ghosts Active</Text>
+        <View style={[styles.ghostActivePill, { backgroundColor: isGhostActive ? colors.primary : colors.primary + "16", borderColor: colors.primary + "30" }]}>
+          <Feather name="cloud-snow" size={13} color={isGhostActive ? colors.primaryForeground : colors.primary} />
+          <Text style={[styles.ghostActiveText, { color: isGhostActive ? colors.primaryForeground : colors.primary }]}>👻 {activeCount} Ghosts Active</Text>
         </View>
         <ScrollView
           horizontal
