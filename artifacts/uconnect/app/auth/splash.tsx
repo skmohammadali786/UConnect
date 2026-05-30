@@ -1,9 +1,10 @@
 import { router } from "expo-router";
 import React, { useEffect } from "react";
-import { ActivityIndicator, Image, StyleSheet, Text, View, useColorScheme } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View, useColorScheme } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
+import { AppLogo } from "@/components/AppLogo";
 
 export default function SplashScreen() {
   const colors = useColors();
@@ -30,11 +31,7 @@ export default function SplashScreen() {
     <View style={[styles.container, { backgroundColor: isDark ? "#0A0A0A" : "#FFFFFF" }]}>
       <View style={styles.logoContainer}>
         <View style={[styles.logoWrap, isDark ? styles.logoWrapDark : styles.logoWrapLight]}>
-          <Image
-            source={isDark ? require("@/assets/images/logo-dark.png") : require("@/assets/images/logo.png")}
-            style={styles.logoImg}
-            resizeMode="contain"
-          />
+          <AppLogo size={76} isDark={isDark} />
         </View>
         <Text style={[styles.appName, { color: colors.foreground }]}>UConnect</Text>
         <Text style={[styles.tagline, { color: colors.mutedForeground }]}>Your college. Your community.</Text>

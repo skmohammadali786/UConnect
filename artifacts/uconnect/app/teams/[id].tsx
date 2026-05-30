@@ -148,6 +148,7 @@ export default function TeamDetailScreen() {
   const [postContent, setPostContent] = useState("");
   const [postMedia, setPostMedia] = useState<string | null>(null);
   const [postMediaMeta, setPostMediaMeta] = useState<{ fileType?: string; fileName?: string } | null>(null);
+  const [isPostingUpdate, setIsPostingUpdate] = useState(false);
   const [pollModalVisible, setPollModalVisible] = useState(false);
   const [pollQuestion, setPollQuestion] = useState("");
   const [pollOptions, setPollOptions] = useState<string[]>(["", ""]);
@@ -440,15 +441,19 @@ export default function TeamDetailScreen() {
   };
 
   const handleCreatePost = async () => {
-    if (!user || !team || !isAdmin) return;
+    if (!user || !team || !isAdmin || isPostingUpdate) return;
     if (!postContent.trim() && !postMedia) {
       showInfo("Add content", "Write a message or attach an image.");
       return;
     }
+    setIsPostingUpdate(true);
     try {
       let mediaUrls: string[] = [];
       if (postMedia) {
         const uploaded = await uploadMediaUriToR2(postMedia, { fileType: postMediaMeta?.fileType, kind: "image" });
+        if (!uploaded.publicUrl) {
+          throw new Error("Cloudflare R2 upload did not return a public URL");
+        }
         mediaUrls = [uploaded.publicUrl];
       }
       const { data: postRow, error } = await supabase.from("team_posts").insert({
@@ -473,8 +478,11 @@ export default function TeamDetailScreen() {
       setPostMediaMeta(null);
       showSuccess("Posted to team feed!");
       loadFeed();
-    } catch {
-      showError("Post failed", "Try again in a moment.");
+    } catch (error) {
+      console.error("Failed to create team feed post", error);
+      showError("Post failed", error instanceof Error ? error.message : "Try again in a moment.");
+    } finally {
+      setIsPostingUpdate(false);
     }
   };
 
@@ -862,9 +870,17 @@ export default function TeamDetailScreen() {
                     <Text style={[styles.composerActionText, { color: colors.mutedForeground }]}>Event</Text>
                   </TouchableOpacity>
                 </View>
-                <TouchableOpacity onPress={handleCreatePost} style={[styles.feedPostBtn, { backgroundColor: colors.primary }]}>
-                  <Feather name="send" size={15} color="#FFF" />
-                  <Text style={styles.feedPostBtnText}>Post to feed</Text>
+                <TouchableOpacity
+                  onPress={handleCreatePost}
+                  disabled={isPostingUpdate}
+                  style={[styles.feedPostBtn, { backgroundColor: colors.primary }, isPostingUpdate && { opacity: 0.65 }]}
+                >
+                  {isPostingUpdate ? (
+                    <ActivityIndicator size="small" color="#FFF" />
+                  ) : (
+                    <Feather name="send" size={15} color="#FFF" />
+                  )}
+                  <Text style={styles.feedPostBtnText}>{isPostingUpdate ? "Posting..." : "Post to feed"}</Text>
                 </TouchableOpacity>
               </View>
             )}

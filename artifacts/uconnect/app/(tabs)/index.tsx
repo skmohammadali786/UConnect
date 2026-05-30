@@ -1,5 +1,4 @@
 import { Feather } from "@expo/vector-icons";
-import { Image } from "react-native";
 import { router } from "expo-router";
 import React, { useCallback, useMemo, useRef, useEffect, useState } from "react";
 import {
@@ -21,6 +20,7 @@ import { useChat } from "@/context/ChatContext";
 import { useTheme } from "@/context/ThemeContext";
 import { supabase } from "@/lib/supabase";
 import { setTabBarVisible } from "@/utils/tabBarVisibility";
+import { AppLogo } from "@/components/AppLogo";
 
 type FilterKey = "Latest" | "Trending" | "Following";
 
@@ -273,7 +273,7 @@ export default function HomeScreen() {
       >
         <View style={styles.headerLeft}>
           <View style={[styles.logoSmall, isDarkTheme ? { backgroundColor: "#111827", borderColor: "#374151" } : { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" }]}>
-            <Image source={isDarkTheme ? require("@/assets/images/logo-dark.png") : require("@/assets/images/logo.png")} style={styles.logoImg} resizeMode="contain" />
+            <AppLogo size={32} isDark={isDarkTheme} />
           </View>
           <View>
             <TypewriterText
