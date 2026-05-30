@@ -1,13 +1,14 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useState } from "react";
-import { Animated, Image, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useColorScheme, useWindowDimensions } from "react-native";
+import { Animated, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useColorScheme, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { useTheme } from "@/context/ThemeContext";
+import { AppLogo } from "@/components/AppLogo";
 
 export default function RateScreen() {
   const colors = useColors();
@@ -95,11 +96,7 @@ export default function RateScreen() {
       <ScrollView contentContainerStyle={{ paddingHorizontal: horizontalPadding, paddingVertical: 24, gap: 24, paddingBottom: 60, alignItems: "center" }} keyboardShouldPersistTaps="handled">
         <View style={{ alignItems: "center", gap: 16, width: contentWidth }}>
           <View style={[styles.appIcon, isDarkTheme ? { backgroundColor: "#111827", borderColor: "#374151" } : { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" }]}>
-            <Image
-              source={isDarkTheme ? require("@/assets/images/logo-dark.png") : require("@/assets/images/logo.png")}
-              style={styles.appLogo}
-              resizeMode="contain"
-            />
+            <AppLogo size={78} isDark={isDarkTheme} />
           </View>
           <Text style={[styles.heading, { color: colors.foreground }]}>Enjoying UConnect?</Text>
           <Text style={[styles.subheading, { color: colors.mutedForeground }]}>

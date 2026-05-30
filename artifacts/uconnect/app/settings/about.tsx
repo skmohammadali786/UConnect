@@ -5,6 +5,7 @@ import { Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View, 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useTheme } from "@/context/ThemeContext";
+import { AppLogo } from "@/components/AppLogo";
 
 const FEATURES = [
   { icon: "shield", label: "Fully Anonymous", desc: "Post without ever revealing your identity" },
@@ -37,7 +38,7 @@ export default function AboutScreen() {
       <ScrollView contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
         <View style={[styles.hero, { backgroundColor: colors.primary + "10" }]}>
           <View style={[styles.logoCircle, isDarkTheme ? { backgroundColor: "#111827", borderColor: "#374151", borderWidth: 1.5 } : { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" }]}>
-            <Image source={isDarkTheme ? require("@/assets/images/logo-dark.png") : require("@/assets/images/logo.png")} style={styles.logoImg} resizeMode="contain" />
+            <AppLogo size={78} isDark={isDarkTheme} />
           </View>
           <Text style={[styles.appName, { color: colors.foreground }]}>UConnect</Text>
           <Text style={[styles.tagline, { color: colors.primary }]}>Your college. Your voice.</Text>

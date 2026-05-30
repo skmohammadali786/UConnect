@@ -2,12 +2,13 @@ import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useEffect, useMemo, useRef } from "react";
 import {
-  Animated, Easing, Image, Platform,
+  Animated, Easing, Platform,
   ScrollView, StyleSheet, Text, TouchableOpacity, View, useColorScheme, useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useTheme } from "@/context/ThemeContext";
+import { AppLogo } from "@/components/AppLogo";
 
 const FEATURES = [
   { icon: "shield", text: "Post anonymously, no judgement" },
@@ -162,11 +163,7 @@ export default function WelcomeScreen() {
           }}
         >
           <View style={[styles.logoWrap, { width: logoSize, height: logoSize, borderRadius: Math.round(logoSize * 0.5) }, isDarkTheme ? styles.logoWrapDark : styles.logoWrapLight]}>
-            <Image
-              source={isDarkTheme ? require("@/assets/images/logo-dark.png") : require("@/assets/images/logo.png")}
-              style={{ width: logoImageSize, height: logoImageSize }}
-              resizeMode="contain"
-            />
+            <AppLogo size={logoImageSize} isDark={isDarkTheme} />
           </View>
         </Animated.View>
       </View>

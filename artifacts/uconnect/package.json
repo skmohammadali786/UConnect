@@ -5,15 +5,16 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
-    "dev": "pnpm exec expo start --localhost",
-    "build": "node scripts/build.js",
+    "dev": "pnpm run generate-brand-assets && pnpm exec expo start --localhost",
+    "build": "pnpm run generate-brand-assets && node scripts/build.js",
     "serve": "node server/serve.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "build:apk": "pnpm dlx eas-cli@latest build --platform android --profile preview",
-    "build:aab": "pnpm dlx eas-cli@latest build --platform android --profile production",
-    "build:ios:internal": "pnpm dlx eas-cli@latest build --platform ios --profile internal",
-    "build:ios:preview": "pnpm dlx eas-cli@latest build --platform ios --profile preview",
-    "build:ios:production": "pnpm dlx eas-cli@latest build --platform ios --profile production"
+    "build:apk": "pnpm run generate-brand-assets && pnpm dlx eas-cli@latest build --platform android --profile preview",
+    "build:aab": "pnpm run generate-brand-assets && pnpm dlx eas-cli@latest build --platform android --profile production",
+    "build:ios:internal": "pnpm run generate-brand-assets && pnpm dlx eas-cli@latest build --platform ios --profile internal",
+    "build:ios:preview": "pnpm run generate-brand-assets && pnpm dlx eas-cli@latest build --platform ios --profile preview",
+    "build:ios:production": "pnpm run generate-brand-assets && pnpm dlx eas-cli@latest build --platform ios --profile production",
+    "generate-brand-assets": "node scripts/generate-brand-assets.js"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
