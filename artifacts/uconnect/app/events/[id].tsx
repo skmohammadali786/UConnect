@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppButton } from "@/components/AppButton";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
+import { useGhostMode } from "@/context/GhostModeContext";
 import { useToast } from "@/components/Toast";
 import { supabase } from "@/lib/supabase";
 import { safeInsertNotification } from "@/utils/notifications";
@@ -47,6 +48,7 @@ export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
   const { showSuccess, showError, showInfo } = useToast();
+  const ghost = useGhostMode();
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [eventLoading, setEventLoading] = useState(true);
   const [rsvpStatus, setRsvpStatus] = useState<string | null>(null);
@@ -235,6 +237,10 @@ export default function EventDetailScreen() {
 
   const handleRSVP = async () => {
     if (!event || !id || loading) return;
+    if (!ghost.canPerformIdentityAction("rsvp_event")) {
+      showError("Ghost Mode active", "Turn off Ghost Mode before RSVPing to events.");
+      return;
+    }
     const canCancel = rsvpStatus === "pending" || rsvpStatus === "approved";
     const previousStatus = rsvpStatus;
     const nextStatus = canCancel ? null : event.requiresApproval ? "pending" : "approved";

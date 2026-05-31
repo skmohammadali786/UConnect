@@ -5,6 +5,7 @@ import { ActivityIndicator, Animated, Easing, FlatList, Platform, RefreshControl
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useToast } from "@/components/Toast";
+import { useGhostMode } from "@/context/GhostModeContext";
 import { TypewriterText } from "@/components/TypewriterText";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -125,7 +126,8 @@ function InternshipCard({ item, index, applications, onApply, colors }: any) {
 export default function InternshipsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { showSuccess } = useToast();
+  const { showSuccess, showError } = useToast();
+  const ghost = useGhostMode();
   const { user } = useAuth();
   const [internships, setInternships] = useState<Internship[]>([]);
   const [activeType, setActiveType] = useState<string>("All");
@@ -186,6 +188,10 @@ export default function InternshipsScreen() {
 
   const handleApply = async (id: string) => {
     if (!user) return;
+    if (!ghost.canPerformIdentityAction("apply_internship")) {
+      showError("Ghost Mode active", "Turn off Ghost Mode before applying to internships.");
+      return;
+    }
     const already = !!applications[id];
     const updated = { ...applications };
 

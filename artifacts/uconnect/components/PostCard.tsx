@@ -29,6 +29,20 @@ import { buildPostShareLink } from "@/utils/postLinks";
 const ND = Platform.OS !== "web";
 const URI_PROTOCOL_REGEX = /^[a-z][a-z0-9+.-]*:/i;
 
+
+const GHOST_AVATARS = [
+  { icon: "cloud-snow", bg: "#0B1020", border: "#7C3AED", fg: "#C4B5FD" },
+  { icon: "moon", bg: "#111827", border: "#38BDF8", fg: "#BAE6FD" },
+  { icon: "zap", bg: "#1E1B4B", border: "#F472B6", fg: "#FBCFE8" },
+  { icon: "eye-off", bg: "#172554", border: "#22D3EE", fg: "#A5F3FC" },
+  { icon: "hexagon", bg: "#2E1065", border: "#A78BFA", fg: "#E9D5FF" },
+];
+
+function ghostAvatarFor(seed: string) {
+  const hash = seed.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  return GHOST_AVATARS[Math.abs(hash) % GHOST_AVATARS.length] ?? GHOST_AVATARS[0];
+}
+
 const TAG_COLORS: Record<string, string> = {
   General: "#6B7280",
   Academic: "#3B82F6",
@@ -214,6 +228,7 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
   const hasVideo = !!post.videoUrl;
   const isReposted = hasReposted(post.id);
   const auraRingColor = post.authorAuraRingColor || "#6366F1";
+  const ghostAvatar = ghostAvatarFor(post.id || post.ghostAlias || post.authorUsername || "ghost");
 
   const autoDeleteLabel = post.autoDeleteAt ? (() => {
     const diff = new Date(post.autoDeleteAt).getTime() - Date.now();
@@ -253,8 +268,9 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
             style={styles.authorRow}
           >
             {post.isGhost ? (
-              <View style={[styles.avatarWrap, { backgroundColor: "#0B1020", borderColor: "#7C3AED" }]}>
-                <Feather name="cloud-snow" size={14} color="#A78BFA" />
+              <View style={[styles.avatarWrap, styles.ghostAvatarWrap, { backgroundColor: ghostAvatar.bg, borderColor: ghostAvatar.border }]}>
+                <Feather name={ghostAvatar.icon as any} size={14} color={ghostAvatar.fg} />
+                <Text style={styles.ghostAvatarText}>👻</Text>
               </View>
             ) : post.isAnonymous ? (
               <View style={[styles.avatarWrap, { backgroundColor: colors.muted, borderColor: "transparent" }]}>
@@ -474,6 +490,8 @@ const styles = StyleSheet.create({
   usernameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   username: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   verifiedBadge: { width: 15, height: 15, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+  ghostAvatarWrap: { shadowOpacity: 0.22, shadowRadius: 8, elevation: 3 },
+  ghostAvatarText: { position: "absolute", right: -5, bottom: -6, fontSize: 14 },
   ghostBadge: { borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2, marginLeft: 2 },
   ghostBadgeText: { color: "#FFF", fontSize: 8, fontFamily: "Inter_700Bold", letterSpacing: 0.8 },
   meta: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },

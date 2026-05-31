@@ -119,7 +119,7 @@ export default function HomeScreen() {
   const { settings } = useSettings();
   const { conversations } = useChat();
   const { showSuccess } = useToast();
-  const { activeCount, isGhostActive } = useGhostMode();
+  const { isGhostActive } = useGhostMode();
   const [activeFilter, setActiveFilter] = useState<FilterKey>("Latest");
   const [refreshing, setRefreshing] = useState(false);
   const [feedReposts, setFeedReposts] = useState<Array<{ post_id: string; user_id: string; created_at: string; username?: string }>>([]);
@@ -308,10 +308,6 @@ export default function HomeScreen() {
           transform: [{ translateY: shortcutSlide }],
         }}
       >
-        <View style={[styles.ghostActivePill, { backgroundColor: isGhostActive ? colors.primary : colors.primary + "16", borderColor: colors.primary + "30" }]}>
-          <Feather name="cloud-snow" size={13} color={isGhostActive ? colors.primaryForeground : colors.primary} />
-          <Text style={[styles.ghostActiveText, { color: isGhostActive ? colors.primaryForeground : colors.primary }]}>👻 {activeCount} Ghosts Active</Text>
-        </View>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}

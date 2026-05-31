@@ -415,14 +415,14 @@ begin
   );
 end; $$;
 
-create or replace function nominate_vault_legend(nominee_id uuid, category text, reason text)
+create or replace function nominate_vault_legend(nominee_id uuid, category text, reason text default 'Nominated from The Vault.')
 returns uuid language plpgsql security definer set search_path = public as $$
 declare v_id uuid; v_username text;
 begin
   if auth.uid() is null then raise exception 'Not authenticated'; end if;
   if exists(select 1 from ghost_sessions where user_id=auth.uid() and is_active and expires_at > now()) then raise exception 'Ghost Mode cannot vote or nominate in Vault Legends'; end if;
   select username into v_username from profiles where id = nominee_id;
-  insert into vault_nominations(nominee_id, nominee_username, nominator_id, category, reason) values (nominee_id, v_username, auth.uid(), category, reason) returning id into v_id;
+  insert into vault_nominations(nominee_id, nominee_username, nominator_id, category, reason) values (nominee_id, coalesce(v_username, 'Unknown student'), auth.uid(), coalesce(nullif(category, ''), 'Campus Legend'), coalesce(nullif(reason, ''), 'Nominated from The Vault.')) returning id into v_id;
   perform add_vault_score_event(auth.uid(), 'vault_legends', 'nomination_created', 20, jsonb_build_object('nomination_id', v_id));
   return v_id;
 end; $$;
@@ -438,12 +438,12 @@ begin
   return v_id;
 end; $$;
 
-create or replace function join_vault_debate(debate_id uuid, side text, body text, alias text default null)
+create or replace function join_vault_debate(debate_id uuid, side text, body text default 'Joining the Vault debate.', alias text default null)
 returns uuid language plpgsql security definer set search_path = public as $$
 declare v_id uuid; v_alias text := coalesce(alias, 'Campus Voice ' || substr(replace(uuid_generate_v4()::text,'-',''),1,4));
 begin
   if auth.uid() is null then raise exception 'Not authenticated'; end if;
-  insert into vault_arguments(debate_id, author_id, anonymous_alias, side, body) values(debate_id, auth.uid(), v_alias, side, body) returning id into v_id;
+  insert into vault_arguments(debate_id, author_id, anonymous_alias, side, body) values(debate_id, auth.uid(), v_alias, side, coalesce(nullif(body, ''), 'Joining the Vault debate.')) returning id into v_id;
   update vault_debates set for_count = for_count + case when side='for' then 1 else 0 end, against_count = against_count + case when side='against' then 1 else 0 end where id=debate_id;
   perform add_vault_score_event(auth.uid(), 'vault_arena', 'argument_created', 8, jsonb_build_object('debate_id', debate_id));
   return v_id;
@@ -624,3 +624,6 @@ language sql security definer set search_path = public as $$
   order by c.created_at asc;
 $$;
 grant execute on function get_secure_comments(uuid) to authenticated, anon;
+
+-- Refresh PostgREST/Supabase schema cache after RPC signature changes.
+notify pgrst, 'reload schema';

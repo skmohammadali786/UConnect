@@ -9,6 +9,7 @@ import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/Toast";
+import { useGhostMode } from "@/context/GhostModeContext";
 
 const CATEGORIES = ["Tech", "Cultural", "Sports", "Finance", "Academic", "Social", "Other"];
 
@@ -17,6 +18,7 @@ export default function CreateEventScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { showSuccess, showError } = useToast();
+  const ghost = useGhostMode();
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [location, setLocation] = useState("");
@@ -34,6 +36,10 @@ export default function CreateEventScreen() {
     }
     if (!user) {
       showError("Not logged in", "Please sign in to create an event.");
+      return;
+    }
+    if (!ghost.canPerformIdentityAction("create_event")) {
+      showError("Ghost Mode active", "Turn off Ghost Mode before creating events.");
       return;
     }
     setLoading(true);

@@ -5,6 +5,7 @@ import { ActivityIndicator, Animated, Easing, FlatList, Platform, RefreshControl
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useToast } from "@/components/Toast";
+import { useGhostMode } from "@/context/GhostModeContext";
 import { TypewriterText } from "@/components/TypewriterText";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
@@ -115,7 +116,8 @@ function EventCard({ item, index, rsvpStates, onRSVP, colors }: any) {
 export default function EventsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { showSuccess } = useToast();
+  const { showSuccess, showError } = useToast();
+  const ghost = useGhostMode();
   const { user } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
   const [rsvpStates, setRsvpStates] = useState<Record<string, RsvpState>>({});
@@ -175,6 +177,10 @@ export default function EventsScreen() {
 
   const handleRSVP = async (id: string) => {
     if (!user) return;
+    if (!ghost.canPerformIdentityAction("rsvp_event")) {
+      showError("Ghost Mode active", "Turn off Ghost Mode before RSVPing to events.");
+      return;
+    }
     const existing = rsvpStates[id];
     const updated = { ...rsvpStates };
 

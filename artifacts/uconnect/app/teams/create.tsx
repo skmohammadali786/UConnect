@@ -9,6 +9,7 @@ import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { useTeams } from "@/context/TeamsContext";
 import { useToast } from "@/components/Toast";
+import { useGhostMode } from "@/context/GhostModeContext";
 
 const TYPES = ["Hackathon", "Startup", "Research", "Competition", "Project", "Other"];
 
@@ -18,6 +19,7 @@ export default function CreateTeamScreen() {
   const { user } = useAuth();
   const { createTeam } = useTeams();
   const { showSuccess, showError } = useToast();
+  const ghost = useGhostMode();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -31,6 +33,8 @@ export default function CreateTeamScreen() {
     if (!title.trim()) { showError("Title required", "Please add a title for your team post."); return; }
     if (!description.trim()) { showError("Description required", "Please describe what you're looking for."); return; }
     if (!type) { showError("Type required", "Please select a team type."); return; }
+    if (!user) { showError("Sign in required", "Please sign in to create a team post."); return; }
+    if (!ghost.canPerformIdentityAction("create_team")) { showError("Ghost Mode active", "Turn off Ghost Mode before creating teams."); return; }
 
     setLoading(true);
     try {
