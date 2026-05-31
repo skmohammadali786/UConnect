@@ -42,6 +42,15 @@ function textValue(value: unknown, fallbackValue: string) {
 }
 
 
+function countValue(row: any, aliases: string[], fallbackValue = 0) {
+  for (const alias of aliases) {
+    const value = row?.[alias];
+    if (value !== null && value !== undefined) return finiteNumber(value, fallbackValue);
+  }
+  return fallbackValue;
+}
+
+
 async function buildSkillFallback(userId?: string): Promise<VaultSummary["skills"]> {
   if (!userId) return [];
   const { data: profile } = await supabase
@@ -74,7 +83,7 @@ function normalizeVaultSummary(data: Partial<VaultSummary> | null | undefined): 
       id: textValue((legend as any)?.id, `legend-${index}`),
       category: textValue((legend as any)?.category, "Campus Legend"),
       nominee_username: textValue((legend as any)?.nominee_username, "Unknown student"),
-      votes_count: finiteNumber((legend as any)?.votes_count),
+      votes_count: countValue(legend, ["votes_count", "vote_count", "upvotes", "votes"]),
     })),
     debates: (Array.isArray(merged.debates) ? merged.debates : []).map((debate, index) => ({
       id: textValue((debate as any)?.id, `debate-${index}`),
@@ -94,8 +103,8 @@ function normalizeVaultSummary(data: Partial<VaultSummary> | null | undefined): 
       id: textValue((article as any)?.id, `wiki-${index}`),
       title: textValue((article as any)?.title, "Untitled article"),
       category: textValue((article as any)?.category, "Academics"),
-      upvotes: finiteNumber((article as any)?.upvotes),
-      view_count: finiteNumber((article as any)?.view_count),
+      upvotes: countValue(article, ["upvotes", "votes_count", "vote_count", "helpful_count", "votes"]),
+      view_count: countValue(article, ["view_count", "views"]),
     })),
     skills: skills.map((skill, index) => ({
       skill_name: textValue((skill as any)?.skill_name, `Skill ${index + 1}`),

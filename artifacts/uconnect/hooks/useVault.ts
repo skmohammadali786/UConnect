@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { fetchVaultSummary, createVaultAlert, nominateVaultLegend, joinVaultDebate, createVaultDebate, createVaultWikiArticle, voteVaultTarget } from "@/services/vault";
@@ -7,6 +7,7 @@ import { fetchVaultSummary, createVaultAlert, nominateVaultLegend, joinVaultDeba
 export function useVaultSummary(profileUserId?: string) {
   const { user } = useAuth();
   const userId = profileUserId ?? user?.id;
+  const subscriptionId = useRef(`vault-${Math.random().toString(36).slice(2)}`);
   const query = useQuery({
     queryKey: ["vault-summary", userId],
     queryFn: () => fetchVaultSummary(userId),
@@ -15,7 +16,7 @@ export function useVaultSummary(profileUserId?: string) {
 
   useEffect(() => {
     const channel = supabase
-      .channel(`vault-home-${userId ?? "public"}`)
+      .channel(`vault-home-${userId ?? "public"}-${subscriptionId.current}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "vault_alerts" }, () => query.refetch())
       .on("postgres_changes", { event: "*", schema: "public", table: "vault_debates" }, () => query.refetch())
       .on("postgres_changes", { event: "*", schema: "public", table: "vault_nominations" }, () => query.refetch())
