@@ -11,7 +11,7 @@ import { useColors } from "@/hooks/useColors";
 import { useVaultActions, useVaultSummary } from "@/hooks/useVault";
 import { useToast } from "@/components/Toast";
 import { supabase } from "@/lib/supabase";
-import type { DebateSide, VaultBadge, VaultPriority } from "@/services/vault";
+import { fetchVaultDetail, type DebateSide, type VaultBadge, type VaultDetail, type VaultDetailKind, type VaultPriority } from "@/services/vault";
 
 type ModalType = "alert" | "nomination" | "debate" | "wiki" | "argument" | null;
 
@@ -48,6 +48,9 @@ export default function VaultScreen() {
   const [busy, setBusy] = useState(false);
   const [selectedDebate, setSelectedDebate] = useState<{ id: string; side: DebateSide; title: string } | null>(null);
   const [form, setForm] = useState<Record<string, string>>({});
+  const [detail, setDetail] = useState<VaultDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [voteAdjustments, setVoteAdjustments] = useState<Record<string, number>>({});
 
   const radarColors = useMemo(() => ({ ...colors, primary: colors.primary, secondary: colors.primarySoft }), [colors]);
   const isVerified = Boolean(user?.isVerified);
@@ -123,11 +126,27 @@ export default function VaultScreen() {
     try {
       if (ghost.isGhostActive) throw new Error("Ghost Mode cannot vote in the Vault.");
       if (!isVerified) throw new Error("Verify your profile before voting in the Vault.");
-      await actions.voteTarget.mutateAsync({ targetType, targetId, vote: "up" });
+      const result = await actions.voteTarget.mutateAsync({ targetType, targetId, vote: "up" });
+      const key = `${targetType}:${targetId}`;
+      if (result?.changed !== false) {
+        setVoteAdjustments((current) => ({ ...current, [key]: (current[key] ?? 0) + 1 }));
+      }
       await refetch();
-      showSuccess("Vote counted");
+      showSuccess(result?.changed === false ? "Already counted" : "Vote counted");
     } catch (e: any) {
       showError("Vote failed", e?.message ?? "Try again later.");
+    }
+  };
+
+  const openDetail = async (kind: VaultDetailKind, id: string) => {
+    setDetailLoading(true);
+    setDetail(null);
+    try {
+      setDetail(await fetchVaultDetail(kind, id));
+    } catch (e: any) {
+      showError("Could not open details", e?.message ?? "Try again later.");
+    } finally {
+      setDetailLoading(false);
     }
   };
 
@@ -135,15 +154,18 @@ export default function VaultScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />} contentContainerStyle={{ paddingTop: insets.top + 14, paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
-          <View>
-            <Text style={[styles.kicker, { color: colors.primary }]}>CAMPUS INTELLIGENCE</Text>
-            <Text style={[styles.title, { color: colors.foreground }]}>The Vault</Text>
-            <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>Reputation, alerts, debates, legends, and wiki knowledge.</Text>
+          <View style={styles.headerTopRow}>
+            <TouchableOpacity accessibilityLabel="Go back" onPress={() => router.back()} style={[styles.backButton, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Feather name="arrow-left" size={20} color={colors.foreground} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push("/settings/ghost-mode" as any)} style={[styles.ghostButton, { backgroundColor: ghost.isGhostActive ? colors.primary : colors.card, borderColor: ghost.isGhostActive ? colors.primary + "55" : colors.border }]}>
+              <Feather name="cloud-snow" size={18} color={ghost.isGhostActive ? colors.primaryForeground : colors.primary} />
+              <Text style={[styles.ghostButtonText, { color: ghost.isGhostActive ? colors.primaryForeground : colors.foreground }]}>{ghost.activeCount}</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity onPress={() => router.push("/settings/ghost-mode" as any)} style={[styles.ghostButton, { backgroundColor: ghost.isGhostActive ? colors.primary : colors.card, borderColor: ghost.isGhostActive ? colors.primary + "55" : colors.border }]}>
-            <Feather name="cloud-snow" size={18} color={ghost.isGhostActive ? colors.primaryForeground : colors.primary} />
-            <Text style={[styles.ghostButtonText, { color: ghost.isGhostActive ? colors.primaryForeground : colors.foreground }]}>{ghost.activeCount}</Text>
-          </TouchableOpacity>
+          <Text style={[styles.kicker, { color: colors.primary }]}>CAMPUS INTELLIGENCE</Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>The Vault</Text>
+          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>Reputation, alerts, debates, legends, and wiki knowledge.</Text>
         </View>
 
         <View style={[styles.heroCard, { backgroundColor: colors.card, borderColor: colors.border, shadowColor: colors.shadow }]}>
@@ -178,14 +200,21 @@ export default function VaultScreen() {
 
         <BadgeShowcase badges={summary?.badges ?? []} colors={colors} />
 
-        <Section title="Current Campus Legends" icon="star" colors={colors} items={(summary?.legends ?? []).map((l) => ({ key: l.id, title: l.nominee_username, meta: `${l.category} · ${l.votes_count} votes`, action: "Vote", onPress: () => vote("legend_nomination", l.id), disabled: ghost.isGhostActive || !isVerified }))} />
-        <Section title="Active Debates" icon="activity" colors={colors} items={(summary?.debates ?? []).map((d) => ({ key: d.id, title: d.title, meta: `FOR ${d.for_count} · AGAINST ${d.against_count}`, actions: [
+        <Section title="Current Campus Legends" icon="star" colors={colors} items={(summary?.legends ?? []).map((l) => {
+          const votes = l.votes_count + (voteAdjustments[`legend_nomination:${l.id}`] ?? 0);
+          return { key: l.id, title: l.nominee_username, meta: `${l.category} · ${votes} votes`, onOpen: () => openDetail("legend", l.id), action: "Vote", onPress: () => vote("legend_nomination", l.id), disabled: ghost.isGhostActive || !isVerified };
+        })} />
+        <Section title="Active Debates" icon="activity" colors={colors} items={(summary?.debates ?? []).map((d) => ({ key: d.id, title: d.title, meta: `FOR ${d.for_count} · AGAINST ${d.against_count}`, onOpen: () => openDetail("debate", d.id), actions: [
           { label: "For", onPress: () => { setSelectedDebate({ id: d.id, side: "for", title: d.title }); openModal("argument"); } },
           { label: "Against", onPress: () => { setSelectedDebate({ id: d.id, side: "against", title: d.title }); openModal("argument"); } },
         ] }))} />
-        <Section title="Active Alerts" icon="radio" colors={colors} items={(summary?.alerts ?? []).map((a) => ({ key: a.id, title: a.title, meta: `${a.category} · ${a.priority.toUpperCase()}` }))} />
-        <Section title="Trending Wiki Articles" icon="book-open" colors={colors} items={(summary?.wiki ?? []).map((w) => ({ key: w.id, title: w.title, meta: w.category, count: w.upvotes, countLabel: w.upvotes === 1 ? "upvote" : "upvotes", action: "Helpful", onPress: () => vote("wiki_article", w.id), disabled: ghost.isGhostActive || !isVerified }))} />
+        <Section title="Active Alerts" icon="radio" colors={colors} items={(summary?.alerts ?? []).map((a) => ({ key: a.id, title: a.title, meta: `${a.category} · ${a.priority.toUpperCase()}`, onOpen: () => openDetail("alert", a.id) }))} />
+        <Section title="Trending Wiki Articles" icon="book-open" colors={colors} items={(summary?.wiki ?? []).map((w) => {
+          const upvotes = w.upvotes + (voteAdjustments[`wiki_article:${w.id}`] ?? 0);
+          return { key: w.id, title: w.title, meta: w.category, count: upvotes, countLabel: upvotes === 1 ? "upvote" : "upvotes", onOpen: () => openDetail("wiki", w.id), action: "Helpful", onPress: () => vote("wiki_article", w.id), disabled: ghost.isGhostActive || !isVerified };
+        })} />
       </ScrollView>
+      <VaultDetailModal detail={detail} loading={detailLoading} colors={colors} onClose={() => setDetail(null)} />
       <VaultModal modal={modal} form={form} setForm={setForm} colors={colors} busy={busy} onClose={closeModal} onSubmit={submit} selectedDebate={selectedDebate} />
     </View>
   );
@@ -225,8 +254,57 @@ function ActionButton({ icon, label, onPress, colors, disabled }: { icon: any; l
   return <TouchableOpacity disabled={disabled} onPress={onPress} style={[styles.actionButton, { backgroundColor: disabled ? colors.muted : colors.primarySoft, borderColor: colors.border, opacity: disabled ? 0.55 : 1 }]}><Feather name={icon} size={17} color={disabled ? colors.mutedForeground : colors.primary} /><Text style={[styles.actionText, { color: disabled ? colors.mutedForeground : colors.primary }]}>{label}</Text></TouchableOpacity>;
 }
 
-function Section({ title, icon, items, colors }: { title: string; icon: any; colors: ReturnType<typeof useColors>; items: Array<{ key: string; title: string; meta: string; count?: number; countLabel?: string; action?: string; onPress?: () => void; disabled?: boolean; actions?: Array<{ label: string; onPress: () => void }> }> }) {
-  return <View style={styles.section}><View style={styles.sectionHeader}><Feather name={icon} size={16} color={colors.primary} /><Text style={[styles.sectionTitle, { color: colors.foreground }]}>{title}</Text></View><View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>{items.length ? items.map((item) => <View key={item.key} style={[styles.listRow, { borderBottomColor: colors.separator }]}><View style={[styles.listDot, { backgroundColor: colors.primary }]} /><View style={{ flex: 1 }}><Text style={[styles.listTitle, { color: colors.foreground }]}>{item.title}</Text><View style={styles.metaLine}><Text style={[styles.listMeta, { color: colors.mutedForeground }]}>{item.meta}</Text>{typeof item.count === "number" ? <View style={[styles.voteBadge, { backgroundColor: colors.primarySoft, borderColor: colors.primary + "28" }]}><Feather name="arrow-up" size={11} color={colors.primary} /><Text style={[styles.voteBadgeText, { color: colors.primary }]}>{item.count} {item.countLabel ?? "votes"}</Text></View> : null}</View></View>{item.action ? <TouchableOpacity disabled={item.disabled} onPress={item.onPress} style={[styles.smallAction, { backgroundColor: colors.primarySoft, opacity: item.disabled ? 0.5 : 1 }]}><Text style={[styles.smallActionText, { color: colors.primary }]}>{item.action}</Text></TouchableOpacity> : null}{item.actions?.map((a) => <TouchableOpacity key={a.label} onPress={a.onPress} style={[styles.smallAction, { backgroundColor: colors.primarySoft }]}><Text style={[styles.smallActionText, { color: colors.primary }]}>{a.label}</Text></TouchableOpacity>)}</View>) : <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>No active entries yet. Be the first to shape the Vault.</Text>}</View></View>;
+type SectionItem = { key: string; title: string; meta: string; count?: number; countLabel?: string; onOpen?: () => void; action?: string; onPress?: () => void; disabled?: boolean; actions?: Array<{ label: string; onPress: () => void }> };
+
+function Section({ title, icon, items, colors }: { title: string; icon: any; colors: ReturnType<typeof useColors>; items: SectionItem[] }) {
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}><Feather name={icon} size={16} color={colors.primary} /><Text style={[styles.sectionTitle, { color: colors.foreground }]}>{title}</Text></View>
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        {items.length ? items.map((item) => (
+          <TouchableOpacity activeOpacity={0.82} disabled={!item.onOpen} onPress={item.onOpen} key={item.key} style={[styles.listRow, { borderBottomColor: colors.separator }]}>
+            <View style={[styles.listDot, { backgroundColor: colors.primary }]} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.listTitle, { color: colors.foreground }]}>{item.title}</Text>
+              <View style={styles.metaLine}>
+                <Text style={[styles.listMeta, { color: colors.mutedForeground }]}>{item.meta}</Text>
+                {typeof item.count === "number" ? <View style={[styles.voteBadge, { backgroundColor: colors.primarySoft, borderColor: colors.primary + "28" }]}><Feather name="arrow-up" size={11} color={colors.primary} /><Text style={[styles.voteBadgeText, { color: colors.primary }]}>{item.count} {item.countLabel ?? "votes"}</Text></View> : null}
+              </View>
+            </View>
+            <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+            {item.action ? <TouchableOpacity disabled={item.disabled} onPress={item.onPress} style={[styles.smallAction, { backgroundColor: colors.primarySoft, opacity: item.disabled ? 0.5 : 1 }]}><Text style={[styles.smallActionText, { color: colors.primary }]}>{item.action}</Text></TouchableOpacity> : null}
+            {item.actions?.map((a) => <TouchableOpacity key={a.label} onPress={a.onPress} style={[styles.smallAction, { backgroundColor: colors.primarySoft }]}><Text style={[styles.smallActionText, { color: colors.primary }]}>{a.label}</Text></TouchableOpacity>)}
+          </TouchableOpacity>
+        )) : <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>No active entries yet. Be the first to shape the Vault.</Text>}
+      </View>
+    </View>
+  );
+}
+
+function VaultDetailModal({ detail, loading, colors, onClose }: { detail: VaultDetail | null; loading: boolean; colors: ReturnType<typeof useColors>; onClose: () => void }) {
+  return (
+    <Modal visible={loading || Boolean(detail)} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.modalOverlay}>
+        <View style={[styles.detailCard, { backgroundColor: colors.card }]}>
+          <View style={styles.detailHeader}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.kicker, { color: colors.primary }]}>VAULT DETAILS</Text>
+              <Text style={[styles.detailTitle, { color: colors.foreground }]}>{detail?.title ?? "Loading..."}</Text>
+              {detail?.subtitle ? <Text style={[styles.modalSub, { color: colors.mutedForeground }]}>{detail.subtitle}</Text> : null}
+            </View>
+            <TouchableOpacity onPress={onClose} style={[styles.detailClose, { backgroundColor: colors.secondary }]}><Feather name="x" size={18} color={colors.foreground} /></TouchableOpacity>
+          </View>
+          {loading ? <ActivityIndicator color={colors.primary} style={{ marginVertical: 28 }} /> : detail ? (
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={styles.detailStats}>{detail.stats.map((stat) => <View key={stat.label} style={[styles.detailStat, { backgroundColor: colors.primarySoft }]}><Text style={[styles.detailStatValue, { color: colors.primary }]}>{stat.value}</Text><Text style={[styles.detailStatLabel, { color: colors.mutedForeground }]}>{stat.label}</Text></View>)}</View>
+              <Text style={[styles.detailBody, { color: colors.foreground }]}>{detail.body}</Text>
+              {detail.meta.map((meta) => <View key={meta.label} style={[styles.detailMetaRow, { borderTopColor: colors.separator }]}><Text style={[styles.detailMetaLabel, { color: colors.mutedForeground }]}>{meta.label}</Text><Text style={[styles.detailMetaValue, { color: colors.foreground }]}>{meta.value}</Text></View>)}
+            </ScrollView>
+          ) : null}
+        </View>
+      </View>
+    </Modal>
+  );
 }
 
 function VaultModal({ modal, form, setForm, colors, busy, onClose, onSubmit, selectedDebate }: any) {
@@ -250,7 +328,9 @@ function Choice({ values, active, onPick, colors }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { paddingHorizontal: 18, paddingBottom: 16, flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderBottomWidth: 1, marginBottom: 16 },
+  header: { paddingHorizontal: 18, paddingBottom: 16, borderBottomWidth: 1, marginBottom: 16 },
+  headerTopRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
+  backButton: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   kicker: { fontSize: 11, fontFamily: "Inter_700Bold", letterSpacing: 2.5 },
   title: { fontSize: 34, fontFamily: "Inter_700Bold", letterSpacing: 0.2 },
   subtitle: { fontSize: 14, fontFamily: "Inter_500Medium", marginTop: 4, maxWidth: 270 },
@@ -297,6 +377,18 @@ const styles = StyleSheet.create({
   emptyText: { fontFamily: "Inter_500Medium", lineHeight: 19 },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "center", padding: 18 },
   modalCard: { borderRadius: 24, padding: 18, maxHeight: "86%" },
+  detailCard: { borderRadius: 28, padding: 18, maxHeight: "82%" },
+  detailHeader: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 12 },
+  detailClose: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center" },
+  detailTitle: { fontFamily: "Inter_700Bold", fontSize: 24, lineHeight: 29, marginTop: 4 },
+  detailStats: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 14 },
+  detailStat: { minWidth: 92, borderRadius: 18, paddingHorizontal: 12, paddingVertical: 10 },
+  detailStatValue: { fontFamily: "Inter_700Bold", fontSize: 20 },
+  detailStatLabel: { fontFamily: "Inter_600SemiBold", fontSize: 11, marginTop: 2, textTransform: "uppercase", letterSpacing: 0.6 },
+  detailBody: { fontFamily: "Inter_500Medium", fontSize: 15, lineHeight: 23, marginBottom: 12 },
+  detailMetaRow: { borderTopWidth: 1, paddingVertical: 11, flexDirection: "row", justifyContent: "space-between", gap: 16 },
+  detailMetaLabel: { fontFamily: "Inter_700Bold", fontSize: 12 },
+  detailMetaValue: { fontFamily: "Inter_600SemiBold", fontSize: 12, flex: 1, textAlign: "right" },
   modalTitle: { fontFamily: "Inter_700Bold", fontSize: 20, marginBottom: 8 },
   modalSub: { fontFamily: "Inter_500Medium", fontSize: 13, marginBottom: 8 },
   input: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, fontFamily: "Inter_500Medium", marginTop: 10 },
