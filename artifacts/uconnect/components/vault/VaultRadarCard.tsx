@@ -15,9 +15,9 @@ function skillLabel(value: unknown, index: number) {
 }
 
 export function VaultRadarCard({ skills, colors, compact = false }: { skills?: RadarSkill[] | null; colors: any; compact?: boolean }) {
-  const size = compact ? 180 : 230;
+  const size = compact ? 132 : 230;
   const center = size / 2;
-  const radius = compact ? 58 : 76;
+  const radius = compact ? 42 : 76;
   const fallbackSkills = ["React", "Design", "Leadership", "Content", "Data", "Speaking"].map((skill_name) => ({ skill_name, strength: 0 }));
   const normalizedSkills = Array.isArray(skills) ? skills : [];
   const data = (normalizedSkills.length ? normalizedSkills : fallbackSkills)
@@ -46,9 +46,9 @@ export function VaultRadarCard({ skills, colors, compact = false }: { skills?: R
           const angle = -Math.PI / 2 + (2 * Math.PI * i) / data.length;
           const x = center + Math.cos(angle) * radius;
           const y = center + Math.sin(angle) * radius;
-          const lx = center + Math.cos(angle) * (radius + 20);
-          const ly = center + Math.sin(angle) * (radius + 20);
-          return <React.Fragment key={`${s.skill_name}-${i}`}><Line x1={center} y1={center} x2={x} y2={y} stroke={colors.border} strokeWidth="1" /><SvgText x={lx} y={ly} fontSize="9" fill={colors.mutedForeground} textAnchor="middle">{s.skill_name.slice(0, 9)}</SvgText></React.Fragment>;
+          const lx = center + Math.cos(angle) * (radius + (compact ? 14 : 20));
+          const ly = center + Math.sin(angle) * (radius + (compact ? 14 : 20));
+          return <React.Fragment key={`${s.skill_name}-${i}`}><Line x1={center} y1={center} x2={x} y2={y} stroke={colors.border} strokeWidth="1" /><SvgText x={lx} y={ly} fontSize={compact ? "7" : "9"} fill={colors.mutedForeground} textAnchor="middle">{s.skill_name.slice(0, compact ? 6 : 9)}</SvgText></React.Fragment>;
         })}
         <Polygon points={points} fill={radarFill} stroke={radarStroke} strokeWidth="2" />
       </Svg>
@@ -57,8 +57,8 @@ export function VaultRadarCard({ skills, colors, compact = false }: { skills?: R
 }
 
 const styles = StyleSheet.create({
-  card: { borderWidth: 1, borderRadius: 22, padding: 14, alignItems: "center" },
-  titleRow: { width: "100%", marginBottom: 4 },
-  title: { fontSize: 17, fontFamily: "Inter_700Bold" },
-  sub: { fontSize: 12, fontFamily: "Inter_500Medium", marginTop: 2 },
+  card: { borderWidth: 1, borderRadius: 18, padding: 10, alignItems: "center" },
+  titleRow: { width: "100%", marginBottom: 2 },
+  title: { fontSize: 15, fontFamily: "Inter_700Bold" },
+  sub: { fontSize: 10, fontFamily: "Inter_500Medium", marginTop: 1 },
 });

@@ -38,7 +38,7 @@ const SHORTCUTS = [
   { icon: "users", label: "Teams", route: "/teams" },
   { icon: "book-open", label: "Notes", route: "/notes" },
   { icon: "send", label: "Chats", route: "/chat" },
-  { icon: "shield", label: "The Vault", route: "/(tabs)/vault" },
+  { icon: "shield", label: "Vault", route: "/(tabs)/vault" },
 ];
 
 interface ProfileRow {
@@ -320,7 +320,7 @@ export default function HomeScreen() {
           {SHORTCUTS.map((s) => (
             <TouchableOpacity key={s.label} onPress={() => router.push(s.route as any)} style={styles.shortcut} activeOpacity={0.7}>
               <View style={[styles.shortcutIcon, { backgroundColor: colors.primary + "18" }]}>
-                <Feather name={s.icon as any} size={20} color={colors.primary} />
+                <Feather name={s.icon as any} size={17} color={colors.primary} />
                 {s.label === "Chats" && totalUnreadMessages > 0 && (
                   <View style={[styles.chatBadge, { backgroundColor: colors.primary }]}>
                     <Text style={styles.chatBadgeText}>{totalUnreadMessages > 99 ? "99+" : totalUnreadMessages}</Text>
@@ -477,9 +477,9 @@ const styles = StyleSheet.create({
   },
   ghostActivePill: { marginHorizontal: 16, marginTop: 6, borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8, flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 7 },
   ghostActiveText: { fontSize: 12, fontFamily: "Inter_700Bold" },
-  shortcuts: { paddingHorizontal: 12, paddingVertical: 14, gap: 6 },
-  shortcut: { alignItems: "center", gap: 6, marginHorizontal: 6 },
-  shortcutIcon: { width: 52, height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  shortcuts: { paddingHorizontal: 10, paddingVertical: 10, gap: 3 },
+  shortcut: { alignItems: "center", gap: 4, marginHorizontal: 2, width: 43 },
+  shortcutIcon: { width: 40, height: 40, borderRadius: 13, alignItems: "center", justifyContent: "center" },
   chatBadge: {
     position: "absolute",
     right: -4,
@@ -492,7 +492,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   chatBadgeText: { color: "#FFF", fontSize: 10, fontFamily: "Inter_700Bold" },
-  shortcutLabel: { fontSize: 11, fontFamily: "Inter_500Medium" },
+  shortcutLabel: { fontSize: 9, fontFamily: "Inter_500Medium", textAlign: "center" },
   filterRow: { borderBottomWidth: 1, paddingHorizontal: 16, paddingBottom: 12 },
   segmentTrack: {
     width: "100%",
