@@ -19,6 +19,8 @@ export function useVaultSummary(profileUserId?: string) {
       .on("postgres_changes", { event: "*", schema: "public", table: "vault_alerts" }, () => query.refetch())
       .on("postgres_changes", { event: "*", schema: "public", table: "vault_debates" }, () => query.refetch())
       .on("postgres_changes", { event: "*", schema: "public", table: "vault_nominations" }, () => query.refetch())
+      .on("postgres_changes", { event: "*", schema: "public", table: "vault_legend_badges" }, () => query.refetch())
+      .on("postgres_changes", { event: "*", schema: "public", table: "vault_scores" }, () => query.refetch())
       .on("postgres_changes", { event: "*", schema: "public", table: "vault_wiki_articles" }, () => query.refetch())
       .subscribe();
     return () => { supabase.removeChannel(channel); };

@@ -11,7 +11,7 @@ import { useColors } from "@/hooks/useColors";
 import { useVaultActions, useVaultSummary } from "@/hooks/useVault";
 import { useToast } from "@/components/Toast";
 import { supabase } from "@/lib/supabase";
-import type { DebateSide, VaultPriority } from "@/services/vault";
+import type { DebateSide, VaultBadge, VaultPriority } from "@/services/vault";
 
 type ModalType = "alert" | "nomination" | "debate" | "wiki" | "argument" | null;
 
@@ -161,7 +161,7 @@ export default function VaultScreen() {
         <View style={styles.metricsGrid}>
           <Metric icon="award" label="Vault Rank" value={summary?.rank ? `#${summary.rank}` : "—"} colors={colors} />
           <Metric icon="zap" label="Skill Strength" value={`${summary?.skillStrength ?? 0}%`} colors={colors} />
-          <Metric icon="message-square" label="Active Debates" value={summary?.debates.length ?? 0} colors={colors} />
+          <Metric icon="award" label="Vault Badges" value={summary?.badges.length ?? 0} colors={colors} />
           <Metric icon="alert-triangle" label="Active Alerts" value={summary?.alerts.length ?? 0} colors={colors} />
         </View>
 
@@ -176,6 +176,8 @@ export default function VaultScreen() {
 
         <View style={styles.radarWrap}><VaultRadarCard skills={summary?.skills ?? []} colors={radarColors} /></View>
 
+        <BadgeShowcase badges={summary?.badges ?? []} colors={colors} />
+
         <Section title="Current Campus Legends" icon="star" colors={colors} items={(summary?.legends ?? []).map((l) => ({ key: l.id, title: l.nominee_username, meta: `${l.category} · ${l.votes_count} votes`, action: "Vote", onPress: () => vote("legend_nomination", l.id), disabled: ghost.isGhostActive || !isVerified }))} />
         <Section title="Active Debates" icon="activity" colors={colors} items={(summary?.debates ?? []).map((d) => ({ key: d.id, title: d.title, meta: `FOR ${d.for_count} · AGAINST ${d.against_count}`, actions: [
           { label: "For", onPress: () => { setSelectedDebate({ id: d.id, side: "for", title: d.title }); openModal("argument"); } },
@@ -185,6 +187,36 @@ export default function VaultScreen() {
         <Section title="Trending Wiki Articles" icon="book-open" colors={colors} items={(summary?.wiki ?? []).map((w) => ({ key: w.id, title: w.title, meta: `${w.category} · ${w.upvotes} upvotes`, action: "Helpful", onPress: () => vote("wiki_article", w.id), disabled: ghost.isGhostActive || !isVerified }))} />
       </ScrollView>
       <VaultModal modal={modal} form={form} setForm={setForm} colors={colors} busy={busy} onClose={closeModal} onSubmit={submit} selectedDebate={selectedDebate} />
+    </View>
+  );
+}
+
+function BadgeShowcase({ badges, colors }: { badges: VaultBadge[]; colors: ReturnType<typeof useColors> }) {
+  const visibleBadges = badges.slice(0, 8);
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <MaterialCommunityIcons name="shield-star-outline" size={17} color={colors.primary} />
+        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Vault Badges</Text>
+      </View>
+      <View style={[styles.badgeCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        {visibleBadges.length ? (
+          <View style={styles.badgeGrid}>
+            {visibleBadges.map((badge) => (
+              <View key={badge.id} style={[styles.badgeTile, { backgroundColor: colors.primarySoft, borderColor: colors.primary + "24" }]}>
+                <View style={[styles.badgeIcon, { backgroundColor: colors.primary }]}>
+                  <MaterialCommunityIcons name="medal-outline" size={20} color={colors.primaryForeground} />
+                </View>
+                <Text numberOfLines={2} style={[styles.badgeTitle, { color: colors.foreground }]}>{badge.label}</Text>
+                <Text numberOfLines={1} style={[styles.badgeMeta, { color: colors.primary }]}>{badge.category}</Text>
+                {badge.description ? <Text numberOfLines={2} style={[styles.badgeDescription, { color: colors.mutedForeground }]}>{badge.description}</Text> : null}
+              </View>
+            ))}
+          </View>
+        ) : (
+          <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>Earn Vault reputation to unlock badges here.</Text>
+        )}
+      </View>
     </View>
   );
 }
@@ -246,6 +278,13 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginHorizontal: 18, marginBottom: 8 },
   sectionTitle: { fontFamily: "Inter_700Bold", fontSize: 16 },
   card: { marginHorizontal: 16, borderRadius: 20, borderWidth: 1, padding: 14, marginBottom: 8 },
+  badgeCard: { marginHorizontal: 16, borderRadius: 20, borderWidth: 1, padding: 12, marginBottom: 8 },
+  badgeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  badgeTile: { width: "48%", borderWidth: 1, borderRadius: 18, padding: 12, minHeight: 142 },
+  badgeIcon: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", marginBottom: 10 },
+  badgeTitle: { fontFamily: "Inter_700Bold", fontSize: 14, lineHeight: 18 },
+  badgeMeta: { fontFamily: "Inter_700Bold", fontSize: 11, marginTop: 4, textTransform: "uppercase", letterSpacing: 0.7 },
+  badgeDescription: { fontFamily: "Inter_500Medium", fontSize: 11, lineHeight: 15, marginTop: 6 },
   listRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, borderBottomWidth: 1 },
   listDot: { width: 8, height: 8, borderRadius: 4 },
   listTitle: { fontFamily: "Inter_700Bold", fontSize: 14 },
