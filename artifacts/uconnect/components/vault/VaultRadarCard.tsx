@@ -19,13 +19,16 @@ export function VaultRadarCard({ skills, colors, compact = false }: { skills?: R
   const center = size / 2;
   const radius = compact ? 42 : 76;
   const fallbackSkills = ["React", "Design", "Leadership", "Content", "Data", "Speaking"].map((skill_name) => ({ skill_name, strength: 0 }));
+  const padSkills = ["Learning", "Teamwork", "Campus"];
   const normalizedSkills = Array.isArray(skills) ? skills : [];
-  const data = (normalizedSkills.length ? normalizedSkills : fallbackSkills)
-    .slice(0, 7)
-    .map((skill, index) => ({
-      skill_name: skillLabel(skill?.skill_name, index),
-      strength: clampStrength(skill?.strength),
-    }));
+  const radarSkills = (normalizedSkills.length ? normalizedSkills : fallbackSkills).slice(0, 7);
+  while (radarSkills.length > 0 && radarSkills.length < 3) {
+    radarSkills.push({ skill_name: padSkills[radarSkills.length - 1] ?? `Skill ${radarSkills.length + 1}`, strength: 35 });
+  }
+  const data = radarSkills.map((skill, index) => ({
+    skill_name: skillLabel(skill?.skill_name, index),
+    strength: clampStrength(skill?.strength),
+  }));
   const points = data.map((s, i) => {
     const angle = -Math.PI / 2 + (2 * Math.PI * i) / data.length;
     const r = radius * s.strength / 100;
