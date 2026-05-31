@@ -4,6 +4,15 @@ export type VaultLevel = "Explorer" | "Contributor" | "Builder" | "Mentor" | "Le
 export type VaultPriority = "critical" | "high" | "normal";
 export type DebateSide = "for" | "against";
 
+export interface VaultBadge {
+  id: string;
+  label: string;
+  category: string;
+  awarded_at: string;
+  description?: string;
+  earned?: boolean;
+}
+
 export interface VaultSummary {
   score: number;
   level: VaultLevel;
@@ -15,7 +24,7 @@ export interface VaultSummary {
   alerts: Array<{ id: string; title: string; category: string; priority: VaultPriority; expires_at: string }>;
   wiki: Array<{ id: string; title: string; category: string; upvotes: number; view_count: number }>;
   skills: Array<{ skill_name: string; strength: number; trend: number }>;
-  badges: Array<{ id: string; label: string; category: string; awarded_at: string }>;
+  badges: VaultBadge[];
 }
 
 const fallback: VaultSummary = {
@@ -41,6 +50,41 @@ function textValue(value: unknown, fallbackValue: string) {
   return typeof value === "string" && value.trim().length > 0 ? value : fallbackValue;
 }
 
+function buildScoreBadges(score: number, level: VaultLevel): VaultBadge[] {
+  const milestones: Array<{ threshold: number; level: VaultLevel; label: string; description: string }> = [
+    { threshold: 0, level: "Explorer", label: "Vault Explorer", description: "Started building a Vault reputation." },
+    { threshold: 400, level: "Contributor", label: "Trusted Contributor", description: "Reached 400 Vault reputation points." },
+    { threshold: 1500, level: "Builder", label: "Campus Builder", description: "Reached 1,500 Vault reputation points." },
+    { threshold: 3500, level: "Mentor", label: "Peer Mentor", description: "Reached 3,500 Vault reputation points." },
+    { threshold: 7000, level: "Leader", label: "Vault Leader", description: "Reached 7,000 Vault reputation points." },
+    { threshold: 12000, level: "Legend", label: "Campus Legend", description: "Reached 12,000 Vault reputation points." },
+  ];
+
+  return milestones
+    .filter((badge) => score >= badge.threshold || badge.level === level)
+    .map((badge) => ({
+      id: `score-${badge.level.toLowerCase()}`,
+      label: badge.label,
+      category: badge.level,
+      awarded_at: "",
+      description: badge.description,
+      earned: true,
+    }));
+}
+
+function normalizeBadges(dataBadges: unknown, score: number, level: VaultLevel): VaultBadge[] {
+  const persisted = (Array.isArray(dataBadges) ? dataBadges : []).map((badge, index) => ({
+    id: textValue((badge as any)?.id, `badge-${index}`),
+    label: textValue((badge as any)?.label ?? (badge as any)?.badge_label, "Vault Badge"),
+    category: textValue((badge as any)?.category, "Vault"),
+    awarded_at: textValue((badge as any)?.awarded_at, ""),
+    description: typeof (badge as any)?.description === "string" ? (badge as any).description : undefined,
+    earned: (badge as any)?.earned === false ? false : true,
+  }));
+  const generated = buildScoreBadges(score, level);
+  const seen = new Set(persisted.map((badge) => `${badge.category.toLowerCase()}::${badge.label.toLowerCase()}`));
+  return [...persisted, ...generated.filter((badge) => !seen.has(`${badge.category.toLowerCase()}::${badge.label.toLowerCase()}`))];
+}
 
 function countValue(row: any, aliases: string[], fallbackValue = 0) {
   for (const alias of aliases) {
@@ -68,14 +112,27 @@ async function buildSkillFallback(userId?: string): Promise<VaultSummary["skills
   }));
 }
 
+async function ensureRadarSkills(summary: VaultSummary, userId?: string): Promise<VaultSummary> {
+  if (summary.skills.length > 0 || !userId) return summary;
+  const skills = await buildSkillFallback(userId);
+  if (skills.length === 0) return summary;
+  return normalizeVaultSummary({
+    ...summary,
+    skills,
+    skillStrength: Math.round(skills.reduce((sum, skill) => sum + skill.strength, 0) / skills.length),
+  });
+}
+
 function normalizeVaultSummary(data: Partial<VaultSummary> | null | undefined): VaultSummary {
   const merged = { ...fallback, ...(data ?? {}) } as VaultSummary;
   const progress = Math.min(100, Math.max(0, finiteNumber(merged.progress)));
   const skills = Array.isArray(merged.skills) ? merged.skills : [];
+  const score = finiteNumber(merged.score);
+  const level = textValue(merged.level, getVaultLevel(score)) as VaultLevel;
   return {
     ...merged,
-    score: finiteNumber(merged.score),
-    level: textValue(merged.level, "Explorer") as VaultLevel,
+    score,
+    level,
     progress,
     rank: merged.rank === null || merged.rank === undefined ? null : finiteNumber(merged.rank, 0),
     skillStrength: Math.min(100, Math.max(0, finiteNumber(merged.skillStrength))),
@@ -111,12 +168,7 @@ function normalizeVaultSummary(data: Partial<VaultSummary> | null | undefined): 
       strength: Math.min(100, Math.max(0, finiteNumber((skill as any)?.strength))),
       trend: finiteNumber((skill as any)?.trend),
     })),
-    badges: (Array.isArray(merged.badges) ? merged.badges : []).map((badge, index) => ({
-      id: textValue((badge as any)?.id, `badge-${index}`),
-      label: textValue((badge as any)?.label, "Vault Badge"),
-      category: textValue((badge as any)?.category, "Vault"),
-      awarded_at: textValue((badge as any)?.awarded_at, new Date().toISOString()),
-    })),
+    badges: normalizeBadges(merged.badges, score, level),
   };
 }
 
@@ -140,7 +192,7 @@ export function getVaultProgress(score: number) {
 export async function fetchVaultSummary(userId?: string): Promise<VaultSummary> {
   try {
     const { data, error } = await supabase.rpc("get_vault_home", { p_user_id: userId ?? null });
-    if (!error && data) return normalizeVaultSummary(data as Partial<VaultSummary>);
+    if (!error && data) return ensureRadarSkills(normalizeVaultSummary(data as Partial<VaultSummary>), userId);
   } catch {}
 
   const settled = await Promise.allSettled([
