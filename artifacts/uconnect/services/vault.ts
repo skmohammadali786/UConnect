@@ -103,6 +103,17 @@ async function buildSkillFallback(userId?: string): Promise<VaultSummary["skills
   }));
 }
 
+async function ensureRadarSkills(summary: VaultSummary, userId?: string): Promise<VaultSummary> {
+  if (summary.skills.length > 0 || !userId) return summary;
+  const skills = await buildSkillFallback(userId);
+  if (skills.length === 0) return summary;
+  return normalizeVaultSummary({
+    ...summary,
+    skills,
+    skillStrength: Math.round(skills.reduce((sum, skill) => sum + skill.strength, 0) / skills.length),
+  });
+}
+
 function normalizeVaultSummary(data: Partial<VaultSummary> | null | undefined): VaultSummary {
   const merged = { ...fallback, ...(data ?? {}) } as VaultSummary;
   const progress = Math.min(100, Math.max(0, finiteNumber(merged.progress)));
@@ -172,7 +183,7 @@ export function getVaultProgress(score: number) {
 export async function fetchVaultSummary(userId?: string): Promise<VaultSummary> {
   try {
     const { data, error } = await supabase.rpc("get_vault_home", { p_user_id: userId ?? null });
-    if (!error && data) return normalizeVaultSummary(data as Partial<VaultSummary>);
+    if (!error && data) return ensureRadarSkills(normalizeVaultSummary(data as Partial<VaultSummary>), userId);
   } catch {}
 
   const settled = await Promise.allSettled([
