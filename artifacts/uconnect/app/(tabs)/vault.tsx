@@ -1,8 +1,8 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { DimensionValue } from "react-native";
-import { ActivityIndicator, Modal, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Animated, Easing, Modal, Platform, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { VaultRadarCard } from "@/components/vault/VaultRadarCard";
 import { useAuth } from "@/context/AuthContext";
@@ -19,6 +19,7 @@ const LEGEND_CATEGORIES = ["Best Developer", "Best Designer", "Best Mentor", "Be
 const ALERT_PRIORITIES: VaultPriority[] = ["normal", "high", "critical"];
 const ALERT_CATEGORIES = ["Safety Alert", "Medical Emergency", "Blood Required", "Lost ID", "Lost Item", "Need Notes", "Need Transport", "Urgent Academic Help"];
 const WIKI_CATEGORIES = ["Academics", "Professors", "Hostels", "Placements", "Internships", "Clubs", "Labs", "Events", "Study Resources"];
+const ND = Platform.OS !== "web";
 
 function Metric({ label, value, icon, colors }: { label: string; value: string | number; icon: any; colors: ReturnType<typeof useColors> }) {
   return (
@@ -51,6 +52,15 @@ export default function VaultScreen() {
   const [detail, setDetail] = useState<VaultDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [voteOverrides, setVoteOverrides] = useState<Record<string, number>>({});
+  const screenFade = useRef(new Animated.Value(0)).current;
+  const screenSlide = useRef(new Animated.Value(28)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(screenFade, { toValue: 1, duration: 320, easing: Easing.out(Easing.cubic), useNativeDriver: ND }),
+      Animated.spring(screenSlide, { toValue: 0, tension: 82, friction: 11, useNativeDriver: ND }),
+    ]).start();
+  }, [screenFade, screenSlide]);
 
   const radarColors = useMemo(() => ({ ...colors, primary: colors.primary, secondary: colors.primarySoft }), [colors]);
   const isVerified = Boolean(user?.isVerified);
@@ -158,12 +168,12 @@ export default function VaultScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <Animated.View style={[styles.container, { backgroundColor: colors.background, opacity: screenFade, transform: [{ translateY: screenSlide }] }]}>
       <ScrollView refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />} contentContainerStyle={{ paddingTop: insets.top + 14, paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <View style={styles.headerTopRow}>
-            <TouchableOpacity accessibilityLabel="Go back" onPress={() => router.back()} style={[styles.backButton, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Feather name="arrow-left" size={20} color={colors.foreground} />
+            <TouchableOpacity accessibilityLabel="Go back" onPress={() => router.back()} style={styles.backButton}>
+              <Feather name="arrow-left" size={22} color={colors.foreground} />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => router.push("/settings/ghost-mode" as any)} style={[styles.ghostButton, { backgroundColor: ghost.isGhostActive ? colors.primary : colors.card, borderColor: ghost.isGhostActive ? colors.primary + "55" : colors.border }]}>
               <Feather name="cloud-snow" size={18} color={ghost.isGhostActive ? colors.primaryForeground : colors.primary} />
@@ -223,7 +233,7 @@ export default function VaultScreen() {
       </ScrollView>
       <VaultDetailModal detail={detail} loading={detailLoading} colors={colors} onClose={() => setDetail(null)} />
       <VaultModal modal={modal} form={form} setForm={setForm} colors={colors} busy={busy} onClose={closeModal} onSubmit={submit} selectedDebate={selectedDebate} />
-    </View>
+    </Animated.View>
   );
 }
 
@@ -337,7 +347,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { paddingHorizontal: 18, paddingBottom: 16, borderBottomWidth: 1, marginBottom: 16 },
   headerTopRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
-  backButton: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  backButton: { padding: 4 },
   kicker: { fontSize: 11, fontFamily: "Inter_700Bold", letterSpacing: 2.5 },
   title: { fontSize: 34, fontFamily: "Inter_700Bold", letterSpacing: 0.2 },
   subtitle: { fontSize: 14, fontFamily: "Inter_500Medium", marginTop: 4, maxWidth: 270 },
