@@ -113,8 +113,9 @@ function serveAppleAppSiteAssociation(res) {
         apps: [],
         details: appIDs.map((appID) => ({
           appID,
-          paths: ["/post/*", "/events/*", "/event/*", "/join", "/join/*"],
+          paths: ["/", "/post/*", "/events/*", "/event/*", "/join", "/join/*"],
           components: [
+            { "/": "/" },
             { "/": "/post/*" },
             { "/": "/events/*" },
             { "/": "/event/*" },

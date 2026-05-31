@@ -11,7 +11,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/Toast";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { supabase } from "@/lib/supabase";
-import type { Comment } from "@/context/PostsContext";
+import type { Comment, Post } from "@/context/PostsContext";
 
 const LOCAL_ID_PREFIX = "local_";
 const ND = Platform.OS !== "web";
@@ -52,7 +52,7 @@ export default function PostDetailScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { posts, addComment, voteComment, deletePost, adjustCommentCount } = usePosts();
+  const { posts, isLoading: postsLoading, addComment, voteComment, deletePost, adjustCommentCount } = usePosts();
   const { user } = useAuth();
   const { showError, showSuccess, showInfo } = useToast();
   const [comment, setComment] = useState("");
@@ -60,14 +60,84 @@ export default function PostDetailScreen() {
   const [isAnon, setIsAnon] = useState(false);
   const [loadedComments, setLoadedComments] = useState<Comment[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(true);
+  const [remotePost, setRemotePost] = useState<Post | null>(null);
+  const [remotePostLoading, setRemotePostLoading] = useState(false);
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
   const [commentToDelete, setCommentToDelete] = useState<Comment | null>(null);
   const newLocalIds = useRef<Set<string>>(new Set());
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(24)).current;
 
-  const post = posts.find((p) => p.id === id);
+  const contextPost = posts.find((p) => p.id === id);
+  const post = contextPost ?? remotePost;
   const canCommentAnonymously = Boolean(user?.isVerified);
+
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadSharedPost = async () => {
+      if (!id || contextPost || isLocalId(id)) {
+        setRemotePost(null);
+        return;
+      }
+      setRemotePostLoading(true);
+      try {
+        const { data: row, error } = await supabase
+          .from("posts")
+          .select("*")
+          .eq("id", id)
+          .maybeSingle();
+        if (cancelled) return;
+        if (error || !row) {
+          setRemotePost(null);
+          return;
+        }
+
+        const [{ data: profile }, voteRes, bookmarkRes] = await Promise.all([
+          !row.is_anonymous && !row.is_ghost
+            ? supabase.from("profiles").select("username,avatar,avatar_ring_color,is_verified").eq("id", row.author_id).maybeSingle()
+            : Promise.resolve({ data: null } as any),
+          user ? supabase.from("post_votes").select("vote").eq("post_id", row.id).eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null } as any),
+          user ? supabase.from("bookmarks").select("post_id").eq("post_id", row.id).eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null } as any),
+        ]);
+        if (cancelled) return;
+        setRemotePost({
+          id: row.id,
+          authorId: row.author_id,
+          authorUsername: row.is_ghost ? (row.ghost_alias_snapshot ?? "Neon Phantom") : row.is_anonymous ? "anonymous" : (profile?.username ?? row.author_username ?? "user"),
+          authorAvatar: row.is_ghost || row.is_anonymous ? null : (profile?.avatar ?? row.author_avatar ?? null),
+          authorAuraRingColor: row.is_ghost || row.is_anonymous ? undefined : (profile?.avatar_ring_color ?? "#6366F1"),
+          authorIsVerified: row.is_ghost || row.is_anonymous ? false : Boolean(profile?.is_verified),
+          college: row.college,
+          isAnonymous: row.is_anonymous,
+          isGhost: Boolean(row.is_ghost),
+          ghostAlias: row.ghost_alias_snapshot ?? null,
+          tag: row.tag,
+          content: row.content,
+          mediaUrls: row.media_urls ?? [],
+          videoUrl: row.video_url ?? null,
+          videoProvider: row.video_provider ?? undefined,
+          videoAssetId: row.video_asset_id ?? null,
+          upvotes: row.upvotes ?? 0,
+          downvotes: row.downvotes ?? 0,
+          repostCount: row.repost_count ?? 0,
+          userVote: voteRes.data?.vote ?? null,
+          commentCount: row.comment_count ?? 0,
+          isBookmarked: Boolean(bookmarkRes.data),
+          createdAt: row.created_at,
+          comments: [],
+          autoDeleteAt: row.auto_delete_at ?? undefined,
+        });
+      } catch {
+        if (!cancelled) setRemotePost(null);
+      } finally {
+        if (!cancelled) setRemotePostLoading(false);
+      }
+    };
+
+    loadSharedPost();
+    return () => { cancelled = true; };
+  }, [contextPost, id, user?.id]);
 
   useEffect(() => {
     Animated.parallel([
@@ -173,6 +243,14 @@ export default function PostDetailScreen() {
       supabase.removeChannel(channel);
     };
   }, [post?.id, loadComments]);
+
+  if (!post && (postsLoading || remotePostLoading)) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background, alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   if (!post) {
     return (

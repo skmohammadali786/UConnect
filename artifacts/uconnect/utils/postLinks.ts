@@ -17,7 +17,7 @@ export function buildPostShareLink(postId: string) {
   const id = encodeURIComponent(postId.trim());
   const configuredDomain = (process.env.EXPO_PUBLIC_APP_LINK_DOMAIN || process.env.EXPO_PUBLIC_DOMAIN || "").trim();
   const domain = normalizeDomain(configuredDomain);
-  return `https://${domain}/post/${id}`;
+  return `https://${domain}/?postId=${id}`;
 }
 
 export function buildEventShareLink(eventId: string) {

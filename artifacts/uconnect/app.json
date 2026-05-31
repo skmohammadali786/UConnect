@@ -89,6 +89,16 @@
               "scheme": "https",
               "host": "uconnect.app",
               "pathPrefix": "/event/"
+            },
+            {
+              "scheme": "https",
+              "host": "uconnect.app",
+              "pathPrefix": "/"
+            },
+            {
+              "scheme": "https",
+              "host": "uconnect.social",
+              "pathPrefix": "/"
             }
           ],
           "category": [
