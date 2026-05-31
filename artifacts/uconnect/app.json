@@ -30,6 +30,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.skmohammadali786.uconnect",
       "associatedDomains": [
+        "applinks:uconnect.social",
         "applinks:uconnect.app"
       ],
       "infoPlist": {
@@ -58,6 +59,36 @@
               "scheme": "https",
               "host": "uconnect.app",
               "pathPrefix": "/join"
+            },
+            {
+              "scheme": "https",
+              "host": "uconnect.social",
+              "pathPrefix": "/post/"
+            },
+            {
+              "scheme": "https",
+              "host": "uconnect.social",
+              "pathPrefix": "/events/"
+            },
+            {
+              "scheme": "https",
+              "host": "uconnect.social",
+              "pathPrefix": "/event/"
+            },
+            {
+              "scheme": "https",
+              "host": "uconnect.social",
+              "pathPrefix": "/join"
+            },
+            {
+              "scheme": "https",
+              "host": "uconnect.app",
+              "pathPrefix": "/events/"
+            },
+            {
+              "scheme": "https",
+              "host": "uconnect.app",
+              "pathPrefix": "/event/"
             }
           ],
           "category": [

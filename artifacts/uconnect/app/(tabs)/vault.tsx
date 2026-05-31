@@ -50,7 +50,7 @@ export default function VaultScreen() {
   const [form, setForm] = useState<Record<string, string>>({});
   const [detail, setDetail] = useState<VaultDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [voteAdjustments, setVoteAdjustments] = useState<Record<string, number>>({});
+  const [voteOverrides, setVoteOverrides] = useState<Record<string, number>>({});
 
   const radarColors = useMemo(() => ({ ...colors, primary: colors.primary, secondary: colors.primarySoft }), [colors]);
   const isVerified = Boolean(user?.isVerified);
@@ -122,16 +122,23 @@ export default function VaultScreen() {
     }
   };
 
+  const getCurrentVoteCount = (targetType: "legend_nomination" | "wiki_article", targetId: string) => {
+    if (targetType === "legend_nomination") {
+      return summary?.legends.find((legend) => legend.id === targetId)?.votes_count ?? 0;
+    }
+    return summary?.wiki.find((article) => article.id === targetId)?.upvotes ?? 0;
+  };
+
   const vote = async (targetType: "legend_nomination" | "wiki_article", targetId: string) => {
     try {
       if (ghost.isGhostActive) throw new Error("Ghost Mode cannot vote in the Vault.");
       if (!isVerified) throw new Error("Verify your profile before voting in the Vault.");
-      const result = await actions.voteTarget.mutateAsync({ targetType, targetId, vote: "up" });
       const key = `${targetType}:${targetId}`;
-      if (result?.changed !== false) {
-        setVoteAdjustments((current) => ({ ...current, [key]: (current[key] ?? 0) + 1 }));
-      }
-      await refetch();
+      const currentCount = voteOverrides[key] ?? getCurrentVoteCount(targetType, targetId);
+      const result = await actions.voteTarget.mutateAsync({ targetType, targetId, vote: "up" });
+      const newCount = typeof result?.newCount === "number" ? result.newCount : currentCount + (result?.changed === false ? 0 : 1);
+      setVoteOverrides((current) => ({ ...current, [key]: Math.max(current[key] ?? 0, newCount) }));
+      void refetch();
       showSuccess(result?.changed === false ? "Already counted" : "Vote counted");
     } catch (e: any) {
       showError("Vote failed", e?.message ?? "Try again later.");
@@ -201,7 +208,7 @@ export default function VaultScreen() {
         <BadgeShowcase badges={summary?.badges ?? []} colors={colors} />
 
         <Section title="Current Campus Legends" icon="star" colors={colors} items={(summary?.legends ?? []).map((l) => {
-          const votes = l.votes_count + (voteAdjustments[`legend_nomination:${l.id}`] ?? 0);
+          const votes = Math.max(l.votes_count, voteOverrides[`legend_nomination:${l.id}`] ?? l.votes_count);
           return { key: l.id, title: l.nominee_username, meta: `${l.category} · ${votes} votes`, onOpen: () => openDetail("legend", l.id), action: "Vote", onPress: () => vote("legend_nomination", l.id), disabled: ghost.isGhostActive || !isVerified };
         })} />
         <Section title="Active Debates" icon="activity" colors={colors} items={(summary?.debates ?? []).map((d) => ({ key: d.id, title: d.title, meta: `FOR ${d.for_count} · AGAINST ${d.against_count}`, onOpen: () => openDetail("debate", d.id), actions: [
@@ -210,7 +217,7 @@ export default function VaultScreen() {
         ] }))} />
         <Section title="Active Alerts" icon="radio" colors={colors} items={(summary?.alerts ?? []).map((a) => ({ key: a.id, title: a.title, meta: `${a.category} · ${a.priority.toUpperCase()}`, onOpen: () => openDetail("alert", a.id) }))} />
         <Section title="Trending Wiki Articles" icon="book-open" colors={colors} items={(summary?.wiki ?? []).map((w) => {
-          const upvotes = w.upvotes + (voteAdjustments[`wiki_article:${w.id}`] ?? 0);
+          const upvotes = Math.max(w.upvotes, voteOverrides[`wiki_article:${w.id}`] ?? w.upvotes);
           return { key: w.id, title: w.title, meta: w.category, count: upvotes, countLabel: upvotes === 1 ? "upvote" : "upvotes", onOpen: () => openDetail("wiki", w.id), action: "Helpful", onPress: () => vote("wiki_article", w.id), disabled: ghost.isGhostActive || !isVerified };
         })} />
       </ScrollView>
