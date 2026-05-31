@@ -116,7 +116,7 @@ export async function fetchVaultSummary(userId?: string): Promise<VaultSummary> 
     if (!error && data) return normalizeVaultSummary(data as Partial<VaultSummary>);
   } catch {}
 
-  const [scoreRes, legendsRes, debatesRes, alertsRes, wikiRes, skillsRes, badgesRes] = await Promise.all([
+  const settled = await Promise.allSettled([
     userId ? supabase.from("vault_scores").select("score, level, campus_rank").eq("user_id", userId).maybeSingle() : Promise.resolve({ data: null }),
     supabase.from("vault_nominations").select("id, category, nominee_username, votes_count").eq("status", "active").order("votes_count", { ascending: false }).limit(6),
     supabase.from("vault_debates").select("id, title, ends_at, for_count, against_count").eq("status", "active").order("ends_at", { ascending: true }).limit(5),
@@ -125,6 +125,18 @@ export async function fetchVaultSummary(userId?: string): Promise<VaultSummary> 
     userId ? supabase.from("vault_skills").select("skill_name, strength, trend").eq("user_id", userId).order("strength", { ascending: false }).limit(9) : Promise.resolve({ data: [] }),
     userId ? supabase.from("vault_legend_badges").select("id, label, category, awarded_at").eq("user_id", userId).order("awarded_at", { ascending: false }).limit(6) : Promise.resolve({ data: [] }),
   ]);
+  const result = <T,>(index: number, fallbackValue: T): T => {
+    const item = settled[index];
+    if (item?.status !== "fulfilled" || (item.value as any)?.error) return fallbackValue;
+    return item.value as T;
+  };
+  const scoreRes = result(0, { data: null } as any);
+  const legendsRes = result(1, { data: [] } as any);
+  const debatesRes = result(2, { data: [] } as any);
+  const alertsRes = result(3, { data: [] } as any);
+  const wikiRes = result(4, { data: [] } as any);
+  const skillsRes = result(5, { data: [] } as any);
+  const badgesRes = result(6, { data: [] } as any);
   const score = (scoreRes.data as any)?.score ?? 0;
   const skills = (skillsRes.data ?? []) as VaultSummary["skills"];
   return normalizeVaultSummary({
@@ -148,16 +160,62 @@ export async function createVaultAlert(input: { title: string; body: string; cat
   return data;
 }
 
+function isMissingRpc(error: any) {
+  return typeof error?.message === "string" && error.message.includes("Could not find the function");
+}
+
 export async function nominateVaultLegend(input: { nominee_id: string; category: string; reason: string }) {
-  const { data, error } = await supabase.rpc("nominate_vault_legend", input);
-  if (error) throw error;
-  return data;
+  const payload = {
+    nominee_id: input.nominee_id,
+    category: input.category?.trim() || "Campus Legend",
+    reason: input.reason?.trim() || "Nominated from The Vault.",
+  };
+  const { data, error } = await supabase.rpc("nominate_vault_legend", payload);
+  if (!error) return data;
+  if (!isMissingRpc(error)) throw error;
+
+  const { data: userRes } = await supabase.auth.getUser();
+  const userId = userRes.user?.id;
+  if (!userId) throw new Error("Sign in to nominate a legend.");
+  const { data: profile } = await supabase.from("profiles").select("username").eq("id", payload.nominee_id).maybeSingle();
+  const { data: inserted, error: insertError } = await supabase
+    .from("vault_nominations")
+    .insert({ nominee_id: payload.nominee_id, nominee_username: (profile as any)?.username ?? "Unknown student", nominator_id: userId, category: payload.category, reason: payload.reason })
+    .select("id")
+    .single();
+  if (insertError) throw insertError;
+  return inserted?.id;
 }
 
 export async function joinVaultDebate(input: { debate_id: string; side: DebateSide; body: string; alias?: string }) {
-  const { data, error } = await supabase.rpc("join_vault_debate", input);
-  if (error) throw error;
-  return data;
+  const payload = {
+    debate_id: input.debate_id,
+    side: input.side,
+    body: input.body?.trim() || `Joining the ${input.side} side.`,
+    alias: input.alias?.trim() || null,
+  };
+  const { data, error } = await supabase.rpc("join_vault_debate", payload);
+  if (!error) return data;
+  if (!isMissingRpc(error)) throw error;
+
+  const { data: userRes } = await supabase.auth.getUser();
+  const userId = userRes.user?.id;
+  if (!userId) throw new Error("Sign in to join a debate.");
+  const alias = payload.alias || `Vault Ghost ${Math.floor(Math.random() * 900 + 100)}`;
+  const { data: inserted, error: insertError } = await supabase
+    .from("vault_arguments")
+    .insert({ debate_id: payload.debate_id, author_id: userId, anonymous_alias: alias, side: payload.side, body: payload.body })
+    .select("id")
+    .single();
+  if (insertError) throw insertError;
+  const { data: debate } = await supabase.from("vault_debates").select("for_count, against_count").eq("id", payload.debate_id).maybeSingle();
+  await supabase
+    .from("vault_debates")
+    .update(payload.side === "for"
+      ? { for_count: ((debate as any)?.for_count ?? 0) + 1 }
+      : { against_count: ((debate as any)?.against_count ?? 0) + 1 })
+    .eq("id", payload.debate_id);
+  return inserted?.id;
 }
 
 export async function createVaultDebate({ title, description }: { title: string; description: string }) {
@@ -204,8 +262,26 @@ export async function voteVaultTarget(targetType: "legend_nomination" | "wiki_ar
   const { data: userRes } = await supabase.auth.getUser();
   const userId = userRes.user?.id;
   if (!userId) throw new Error("Sign in to vote.");
+  const { data: existing } = await supabase
+    .from("vault_votes")
+    .select("vote")
+    .eq("user_id", userId)
+    .eq("target_type", targetType)
+    .eq("target_id", targetId)
+    .maybeSingle();
   const { error: voteError } = await supabase
     .from("vault_votes")
     .upsert({ user_id: userId, target_type: targetType, target_id: targetId, vote }, { onConflict: "user_id,target_type,target_id" });
   if (voteError) throw voteError;
+  if ((existing as any)?.vote === vote) return;
+
+  const table = targetType === "wiki_article" ? "vault_wiki_articles" : "vault_nominations";
+  const countColumn = targetType === "wiki_article" ? "upvotes" : "votes_count";
+  const { data: target } = await supabase.from(table).select(countColumn).eq("id", targetId).maybeSingle();
+  const previousDelta = (existing as any)?.vote === "up" ? -1 : (existing as any)?.vote === "down" ? 1 : 0;
+  const nextDelta = vote === "up" ? 1 : -1;
+  await supabase
+    .from(table)
+    .update({ [countColumn]: Math.max(0, ((target as any)?.[countColumn] ?? 0) + previousDelta + nextDelta) })
+    .eq("id", targetId);
 }

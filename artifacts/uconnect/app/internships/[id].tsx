@@ -8,6 +8,7 @@ import { useToast } from "@/components/Toast";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
+import { useGhostMode } from "@/context/GhostModeContext";
 import { safeInsertNotification } from "@/utils/notifications";
 
 const ND = Platform.OS !== "web";
@@ -45,6 +46,7 @@ export default function InternshipDetailScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { showSuccess, showInfo, showError } = useToast();
+  const ghost = useGhostMode();
   const { user } = useAuth();
   const [application, setApplication] = useState<{ id: string; status: string; reason: string | null } | null>(null);
   const [applyConfirm, setApplyConfirm] = useState(false);
@@ -169,6 +171,10 @@ export default function InternshipDetailScreen() {
     if (!internship) return;
     if (!user) {
       showInfo("Sign in required", "Please sign in to apply for internships.");
+      return;
+    }
+    if (!ghost.canPerformIdentityAction("apply_internship")) {
+      showError("Ghost Mode active", "Turn off Ghost Mode before applying to internships.");
       return;
     }
     setApplyConfirm(false);

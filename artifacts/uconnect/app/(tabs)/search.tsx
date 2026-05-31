@@ -36,6 +36,8 @@ const DISCOVER = [
   { id: "events", icon: "calendar", label: "Events", route: "/events", color: "#F59E0B", desc: "Campus events" },
   { id: "teams", icon: "users", label: "Teams", route: "/teams", color: "#00A86B", desc: "Find your squad" },
   { id: "notes", icon: "book-open", label: "Notes", route: "/notes", color: "#3B82F6", desc: "Study materials" },
+  { id: "vault", icon: "shield", label: "Vault", route: "/(tabs)/vault", color: "#7C3AED", desc: "Campus intelligence" },
+  { id: "ghost", icon: "cloud-snow", label: "Ghost Mode", route: "/settings/ghost-mode", color: "#64748B", desc: "Anonymous mode" },
   { id: "chat", icon: "send", label: "Chats", route: "/chat", color: "#06B6D4", desc: "Direct messages" },
 ];
 

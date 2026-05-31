@@ -27,7 +27,17 @@ interface GhostModeContextType {
 }
 
 const GhostModeContext = createContext<GhostModeContextType | undefined>(undefined);
-const blockedActions = new Set(["create_event", "create_internship", "create_team", "vote_legend", "submit_verification", "edit_vault_score"]);
+const blockedActions = new Set([
+  "create_event",
+  "rsvp_event",
+  "create_internship",
+  "apply_internship",
+  "create_team",
+  "join_team",
+  "vote_legend",
+  "submit_verification",
+  "edit_vault_score",
+]);
 
 function mapSession(row: any): GhostSession {
   return {

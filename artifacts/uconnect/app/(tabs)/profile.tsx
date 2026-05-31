@@ -97,6 +97,19 @@ export default function ProfileScreen() {
     elevation: 3,
   };
 
+  const openConnections = useCallback((mode: "followers" | "following") => {
+    if (!user) return;
+    router.push({
+      pathname: "/connections",
+      params: { userId: user.id, mode, username: user.username },
+    });
+  }, [user?.id, user?.username]);
+
+  const handleDeletePost = useCallback((id: string) => {
+    deletePost(id);
+    showSuccess("Post deleted");
+  }, [deletePost, showSuccess]);
+
   if (!user) {
     return (
       <View style={[styles.authWall, { backgroundColor: colors.background }]}>
@@ -131,18 +144,6 @@ export default function ProfileScreen() {
       };
     })
     .filter(Boolean) as typeof posts;
-  const openConnections = useCallback((mode: "followers" | "following") => {
-    router.push({
-      pathname: "/connections",
-      params: { userId: user.id, mode, username: user.username },
-    });
-  }, [user.id, user.username]);
-
-  const handleDeletePost = useCallback((id: string) => {
-    deletePost(id);
-    showSuccess("Post deleted");
-  }, [deletePost, showSuccess]);
-
   const tabItems: { key: TabId; icon: string; label: string; count: number }[] = [
     { key: "posts", icon: "file-text", label: "Posts", count: myPosts.length },
     { key: "confessions", icon: "message-square", label: "Confessions", count: myConfessions.length },

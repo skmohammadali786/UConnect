@@ -9,12 +9,14 @@ import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/Toast";
+import { useGhostMode } from "@/context/GhostModeContext";
 
 export default function PostInternshipScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { showSuccess, showError } = useToast();
+  const ghost = useGhostMode();
   const [company, setCompany] = useState("");
   const [role, setRole] = useState("");
   const [stipend, setStipend] = useState("");
@@ -33,6 +35,10 @@ export default function PostInternshipScreen() {
     }
     if (!user) {
       showError("Not logged in", "Please sign in to post an internship.");
+      return;
+    }
+    if (!ghost.canPerformIdentityAction("create_internship")) {
+      showError("Ghost Mode active", "Turn off Ghost Mode before posting internships.");
       return;
     }
     setLoading(true);

@@ -8,6 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useTeams } from "@/context/TeamsContext";
 import { useToast } from "@/components/Toast";
 import { TypewriterText } from "@/components/TypewriterText";
+import { useGhostMode } from "@/context/GhostModeContext";
 
 const TYPES = ["All", "Hackathon", "Startup", "Research", "Competition", "Project"];
 const TYPE_COLORS: Record<string, string> = {
@@ -109,6 +110,7 @@ export default function TeamsScreen() {
   const { user } = useAuth();
   const { teams, requestJoin, cancelRequest, getPendingRequests, getMyTeams } = useTeams();
   const { showSuccess, showInfo } = useToast();
+  const ghost = useGhostMode();
   const [selectedType, setSelectedType] = useState("All");
   const [requestedIds, setRequestedIds] = useState<Set<string>>(new Set());
   const headerAnim = useRef(new Animated.Value(0)).current;
@@ -140,6 +142,7 @@ export default function TeamsScreen() {
 
   const handleRequest = async (teamId: string) => {
     if (!user) { showInfo("Sign in required", "Please sign in to request joining a team."); return; }
+    if (!ghost.canPerformIdentityAction("join_team")) { showInfo("Ghost Mode active", "Turn off Ghost Mode before joining teams."); return; }
     setRequestedIds((prev) => new Set([...prev, teamId]));
     await requestJoin(teamId, {
       userId: user.id,
