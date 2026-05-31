@@ -5,6 +5,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Animated, Platform, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useGhostMode } from "@/context/GhostModeContext";
+import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/Toast";
 import { useColors } from "@/hooks/useColors";
 
@@ -19,6 +20,7 @@ export default function GhostModeScreen() {
   const insets = useSafeAreaInsets();
   const colors = useColors();
   const ghost = useGhostMode();
+  const { user } = useAuth();
   const { showSuccess, showError } = useToast();
   const [busy, setBusy] = useState(false);
   const fog = useRef(new Animated.Value(0)).current;
@@ -36,6 +38,10 @@ export default function GhostModeScreen() {
     setBusy(true);
     try {
       if (value) {
+        if (!user?.isVerified) {
+          showError("Verification required", "Verify your profile before enabling Ghost Mode.");
+          return;
+        }
         const session = await ghost.activateGhostMode();
         showSuccess("Ghost Mode active", `You are ${session.alias}.`);
       } else {
@@ -72,9 +78,16 @@ export default function GhostModeScreen() {
               <Text style={[styles.rowTitle, { color: colors.foreground }]}>Temporary anonymous existence</Text>
               <Text style={[styles.rowSub, { color: colors.mutedForeground }]}>6 hours active · 24 hours cooldown</Text>
             </View>
-            <Switch value={ghost.isGhostActive} disabled={busy || ghost.isLoading} onValueChange={toggle} trackColor={{ false: colors.secondary, true: colors.primary }} thumbColor={colors.primaryForeground} />
+            <Switch value={ghost.isGhostActive} disabled={busy || ghost.isLoading || !user?.isVerified} onValueChange={toggle} trackColor={{ false: colors.secondary, true: colors.primary }} thumbColor={colors.primaryForeground} />
           </View>
         </View>
+
+        {!user?.isVerified ? (
+          <View style={[styles.verifyCard, { backgroundColor: colors.card, borderColor: colors.primary + "40" }]}>
+            <Feather name="lock" size={18} color={colors.primary} />
+            <Text style={[styles.verifyText, { color: colors.mutedForeground }]}>Profile verification is required before you can enable Ghost Mode.</Text>
+          </View>
+        ) : null}
 
         {ghost.isGhostActive && ghost.session ? (
           <View style={[styles.dashboard, { backgroundColor: colors.card, borderColor: colors.primary + "55" }]}>
@@ -113,6 +126,8 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 16 },
   rowTitle: { color: "#F8FAFC", fontFamily: "Inter_700Bold", fontSize: 15 },
   rowSub: { color: "#A5B4FC", fontFamily: "Inter_500Medium", fontSize: 12, marginTop: 4 },
+  verifyCard: { marginHorizontal: 16, marginBottom: 16, padding: 14, borderRadius: 16, borderWidth: 1, flexDirection: "row", gap: 10, alignItems: "center" },
+  verifyText: { flex: 1, fontSize: 13, fontFamily: "Inter_600SemiBold", lineHeight: 19 },
   dashboard: { margin: 16, padding: 18, borderRadius: 26, borderWidth: 1, borderColor: "rgba(167,139,250,0.35)", backgroundColor: "rgba(8,13,28,0.86)", alignItems: "center" },
   dashboardLabel: { color: "#818CF8", fontFamily: "Inter_700Bold", fontSize: 11, letterSpacing: 1.8 },
   alias: { color: "#FFF", fontFamily: "Inter_700Bold", fontSize: 30, marginTop: 10 },

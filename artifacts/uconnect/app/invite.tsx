@@ -1,8 +1,8 @@
 import { Feather } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import { router } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
-import { Platform, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Animated, Easing, Platform, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppButton } from "@/components/AppButton";
 import { useColors } from "@/hooks/useColors";
@@ -10,6 +10,8 @@ import { useToast } from "@/components/Toast";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { buildInviteShareLink } from "@/utils/postLinks";
+import { AppLogo } from "@/components/AppLogo";
+import { useTheme } from "@/context/ThemeContext";
 
 const STEPS = [
   { icon: "user-plus", title: "Invite your batchmates", desc: "Share your unique invite link with college friends." },
@@ -22,6 +24,9 @@ export default function InviteScreen() {
   const insets = useSafeAreaInsets();
   const { showSuccess } = useToast();
   const { user } = useAuth();
+  const { themeMode } = useTheme();
+  const logoPulse = useRef(new Animated.Value(0)).current;
+  const isDarkLogo = themeMode === "dark";
 
   const [inviteCode, setInviteCode] = useState("");
   const [invitedCount, setInvitedCount] = useState(0);
@@ -34,6 +39,18 @@ export default function InviteScreen() {
   }, [user?.id, user?.username]);
 
   const inviteLink = buildInviteShareLink(inviteCode || fallbackCode);
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(logoPulse, { toValue: 1, duration: 1400, easing: Easing.inOut(Easing.cubic), useNativeDriver: Platform.OS !== "web" }),
+        Animated.timing(logoPulse, { toValue: 0, duration: 1400, easing: Easing.inOut(Easing.cubic), useNativeDriver: Platform.OS !== "web" }),
+      ]),
+    ).start();
+  }, [logoPulse]);
+
+  const logoScale = logoPulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] });
+  const logoRotate = logoPulse.interpolate({ inputRange: [0, 1], outputRange: ["-3deg", "3deg"] });
 
   useEffect(() => {
     if (!user) {
@@ -105,9 +122,12 @@ export default function InviteScreen() {
 
       <ScrollView contentContainerStyle={{ padding: 24, gap: 28, paddingBottom: 40 }}>
         <View style={styles.heroSection}>
-          <View style={[styles.heroIcon, { backgroundColor: colors.primary + "15" }]}>
-            <Feather name="gift" size={44} color={colors.primary} />
-          </View>
+          <Animated.View style={[styles.heroIcon, { backgroundColor: colors.primary + "15", shadowColor: colors.primary, transform: [{ scale: logoScale }, { rotate: logoRotate }] }]}>
+            <AppLogo size={58} isDark={isDarkLogo} showBackground={false} />
+            <View style={[styles.logoGiftBadge, { backgroundColor: colors.primary }]}>
+              <Feather name="gift" size={14} color="#FFF" />
+            </View>
+          </Animated.View>
           <Text style={[styles.heroTitle, { color: colors.foreground }]}>Grow your college community</Text>
           <Text style={[styles.heroSubtitle, { color: colors.mutedForeground }]}>
             Invite batchmates and make UConnect even better. Only verified college students can join.
@@ -182,7 +202,8 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: 1 },
   title: { fontSize: 18, fontFamily: "Inter_700Bold" },
   heroSection: { alignItems: "center", gap: 14 },
-  heroIcon: { width: 88, height: 88, borderRadius: 24, alignItems: "center", justifyContent: "center" },
+  heroIcon: { width: 96, height: 96, borderRadius: 28, alignItems: "center", justifyContent: "center", shadowOpacity: 0.22, shadowRadius: 18, elevation: 4 },
+  logoGiftBadge: { position: "absolute", right: 8, bottom: 8, width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#FFF" },
   heroTitle: { fontSize: 22, fontFamily: "Inter_700Bold", textAlign: "center" },
   heroSubtitle: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
   inviteBox: { alignItems: "center", borderRadius: 16, borderWidth: 1.5, borderStyle: "dashed", padding: 20, gap: 10 },

@@ -1,6 +1,7 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
+import type { DimensionValue } from "react-native";
 import { ActivityIndicator, Modal, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { VaultRadarCard } from "@/components/vault/VaultRadarCard";
@@ -29,6 +30,12 @@ function Metric({ label, value, icon, colors }: { label: string; value: string |
   );
 }
 
+function percentWidth(value: unknown): DimensionValue {
+  const next = Number(value ?? 0);
+  if (!Number.isFinite(next)) return "0%";
+  return `${Math.min(100, Math.max(0, next))}%`;
+}
+
 export default function VaultScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -43,9 +50,14 @@ export default function VaultScreen() {
   const [form, setForm] = useState<Record<string, string>>({});
 
   const radarColors = useMemo(() => ({ ...colors, primary: colors.primary, secondary: colors.primarySoft }), [colors]);
-  const disabledIdentityActions = ghost.isGhostActive;
+  const isVerified = Boolean(user?.isVerified);
+  const disabledIdentityActions = ghost.isGhostActive || !isVerified;
 
   const openModal = (type: ModalType, initial: Record<string, string> = {}) => {
+    if ((type === "nomination" || type === "debate" || type === "wiki") && !isVerified) {
+      showError("Verification required", "Verify your profile before creating nominations, debates, or wiki articles.");
+      return;
+    }
     setForm(initial);
     setModal(type);
   };
@@ -74,7 +86,8 @@ export default function VaultScreen() {
         showSuccess("Alert posted", "Your campus alert is now live.");
       }
       if (modal === "nomination") {
-        if (disabledIdentityActions) throw new Error("Ghost Mode cannot nominate Vault Legends.");
+        if (ghost.isGhostActive) throw new Error("Ghost Mode cannot nominate Vault Legends.");
+        if (!isVerified) throw new Error("Verify your profile before nominating Vault Legends.");
         const username = form.username?.replace(/^@/, "").trim();
         const { data: nominee } = await supabase.from("profiles").select("id").ilike("username", username ?? "").maybeSingle();
         if (!nominee?.id) throw new Error("No user found with that username.");
@@ -82,12 +95,14 @@ export default function VaultScreen() {
         showSuccess("Nomination created", "Your legend nomination was submitted.");
       }
       if (modal === "debate") {
-        if (disabledIdentityActions) throw new Error("Ghost Mode cannot create Vault debates.");
+        if (ghost.isGhostActive) throw new Error("Ghost Mode cannot create Vault debates.");
+        if (!isVerified) throw new Error("Verify your profile before creating Vault debates.");
         await actions.createDebate.mutateAsync({ title: form.title?.trim(), description: form.description?.trim() || "" });
         showSuccess("Debate opened", "Students can now join the arena.");
       }
       if (modal === "wiki") {
-        if (disabledIdentityActions) throw new Error("Ghost Mode cannot edit Vault wiki data.");
+        if (ghost.isGhostActive) throw new Error("Ghost Mode cannot edit Vault wiki data.");
+        if (!isVerified) throw new Error("Verify your profile before editing Vault wiki data.");
         await actions.createWikiArticle.mutateAsync({ title: form.title?.trim(), category: form.category?.trim() || WIKI_CATEGORIES[0], content: form.content?.trim() });
         showSuccess("Wiki article published", "Your campus knowledge was added.");
       }
@@ -107,7 +122,9 @@ export default function VaultScreen() {
   const vote = async (targetType: "legend_nomination" | "wiki_article", targetId: string) => {
     try {
       if (ghost.isGhostActive) throw new Error("Ghost Mode cannot vote in the Vault.");
+      if (!isVerified) throw new Error("Verify your profile before voting in the Vault.");
       await actions.voteTarget.mutateAsync({ targetType, targetId, vote: "up" });
+      await refetch();
       showSuccess("Vote counted");
     } catch (e: any) {
       showError("Vote failed", e?.message ?? "Try again later.");
@@ -137,7 +154,7 @@ export default function VaultScreen() {
             </View>
             <View style={[styles.levelPill, { backgroundColor: colors.primarySoft }]}><MaterialCommunityIcons name="hexagon-multiple" size={15} color={colors.primary} /><Text style={[styles.levelText, { color: colors.primary }]}>{summary?.level ?? "Explorer"}</Text></View>
           </View>
-          <View style={[styles.progressTrack, { backgroundColor: colors.secondary }]}><View style={[styles.progressFill, { backgroundColor: colors.primary, width: `${summary?.progress ?? 0}%` }]} /></View>
+          <View style={[styles.progressTrack, { backgroundColor: colors.secondary }]}><View style={[styles.progressFill, { backgroundColor: colors.primary, width: percentWidth(summary?.progress) }]} /></View>
           <Text style={[styles.heroMeta, { color: colors.mutedForeground }]}>Rank {summary?.rank ? `#${summary.rank}` : "—"} · Skill Strength {summary?.skillStrength ?? 0}%</Text>
         </View>
 
@@ -155,16 +172,17 @@ export default function VaultScreen() {
           <ActionButton icon="book-open" label="Wiki" disabled={disabledIdentityActions} onPress={() => openModal("wiki", { category: WIKI_CATEGORIES[0] })} colors={colors} />
         </View>
         {ghost.isGhostActive ? <Text style={[styles.ghostNote, { color: colors.mutedForeground }]}>Ghost Mode is active: browsing, alerts, and arguments work; nominations, votes, and wiki edits stay locked.</Text> : null}
+        {!isVerified ? <Text style={[styles.ghostNote, { color: colors.mutedForeground }]}>Verification required: verify your profile to nominate legends, open debates, edit wiki articles, and vote.</Text> : null}
 
         <View style={styles.radarWrap}><VaultRadarCard skills={summary?.skills ?? []} colors={radarColors} /></View>
 
-        <Section title="Current Campus Legends" icon="star" colors={colors} items={(summary?.legends ?? []).map((l) => ({ key: l.id, title: l.nominee_username, meta: `${l.category} · ${l.votes_count} votes`, action: "Vote", onPress: () => vote("legend_nomination", l.id), disabled: ghost.isGhostActive }))} />
+        <Section title="Current Campus Legends" icon="star" colors={colors} items={(summary?.legends ?? []).map((l) => ({ key: l.id, title: l.nominee_username, meta: `${l.category} · ${l.votes_count} votes`, action: "Vote", onPress: () => vote("legend_nomination", l.id), disabled: ghost.isGhostActive || !isVerified }))} />
         <Section title="Active Debates" icon="activity" colors={colors} items={(summary?.debates ?? []).map((d) => ({ key: d.id, title: d.title, meta: `FOR ${d.for_count} · AGAINST ${d.against_count}`, actions: [
           { label: "For", onPress: () => { setSelectedDebate({ id: d.id, side: "for", title: d.title }); openModal("argument"); } },
           { label: "Against", onPress: () => { setSelectedDebate({ id: d.id, side: "against", title: d.title }); openModal("argument"); } },
         ] }))} />
         <Section title="Active Alerts" icon="radio" colors={colors} items={(summary?.alerts ?? []).map((a) => ({ key: a.id, title: a.title, meta: `${a.category} · ${a.priority.toUpperCase()}` }))} />
-        <Section title="Trending Wiki Articles" icon="book-open" colors={colors} items={(summary?.wiki ?? []).map((w) => ({ key: w.id, title: w.title, meta: `${w.category} · ${w.upvotes} upvotes`, action: "Helpful", onPress: () => vote("wiki_article", w.id), disabled: ghost.isGhostActive }))} />
+        <Section title="Trending Wiki Articles" icon="book-open" colors={colors} items={(summary?.wiki ?? []).map((w) => ({ key: w.id, title: w.title, meta: `${w.category} · ${w.upvotes} upvotes`, action: "Helpful", onPress: () => vote("wiki_article", w.id), disabled: ghost.isGhostActive || !isVerified }))} />
       </ScrollView>
       <VaultModal modal={modal} form={form} setForm={setForm} colors={colors} busy={busy} onClose={closeModal} onSubmit={submit} selectedDebate={selectedDebate} />
     </View>

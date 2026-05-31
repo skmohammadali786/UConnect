@@ -118,6 +118,9 @@ export function GhostModeProvider({ children }: { children: React.ReactNode }) {
   }, [session?.id, secondsRemaining, isGhostActive, refreshGhostMode]);
 
   const activateGhostMode = useCallback(async () => {
+    if (!user?.isVerified) {
+      throw new Error("Verify your profile before enabling Ghost Mode.");
+    }
     const { data, error } = await supabase.rpc("activate_ghost_mode");
     if (error) throw error;
     const mapped = mapSession(data);
@@ -125,7 +128,7 @@ export function GhostModeProvider({ children }: { children: React.ReactNode }) {
     notifications.addNotification({ type: "system", title: "Ghost activated", body: `You are now ${mapped.alias} for 6 hours.`, actionType: "system", metadata: { feature: "ghost_mode" } });
     await refreshGhostMode();
     return mapped;
-  }, [notifications, refreshGhostMode]);
+  }, [notifications, refreshGhostMode, user?.isVerified]);
 
   const deactivateGhostMode = useCallback(async () => {
     if (!session) return;

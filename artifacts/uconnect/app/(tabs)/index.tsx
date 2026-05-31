@@ -3,7 +3,7 @@ import { router } from "expo-router";
 import React, { useCallback, useMemo, useRef, useEffect, useState } from "react";
 import {
   Animated, Easing, FlatList, Platform, RefreshControl,
-  ScrollView, StyleSheet, Text, TouchableOpacity, View, useColorScheme,
+  StyleSheet, Text, TouchableOpacity, View, useColorScheme,
 } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -262,8 +262,7 @@ export default function HomeScreen() {
 
   const headerComponent = (
     <View>
-      {!isGhostActive ? (
-        <Animated.View
+      <Animated.View
           style={[
             styles.header,
             {
@@ -298,9 +297,12 @@ export default function HomeScreen() {
             <Feather name="settings" size={18} color={colors.mutedForeground} />
           </TouchableOpacity>
         </Animated.View>
-      ) : (
-        <View style={{ paddingTop: Platform.OS === "web" ? 24 : insets.top + 4 }} />
-      )}
+      {isGhostActive ? (
+        <View style={[styles.ghostActivePill, { backgroundColor: colors.primarySoft, borderColor: colors.primary + "35" }]}>
+          <Feather name="cloud-snow" size={13} color={colors.primary} />
+          <Text style={[styles.ghostActiveText, { color: colors.primary }]}>Ghost Mode active</Text>
+        </View>
+      ) : null}
 
       <Animated.View
         style={{
@@ -308,25 +310,21 @@ export default function HomeScreen() {
           transform: [{ translateY: shortcutSlide }],
         }}
       >
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={[styles.shortcuts, { borderBottomColor: colors.border }]}
-        >
+        <View style={[styles.shortcuts, { borderBottomColor: colors.border }]}>
           {SHORTCUTS.map((s) => (
             <TouchableOpacity key={s.label} onPress={() => router.push(s.route as any)} style={styles.shortcut} activeOpacity={0.7}>
               <View style={[styles.shortcutIcon, { backgroundColor: colors.primary + "18" }]}>
-                <Feather name={s.icon as any} size={17} color={colors.primary} />
+                <Feather name={s.icon as any} size={18} color={colors.primary} />
                 {s.label === "Chats" && totalUnreadMessages > 0 && (
                   <View style={[styles.chatBadge, { backgroundColor: colors.primary }]}>
                     <Text style={styles.chatBadgeText}>{totalUnreadMessages > 99 ? "99+" : totalUnreadMessages}</Text>
                   </View>
                 )}
               </View>
-              <Text style={[styles.shortcutLabel, { color: colors.mutedForeground }]}>{s.label}</Text>
+              <Text style={[styles.shortcutLabel, { color: colors.mutedForeground }]} numberOfLines={1}>{s.label}</Text>
             </TouchableOpacity>
           ))}
-        </ScrollView>
+        </View>
 
         <View style={[styles.filterRow, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
           <View
@@ -473,9 +471,13 @@ const styles = StyleSheet.create({
   },
   ghostActivePill: { marginHorizontal: 16, marginTop: 6, borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8, flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 7 },
   ghostActiveText: { fontSize: 12, fontFamily: "Inter_700Bold" },
-  shortcuts: { paddingHorizontal: 10, paddingVertical: 10, gap: 3 },
-  shortcut: { alignItems: "center", gap: 4, marginHorizontal: 2, width: 43 },
-  shortcutIcon: { width: 40, height: 40, borderRadius: 13, alignItems: "center", justifyContent: "center" },
+  shortcuts: {
+    paddingHorizontal: 10, paddingTop: 10, paddingBottom: 12,
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    borderBottomWidth: 1, gap: 6,
+  },
+  shortcut: { alignItems: "center", gap: 5, flex: 1, minWidth: 0 },
+  shortcutIcon: { width: 43, height: 43, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   chatBadge: {
     position: "absolute",
     right: -4,
@@ -488,7 +490,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   chatBadgeText: { color: "#FFF", fontSize: 10, fontFamily: "Inter_700Bold" },
-  shortcutLabel: { fontSize: 9, fontFamily: "Inter_500Medium", textAlign: "center" },
+  shortcutLabel: { fontSize: 10, fontFamily: "Inter_600SemiBold", textAlign: "center" },
   filterRow: { borderBottomWidth: 1, paddingHorizontal: 16, paddingBottom: 12 },
   segmentTrack: {
     width: "100%",

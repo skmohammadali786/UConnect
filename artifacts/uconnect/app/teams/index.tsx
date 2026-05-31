@@ -188,6 +188,21 @@ export default function TeamsScreen() {
         </TouchableOpacity>
       )}
 
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.typeScroll, { backgroundColor: colors.background, borderBottomColor: colors.border }]} contentContainerStyle={styles.typeFilter}>
+        {TYPES.map((t) => (
+          <TouchableOpacity
+            key={t}
+            onPress={() => setSelectedType(t)}
+            style={[styles.typeChip, {
+              backgroundColor: selectedType === t ? colors.primary : colors.card,
+              borderColor: selectedType === t ? colors.primary : colors.border,
+            }]}
+          >
+            <Text style={[styles.typeChipText, { color: selectedType === t ? "#FFF" : colors.mutedForeground }]}>{t}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
       {myTeams.length > 0 && (
         <View style={styles.myTeamsSection}>
           <Text style={[styles.myTeamsTitle, { color: colors.foreground }]}>My Teams</Text>
@@ -205,21 +220,6 @@ export default function TeamsScreen() {
           </ScrollView>
         </View>
       )}
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.typeScroll, { backgroundColor: colors.background, borderBottomColor: colors.border }]} contentContainerStyle={styles.typeFilter}>
-        {TYPES.map((t) => (
-          <TouchableOpacity
-            key={t}
-            onPress={() => setSelectedType(t)}
-            style={[styles.typeChip, {
-              backgroundColor: selectedType === t ? colors.primary : colors.card,
-              borderColor: selectedType === t ? colors.primary : colors.border,
-            }]}
-          >
-            <Text style={[styles.typeChipText, { color: selectedType === t ? "#FFF" : colors.mutedForeground }]}>{t}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
 
       <FlatList
         data={filteredTeams}
