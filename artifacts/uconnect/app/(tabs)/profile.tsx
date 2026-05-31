@@ -1,6 +1,7 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import type { DimensionValue } from "react-native";
 import {
   Animated, FlatList, Image, Platform, RefreshControl, ScrollView,
   StyleSheet, Text, TouchableOpacity, View, GestureResponderEvent,
@@ -27,6 +28,12 @@ type TabId = "posts" | "saved" | "reposts" | "confessions" | "activity";
 const PROFILE_TAB_MIN_WIDTH = 92;
 const OFFICIAL_UCONNECT_BADGE_COLOR = "#EE4B2B";
 const DEFAULT_VERIFIED_BADGE_COLOR = "#16A34A";
+
+function percentWidth(value: unknown): DimensionValue {
+  const next = Number(value ?? 0);
+  if (!Number.isFinite(next)) return "0%";
+  return `${Math.min(100, Math.max(0, next))}%`;
+}
 
 export default function ProfileScreen() {
   const colors = useColors();
@@ -358,7 +365,7 @@ export default function ProfileScreen() {
             <View style={styles.vaultStat}><Text style={[styles.vaultStatNum, { color: colors.primary }]}>{vaultSummary?.skillStrength ?? 0}%</Text><Text style={[styles.vaultStatLabel, { color: colors.mutedForeground }]}>Skill Strength</Text></View>
             <View style={styles.vaultStat}><Text style={[styles.vaultStatNum, { color: colors.primary }]}>{vaultSummary?.badges?.length ?? 0}</Text><Text style={[styles.vaultStatLabel, { color: colors.mutedForeground }]}>Badges</Text></View>
           </View>
-          <View style={[styles.vaultProgress, { backgroundColor: colors.secondary }]}><View style={[styles.vaultProgressFill, { backgroundColor: colors.primary, width: `${vaultSummary?.progress ?? 0}%` }]} /></View>
+          <View style={[styles.vaultProgress, { backgroundColor: colors.secondary }]}><View style={[styles.vaultProgressFill, { backgroundColor: colors.primary, width: percentWidth(vaultSummary?.progress) }]} /></View>
           <VaultRadarCard skills={vaultSummary?.skills ?? []} colors={colors} compact />
         </View>
 

@@ -41,6 +41,24 @@ function textValue(value: unknown, fallbackValue: string) {
   return typeof value === "string" && value.trim().length > 0 ? value : fallbackValue;
 }
 
+
+async function buildSkillFallback(userId?: string): Promise<VaultSummary["skills"]> {
+  if (!userId) return [];
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("interests, branch")
+    .eq("id", userId)
+    .maybeSingle();
+  const interests = Array.isArray((profile as any)?.interests) ? (profile as any).interests : [];
+  const branch = typeof (profile as any)?.branch === "string" && (profile as any).branch.trim() ? [(profile as any).branch] : [];
+  const names = Array.from(new Set([...interests, ...branch].map((value) => String(value).trim()).filter(Boolean))).slice(0, 7);
+  return names.map((skill_name, index) => ({
+    skill_name,
+    strength: Math.max(35, 72 - index * 6),
+    trend: index < 3 ? 4 - index : 0,
+  }));
+}
+
 function normalizeVaultSummary(data: Partial<VaultSummary> | null | undefined): VaultSummary {
   const merged = { ...fallback, ...(data ?? {}) } as VaultSummary;
   const progress = Math.min(100, Math.max(0, finiteNumber(merged.progress)));
@@ -138,7 +156,9 @@ export async function fetchVaultSummary(userId?: string): Promise<VaultSummary> 
   const skillsRes = result(5, { data: [] } as any);
   const badgesRes = result(6, { data: [] } as any);
   const score = (scoreRes.data as any)?.score ?? 0;
-  const skills = (skillsRes.data ?? []) as VaultSummary["skills"];
+  const skills = ((skillsRes.data ?? []) as VaultSummary["skills"]).length
+    ? (skillsRes.data ?? []) as VaultSummary["skills"]
+    : await buildSkillFallback(userId);
   return normalizeVaultSummary({
     score,
     level: ((scoreRes.data as any)?.level ?? getVaultLevel(score)) as VaultLevel,
@@ -219,12 +239,14 @@ export async function joinVaultDebate(input: { debate_id: string; side: DebateSi
 }
 
 export async function createVaultDebate({ title, description }: { title: string; description: string }) {
+  const safeTitle = title?.trim();
+  if (!safeTitle) throw new Error("Add a debate title.");
   const { data: userRes } = await supabase.auth.getUser();
   const userId = userRes.user?.id;
   if (!userId) throw new Error("Sign in to create a debate.");
   const { data, error } = await supabase
     .from("vault_debates")
-    .insert({ creator_id: userId, title: title.trim(), description: description.trim(), status: "active" })
+    .insert({ creator_id: userId, title: safeTitle, description: description?.trim() ?? "", status: "active" })
     .select("id")
     .single();
   if (error) throw error;
@@ -232,21 +254,25 @@ export async function createVaultDebate({ title, description }: { title: string;
 }
 
 export async function createVaultWikiArticle({ title, category, content }: { title: string; category: string; content: string }) {
+  const safeTitle = title?.trim();
+  const safeContent = content?.trim();
+  if (!safeTitle) throw new Error("Add an article title.");
+  if (!safeContent) throw new Error("Add article content.");
   const { data: userRes } = await supabase.auth.getUser();
   const userId = userRes.user?.id;
   if (!userId) throw new Error("Sign in to create a wiki article.");
   const { data: profile } = await supabase.from("profiles").select("username").eq("id", userId).maybeSingle();
-  const baseSlug = title.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "vault-article";
+  const baseSlug = safeTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "vault-article";
   const slug = `${baseSlug}-${Date.now().toString(36)}`;
   const { data, error } = await supabase
     .from("vault_wiki_articles")
     .insert({
       author_id: userId,
       author_username: (profile as any)?.username ?? "vault-user",
-      title: title.trim(),
+      title: safeTitle,
       slug,
-      category: category.trim(),
-      body_markdown: content.trim(),
+      category: category?.trim() || "Academics",
+      body_markdown: safeContent,
       status: "published",
     })
     .select("id")

@@ -5,7 +5,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import { AppState } from "react-native";
+import { AppState, Platform } from "react-native";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { safeInsertNotification } from "@/utils/notifications";
@@ -79,6 +79,21 @@ const NotificationsContext = createContext<
 
 function generateId() {
   return Date.now().toString() + Math.random().toString(36).substr(2, 9);
+}
+
+async function syncUnreadBadge(count: number) {
+  if (Platform.OS === "web") {
+    const nav = typeof navigator !== "undefined" ? navigator as any : null;
+    if (count > 0 && typeof nav?.setAppBadge === "function") {
+      await nav.setAppBadge(count).catch(() => {});
+    } else if (count === 0 && typeof nav?.clearAppBadge === "function") {
+      await nav.clearAppBadge().catch(() => {});
+    }
+    if (typeof document !== "undefined") {
+      const baseTitle = "UConnect";
+      document.title = count > 0 ? `(${Math.min(count, 99)}) ${baseTitle}` : baseTitle;
+    }
+  }
 }
 
 export function NotificationsProvider({
@@ -255,6 +270,10 @@ export function NotificationsProvider({
   };
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  useEffect(() => {
+    syncUnreadBadge(unreadCount);
+  }, [unreadCount]);
 
   return (
     <NotificationsContext.Provider
