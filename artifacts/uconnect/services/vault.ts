@@ -20,11 +20,23 @@ export interface VaultSummary {
   rank: number | null;
   skillStrength: number;
   legends: Array<{ id: string; category: string; nominee_username: string; votes_count: number }>;
-  debates: Array<{ id: string; title: string; ends_at: string; for_count: number; against_count: number }>;
-  alerts: Array<{ id: string; title: string; category: string; priority: VaultPriority; expires_at: string }>;
-  wiki: Array<{ id: string; title: string; category: string; upvotes: number; view_count: number }>;
+  debates: Array<{ id: string; title: string; description?: string | null; ends_at: string; for_count: number; against_count: number }>;
+  alerts: Array<{ id: string; title: string; body?: string | null; category: string; priority: VaultPriority; location?: string | null; expires_at: string }>;
+  wiki: Array<{ id: string; title: string; category: string; body_markdown?: string | null; upvotes: number; view_count: number; author_username?: string | null }>;
   skills: Array<{ skill_name: string; strength: number; trend: number }>;
   badges: VaultBadge[];
+}
+
+export type VaultDetailKind = "legend" | "debate" | "alert" | "wiki";
+
+export interface VaultDetail {
+  id: string;
+  kind: VaultDetailKind;
+  title: string;
+  subtitle: string;
+  body: string;
+  stats: Array<{ label: string; value: string | number }>;
+  meta: Array<{ label: string; value: string }>;
 }
 
 const fallback: VaultSummary = {
@@ -145,6 +157,7 @@ function normalizeVaultSummary(data: Partial<VaultSummary> | null | undefined): 
     debates: (Array.isArray(merged.debates) ? merged.debates : []).map((debate, index) => ({
       id: textValue((debate as any)?.id, `debate-${index}`),
       title: textValue((debate as any)?.title, "Untitled debate"),
+      description: typeof (debate as any)?.description === "string" ? (debate as any).description : null,
       ends_at: textValue((debate as any)?.ends_at, new Date().toISOString()),
       for_count: finiteNumber((debate as any)?.for_count),
       against_count: finiteNumber((debate as any)?.against_count),
@@ -152,16 +165,20 @@ function normalizeVaultSummary(data: Partial<VaultSummary> | null | undefined): 
     alerts: (Array.isArray(merged.alerts) ? merged.alerts : []).map((alert, index) => ({
       id: textValue((alert as any)?.id, `alert-${index}`),
       title: textValue((alert as any)?.title, "Campus alert"),
+      body: typeof (alert as any)?.body === "string" ? (alert as any).body : null,
       category: textValue((alert as any)?.category, "Safety Alert"),
       priority: textValue((alert as any)?.priority, "normal") as VaultPriority,
+      location: typeof (alert as any)?.location === "string" ? (alert as any).location : null,
       expires_at: textValue((alert as any)?.expires_at, new Date().toISOString()),
     })),
     wiki: (Array.isArray(merged.wiki) ? merged.wiki : []).map((article, index) => ({
       id: textValue((article as any)?.id, `wiki-${index}`),
       title: textValue((article as any)?.title, "Untitled article"),
       category: textValue((article as any)?.category, "Academics"),
+      body_markdown: typeof (article as any)?.body_markdown === "string" ? (article as any).body_markdown : null,
       upvotes: countValue(article, ["upvotes", "votes_count", "vote_count", "helpful_count", "votes"]),
       view_count: countValue(article, ["view_count", "views"]),
+      author_username: typeof (article as any)?.author_username === "string" ? (article as any).author_username : null,
     })),
     skills: skills.map((skill, index) => ({
       skill_name: textValue((skill as any)?.skill_name, `Skill ${index + 1}`),
@@ -197,10 +214,10 @@ export async function fetchVaultSummary(userId?: string): Promise<VaultSummary> 
 
   const settled = await Promise.allSettled([
     userId ? supabase.from("vault_scores").select("score, level, campus_rank").eq("user_id", userId).maybeSingle() : Promise.resolve({ data: null }),
-    supabase.from("vault_nominations").select("id, category, nominee_username, votes_count").eq("status", "active").order("votes_count", { ascending: false }).limit(6),
-    supabase.from("vault_debates").select("id, title, ends_at, for_count, against_count").eq("status", "active").order("ends_at", { ascending: true }).limit(5),
-    supabase.from("vault_alerts").select("id, title, category, priority, expires_at").eq("status", "active").order("priority_rank", { ascending: true }).order("created_at", { ascending: false }).limit(5),
-    supabase.from("vault_wiki_articles").select("id, title, category, upvotes, view_count").eq("status", "published").order("upvotes", { ascending: false }).limit(5),
+    supabase.from("vault_nominations").select("id, category, nominee_username, votes_count, reason, created_at").eq("status", "active").order("votes_count", { ascending: false }).limit(6),
+    supabase.from("vault_debates").select("id, title, description, ends_at, for_count, against_count, created_at").eq("status", "active").order("ends_at", { ascending: true }).limit(5),
+    supabase.from("vault_alerts").select("id, title, body, category, priority, location, expires_at, created_at").eq("status", "active").order("priority_rank", { ascending: true }).order("created_at", { ascending: false }).limit(5),
+    supabase.from("vault_wiki_articles").select("id, title, category, body_markdown, upvotes, view_count, author_username, created_at, updated_at").eq("status", "published").order("upvotes", { ascending: false }).limit(5),
     userId ? supabase.from("vault_skills").select("skill_name, strength, trend").eq("user_id", userId).order("strength", { ascending: false }).limit(9) : Promise.resolve({ data: [] }),
     userId ? supabase.from("vault_legend_badges").select("id, label, category, awarded_at").eq("user_id", userId).order("awarded_at", { ascending: false }).limit(6) : Promise.resolve({ data: [] }),
   ]);
@@ -343,8 +360,11 @@ export async function createVaultWikiArticle({ title, category, content }: { tit
 }
 
 export async function voteVaultTarget(targetType: "legend_nomination" | "wiki_article", targetId: string, vote: "up" | "down" = "up") {
-  const { error } = await supabase.rpc("vote_vault_target", { target_type: targetType, target_id: targetId, vote });
-  if (!error) return;
+  const { data, error } = await supabase.rpc("vote_vault_target", { target_type: targetType, target_id: targetId, vote });
+  if (!error) {
+    const payload = Array.isArray(data) ? data[0] : data;
+    return { changed: typeof payload?.changed === "boolean" ? payload.changed : true };
+  }
 
   const { data: userRes } = await supabase.auth.getUser();
   const userId = userRes.user?.id;
@@ -360,7 +380,7 @@ export async function voteVaultTarget(targetType: "legend_nomination" | "wiki_ar
     .from("vault_votes")
     .upsert({ user_id: userId, target_type: targetType, target_id: targetId, vote }, { onConflict: "user_id,target_type,target_id" });
   if (voteError) throw voteError;
-  if ((existing as any)?.vote === vote) return;
+  if ((existing as any)?.vote === vote) return { changed: false };
 
   const table = targetType === "wiki_article" ? "vault_wiki_articles" : "vault_nominations";
   const countColumn = targetType === "wiki_article" ? "upvotes" : "votes_count";
@@ -371,4 +391,65 @@ export async function voteVaultTarget(targetType: "legend_nomination" | "wiki_ar
     .from(table)
     .update({ [countColumn]: Math.max(0, ((target as any)?.[countColumn] ?? 0) + previousDelta + nextDelta) })
     .eq("id", targetId);
+  return { changed: true };
+}
+
+function dateValue(value: unknown) {
+  if (typeof value !== "string" || !value) return "—";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+}
+
+export async function fetchVaultDetail(kind: VaultDetailKind, id: string): Promise<VaultDetail> {
+  const table = kind === "legend" ? "vault_nominations" : kind === "debate" ? "vault_debates" : kind === "alert" ? "vault_alerts" : "vault_wiki_articles";
+  const { data, error } = await supabase.from(table).select("*").eq("id", id).maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error("Vault item not found.");
+  const row = data as any;
+
+  if (kind === "legend") {
+    return {
+      id,
+      kind,
+      title: textValue(row.nominee_username, "Campus Legend"),
+      subtitle: textValue(row.category, "Campus Legend"),
+      body: textValue(row.reason, "Students are backing this nominee as a campus legend."),
+      stats: [{ label: "Votes", value: countValue(row, ["votes_count", "vote_count", "upvotes", "votes"]) }],
+      meta: [{ label: "Created", value: dateValue(row.created_at) }, { label: "Status", value: textValue(row.status, "active") }],
+    };
+  }
+
+  if (kind === "debate") {
+    return {
+      id,
+      kind,
+      title: textValue(row.title, "Untitled debate"),
+      subtitle: "Campus debate",
+      body: textValue(row.description, "No extra debate context has been added yet."),
+      stats: [{ label: "For", value: finiteNumber(row.for_count) }, { label: "Against", value: finiteNumber(row.against_count) }],
+      meta: [{ label: "Ends", value: dateValue(row.ends_at) }, { label: "Created", value: dateValue(row.created_at) }],
+    };
+  }
+
+  if (kind === "alert") {
+    return {
+      id,
+      kind,
+      title: textValue(row.title, "Campus alert"),
+      subtitle: `${textValue(row.category, "Safety Alert")} · ${textValue(row.priority, "normal").toUpperCase()}`,
+      body: textValue(row.body, "No extra alert details were provided."),
+      stats: [{ label: "Priority", value: textValue(row.priority, "normal").toUpperCase() }],
+      meta: [{ label: "Location", value: textValue(row.location, "Not specified") }, { label: "Expires", value: dateValue(row.expires_at) }],
+    };
+  }
+
+  return {
+    id,
+    kind,
+    title: textValue(row.title, "Untitled article"),
+    subtitle: textValue(row.category, "Academics"),
+    body: textValue(row.body_markdown ?? row.content, "This article does not have full content yet."),
+    stats: [{ label: "Helpful", value: countValue(row, ["upvotes", "votes_count", "vote_count", "helpful_count", "votes"]) }, { label: "Views", value: countValue(row, ["view_count", "views"]) }],
+    meta: [{ label: "Author", value: textValue(row.author_username, "Vault contributor") }, { label: "Updated", value: dateValue(row.updated_at ?? row.created_at) }],
+  };
 }
