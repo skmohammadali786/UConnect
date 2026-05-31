@@ -12,6 +12,7 @@ import {
   Modal,
   Platform,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -189,6 +190,18 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
     const opened = await playVideoUri(activeMedia.uri);
     if (opened) {
       setMediaViewerVisible(false);
+    }
+  };
+
+  const handleSharePostLink = async () => {
+    const postLink = getPostLink();
+    const message = `Check out this post on UConnect:\n${postLink}`;
+    try {
+      await Share.share({ title: "UConnect post", message, url: postLink });
+    } catch {
+      await Clipboard.setStringAsync(postLink);
+    } finally {
+      setShareOptionsVisible(false);
     }
   };
 
@@ -452,8 +465,11 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
           <View style={[styles.videoModalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Feather name="share-2" size={28} color={colors.primary} />
             <Text style={[styles.videoModalTitle, { color: colors.foreground }]}>Share post</Text>
-            <TouchableOpacity onPress={handleCopyPostLink} style={[styles.videoOpenBtn, { backgroundColor: colors.primary, width: "100%", alignItems: "center" }]}>
-              <Text style={styles.videoOpenText}>Copy link</Text>
+            <TouchableOpacity onPress={handleSharePostLink} style={[styles.videoOpenBtn, { backgroundColor: colors.primary, width: "100%", alignItems: "center" }]}>
+              <Text style={styles.videoOpenText}>Share link</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleCopyPostLink} style={[styles.videoOpenBtn, { backgroundColor: colors.secondary, width: "100%", alignItems: "center" }]}>
+              <Text style={[styles.videoOpenText, { color: colors.foreground }]}>Copy link</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={handleToggleRepost} style={[styles.videoOpenBtn, { backgroundColor: colors.secondary, width: "100%", alignItems: "center" }]}>
               <Text style={[styles.videoOpenText, { color: colors.foreground }]}>{isReposted ? "Remove repost" : "Repost"}</Text>

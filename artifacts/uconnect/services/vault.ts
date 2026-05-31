@@ -359,39 +359,73 @@ export async function createVaultWikiArticle({ title, category, content }: { tit
   return data.id as string;
 }
 
-export async function voteVaultTarget(targetType: "legend_nomination" | "wiki_article", targetId: string, vote: "up" | "down" = "up") {
+export interface VaultVoteResult {
+  changed: boolean;
+  newCount: number | null;
+}
+
+function getVaultVoteTargetConfig(targetType: "legend_nomination" | "wiki_article") {
+  return targetType === "wiki_article"
+    ? { table: "vault_wiki_articles", countColumn: "upvotes" }
+    : { table: "vault_nominations", countColumn: "votes_count" };
+}
+
+function normalizeVaultVoteResult(payload: any): VaultVoteResult | null {
+  const row = Array.isArray(payload) ? payload[0] : payload;
+  if (!row || typeof row !== "object") return null;
+  const rawCount = row.new_count ?? row.newCount ?? row.count;
+  return {
+    changed: typeof row.changed === "boolean" ? row.changed : true,
+    newCount: rawCount === null || rawCount === undefined ? null : finiteNumber(rawCount),
+  };
+}
+
+async function fetchVaultVoteCount(targetType: "legend_nomination" | "wiki_article", targetId: string) {
+  const { table, countColumn } = getVaultVoteTargetConfig(targetType);
+  const { data, error } = await supabase.from(table).select(countColumn).eq("id", targetId).maybeSingle();
+  if (error) throw error;
+  const count = (data as any)?.[countColumn];
+  return count === null || count === undefined ? null : finiteNumber(count);
+}
+
+export async function voteVaultTarget(targetType: "legend_nomination" | "wiki_article", targetId: string, vote: "up" | "down" = "up"): Promise<VaultVoteResult> {
   const { data, error } = await supabase.rpc("vote_vault_target", { target_type: targetType, target_id: targetId, vote });
   if (!error) {
-    const payload = Array.isArray(data) ? data[0] : data;
-    return { changed: typeof payload?.changed === "boolean" ? payload.changed : true };
+    const result = normalizeVaultVoteResult(data);
+    if (result?.newCount !== null && result?.newCount !== undefined) return result;
+    return { changed: result?.changed ?? true, newCount: await fetchVaultVoteCount(targetType, targetId) };
   }
 
   const { data: userRes } = await supabase.auth.getUser();
   const userId = userRes.user?.id;
   if (!userId) throw new Error("Sign in to vote.");
-  const { data: existing } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from("vault_votes")
     .select("vote")
     .eq("user_id", userId)
     .eq("target_type", targetType)
     .eq("target_id", targetId)
     .maybeSingle();
+  if (existingError) throw existingError;
+
   const { error: voteError } = await supabase
     .from("vault_votes")
     .upsert({ user_id: userId, target_type: targetType, target_id: targetId, vote }, { onConflict: "user_id,target_type,target_id" });
   if (voteError) throw voteError;
-  if ((existing as any)?.vote === vote) return { changed: false };
 
-  const table = targetType === "wiki_article" ? "vault_wiki_articles" : "vault_nominations";
-  const countColumn = targetType === "wiki_article" ? "upvotes" : "votes_count";
-  const { data: target } = await supabase.from(table).select(countColumn).eq("id", targetId).maybeSingle();
+  const currentCount = await fetchVaultVoteCount(targetType, targetId);
+  if ((existing as any)?.vote === vote) return { changed: false, newCount: currentCount };
+
+  const { table, countColumn } = getVaultVoteTargetConfig(targetType);
   const previousDelta = (existing as any)?.vote === "up" ? -1 : (existing as any)?.vote === "down" ? 1 : 0;
   const nextDelta = vote === "up" ? 1 : -1;
-  await supabase
+  const newCount = Math.max(0, (currentCount ?? 0) + previousDelta + nextDelta);
+  const { error: updateError } = await supabase
     .from(table)
-    .update({ [countColumn]: Math.max(0, ((target as any)?.[countColumn] ?? 0) + previousDelta + nextDelta) })
+    .update({ [countColumn]: newCount })
     .eq("id", targetId);
-  return { changed: true };
+  if (updateError) throw updateError;
+  return { changed: true, newCount };
 }
 
 function dateValue(value: unknown) {

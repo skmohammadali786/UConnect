@@ -333,26 +333,26 @@
     <div class="wrapper">
       <div class="loading" id="loading">
         <div class="spinner"></div>
-        <div class="loading-text">Opening in Expo Go...</div>
+        <div class="loading-text">Opening in UConnect...</div>
       </div>
 
       <div class="content" id="content">
         <h1>APP_NAME_PLACEHOLDER</h1>
-        <p class="subtitle">Preview this app on your phone</p>
+        <p class="subtitle">Open this shared UConnect link on your phone</p>
 
         <div class="steps-container">
           <div class="step">
             <div class="step-header">
               <div class="step-number">1</div>
-              <h2 class="step-title">Download Expo Go</h2>
+              <h2 class="step-title">Install UConnect</h2>
             </div>
             <p class="step-description">
-              Expo Go is a free app to test mobile apps
+              Install the UConnect app to view posts, events, and campus updates.
             </p>
             <div class="store-buttons" id="store-buttons">
               <a
                 id="app-store-btn"
-                href="https://apps.apple.com/app/id982107779"
+                href="APP_STORE_URL_PLACEHOLDER"
                 class="store-button"
                 target="_blank"
               >
@@ -365,7 +365,7 @@
               </a>
               <a
                 id="play-store-btn"
-                href="https://play.google.com/store/apps/details?id=host.exp.exponent"
+                href="PLAY_STORE_URL_PLACEHOLDER"
                 class="store-button"
                 target="_blank"
               >
@@ -384,10 +384,10 @@
               <div class="step-number">2</div>
               <h2 class="step-title">Scan QR Code</h2>
             </div>
-            <p class="step-description">Use your phone's camera or Expo Go</p>
+            <p class="step-description">Scan this code with your phone to open the same shared link</p>
             <div class="qr-code" id="qr-code"></div>
-            <a href="exps://EXPS_URL_PLACEHOLDER" class="open-button"
-              >Open in Expo Go</a
+            <a href="APP_SCHEME_PLACEHOLDER://" class="open-button" id="open-app-link"
+              >Open in UConnect</a
             >
           </div>
         </div>
@@ -406,12 +406,19 @@
           /iPhone|iPad|iPod/i.test(ua) ||
           (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
-        const deepLink = "exps://EXPS_URL_PLACEHOLDER";
+        const path = window.location.pathname.replace(/^\/+/, "");
+        const suffix = path ? path + window.location.search + window.location.hash : "";
+        const deepLink = "APP_SCHEME_PLACEHOLDER://" + suffix;
+        const qrTarget = window.location.href || "BASE_URL_PLACEHOLDER";
+        document.getElementById("open-app-link").href = deepLink;
 
         // Adjust store buttons based on platform
         const appStoreBtn = document.getElementById("app-store-btn");
         const playStoreBtn = document.getElementById("play-store-btn");
         const storeButtonsContainer = document.getElementById("store-buttons");
+
+        if (appStoreBtn.getAttribute("href") === "#") appStoreBtn.style.display = "none";
+        if (playStoreBtn.getAttribute("href") === "#") playStoreBtn.style.display = "none";
 
         if (isIOS) {
           playStoreBtn.className = "store-link";
@@ -424,7 +431,7 @@
         const qrCode = new QRCodeStyling({
           width: 400,
           height: 400,
-          data: deepLink,
+          data: qrTarget,
           dotsOptions: {
             color: "#333333",
             type: "rounded",

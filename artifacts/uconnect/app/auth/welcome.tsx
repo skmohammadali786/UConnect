@@ -220,7 +220,7 @@ export default function WelcomeScreen() {
           onPress={() => router.push({ pathname: "/auth/login", params: { flow: "signup" } })}
           style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
         >
-          <Text style={styles.primaryBtnText}>Get Started to Email</Text>
+          <Text style={styles.primaryBtnText}>Get Started with Email</Text>
         </SpringButton>
 
         <SpringButton

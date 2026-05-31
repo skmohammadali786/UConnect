@@ -15,6 +15,17 @@ const path = require("path");
 
 const STATIC_ROOT = path.resolve(__dirname, "..", "static-build");
 const TEMPLATE_PATH = path.resolve(__dirname, "templates", "landing-page.html");
+const APP_SCHEME = process.env.APP_SCHEME || "uconnect";
+const APP_LINK_HOST = process.env.APP_LINK_HOST || process.env.EXPO_PUBLIC_APP_LINK_DOMAIN || "uconnect.social";
+const IOS_BUNDLE_IDENTIFIER = process.env.IOS_BUNDLE_IDENTIFIER || "com.skmohammadali786.uconnect";
+const ANDROID_PACKAGE_NAME = process.env.ANDROID_PACKAGE_NAME || "com.skmohammadali786.uconnect";
+const APP_STORE_URL = process.env.APP_STORE_URL || "#";
+const PLAY_STORE_URL = process.env.PLAY_STORE_URL || "#";
+const APPLE_TEAM_ID = process.env.APPLE_TEAM_ID || "";
+const ANDROID_SHA256_CERT_FINGERPRINTS = (process.env.ANDROID_SHA256_CERT_FINGERPRINTS || "")
+  .split(",")
+  .map((fingerprint) => fingerprint.trim())
+  .filter(Boolean);
 const basePath = (process.env.BASE_PATH || "/").replace(/\/+$/, "");
 
 const MIME_TYPES = {
@@ -68,17 +79,66 @@ function serveManifest(platform, res) {
 function serveLandingPage(req, res, landingPageTemplate, appName) {
   const forwardedProto = req.headers["x-forwarded-proto"];
   const protocol = forwardedProto || "https";
-  const host = req.headers["x-forwarded-host"] || req.headers["host"];
+  const host = req.headers["x-forwarded-host"] || req.headers["host"] || APP_LINK_HOST;
   const baseUrl = `${protocol}://${host}`;
   const expsUrl = `${host}`;
 
   const html = landingPageTemplate
     .replace(/BASE_URL_PLACEHOLDER/g, baseUrl)
     .replace(/EXPS_URL_PLACEHOLDER/g, expsUrl)
-    .replace(/APP_NAME_PLACEHOLDER/g, appName);
+    .replace(/APP_NAME_PLACEHOLDER/g, appName)
+    .replace(/APP_SCHEME_PLACEHOLDER/g, APP_SCHEME)
+    .replace(/APP_STORE_URL_PLACEHOLDER/g, APP_STORE_URL)
+    .replace(/PLAY_STORE_URL_PLACEHOLDER/g, PLAY_STORE_URL);
 
   res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
   res.end(html);
+}
+
+
+function serveJson(res, payload, contentType = "application/json") {
+  res.writeHead(200, {
+    "content-type": `${contentType}; charset=utf-8`,
+    "cache-control": "public, max-age=3600",
+  });
+  res.end(JSON.stringify(payload));
+}
+
+function serveAppleAppSiteAssociation(res) {
+  const appIDs = APPLE_TEAM_ID ? [`${APPLE_TEAM_ID}.${IOS_BUNDLE_IDENTIFIER}`] : [];
+  serveJson(
+    res,
+    {
+      applinks: {
+        apps: [],
+        details: appIDs.map((appID) => ({
+          appID,
+          paths: ["/post/*", "/events/*", "/event/*", "/join", "/join/*"],
+          components: [
+            { "/": "/post/*" },
+            { "/": "/events/*" },
+            { "/": "/event/*" },
+            { "/": "/join" },
+            { "/": "/join/*" },
+          ],
+        })),
+      },
+    },
+    "application/json",
+  );
+}
+
+function serveAssetLinks(res) {
+  serveJson(res, [
+    {
+      relation: ["delegate_permission/common.handle_all_urls"],
+      target: {
+        namespace: "android_app",
+        package_name: ANDROID_PACKAGE_NAME,
+        sha256_cert_fingerprints: ANDROID_SHA256_CERT_FINGERPRINTS,
+      },
+    },
+  ]);
 }
 
 function serveStaticFile(urlPath, res) {
@@ -115,6 +175,14 @@ const server = http.createServer((req, res) => {
     pathname = pathname.slice(basePath.length) || "/";
   }
 
+  if (pathname === "/.well-known/apple-app-site-association" || pathname === "/apple-app-site-association") {
+    return serveAppleAppSiteAssociation(res);
+  }
+
+  if (pathname === "/.well-known/assetlinks.json") {
+    return serveAssetLinks(res);
+  }
+
   if (pathname === "/" || pathname === "/manifest") {
     const platform = req.headers["expo-platform"];
     if (platform === "ios" || platform === "android") {
@@ -129,7 +197,9 @@ const server = http.createServer((req, res) => {
   if (
     pathname === "/join" ||
     pathname.startsWith("/join/") ||
-    pathname.startsWith("/post/")
+    pathname.startsWith("/post/") ||
+    pathname.startsWith("/events/") ||
+    pathname.startsWith("/event/")
   ) {
     return serveLandingPage(req, res, landingPageTemplate, appName);
   }

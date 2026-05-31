@@ -42,8 +42,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isLoading) return;
     const inAuth = segments[0] === "auth";
-    const inPublicPostRoute = segments[0] === "post";
-    if (!user && !inAuth && !inPublicPostRoute) {
+    const inPublicShareRoute = segments[0] === "post" || segments[0] === "events";
+    if (!user && !inAuth && !inPublicShareRoute) {
       router.replace("/auth/welcome");
     }
   }, [user, isLoading, segments]);
@@ -86,6 +86,8 @@ function RootLayoutNav() {
       <Stack.Screen name="scan-connect" options={{ headerShown: false, animation: "slide_from_right", contentStyle: responsiveContentStyle }} />
       <Stack.Screen name="connections" options={{ headerShown: false, animation: "slide_from_right", contentStyle: responsiveContentStyle }} />
       <Stack.Screen name="user" options={{ headerShown: false, animation: "slide_from_right", contentStyle: responsiveContentStyle }} />
+      <Stack.Screen name="post" options={{ headerShown: false, animation: "slide_from_right", contentStyle: responsiveContentStyle }} />
+      <Stack.Screen name="events" options={{ headerShown: false, animation: "slide_from_right", contentStyle: responsiveContentStyle }} />
       <Stack.Screen name="settings" options={{ headerShown: false, animation: "slide_from_right", contentStyle: responsiveContentStyle }} />
       <Stack.Screen name="+not-found" options={{ headerShown: false, animation: "slide_from_right", contentStyle: responsiveContentStyle }} />
     </Stack>
