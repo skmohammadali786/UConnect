@@ -871,6 +871,7 @@ set search_path = public
 as $$
 declare
   v_ticket_id uuid;
+  v_code text := btrim(coalesce(p_ticket_code, ''));
 begin
   if auth.uid() is null then
     raise exception 'Authentication required';
@@ -882,9 +883,16 @@ begin
     raise exception 'Not event organizer';
   end if;
 
-  select id into v_ticket_id
-  from event_tickets
-  where event_id = p_event_id and code = p_ticket_code;
+  if v_code = '' then
+    raise exception 'Invalid ticket';
+  end if;
+
+  select t.id into v_ticket_id
+  from event_tickets t
+  join event_rsvps r on r.event_id = t.event_id and r.user_id = t.user_id
+  where t.event_id = p_event_id
+    and btrim(t.code) = v_code
+    and r.status = 'approved';
 
   if v_ticket_id is null then
     raise exception 'Invalid ticket';

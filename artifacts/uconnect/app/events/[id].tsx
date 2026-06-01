@@ -3,7 +3,18 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import * as Clipboard from "expo-clipboard";
-import { ActivityIndicator, Modal, Platform, ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  Modal,
+  Platform,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppButton } from "@/components/AppButton";
@@ -41,6 +52,35 @@ interface AttendeeRequest {
 
 const SCAN_ERROR_COOLDOWN_MS = 1200;
 const SCAN_SUCCESS_COOLDOWN_MS = 1400;
+const EVENT_TICKET_QR_PREFIX = "uconnect:event-ticket:";
+
+function buildTicketQrValue(eventId: string, code: string) {
+  return `${EVENT_TICKET_QR_PREFIX}${JSON.stringify({ eventId, code })}`;
+}
+
+function parseTicketQrValue(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const candidates = trimmed.startsWith(EVENT_TICKET_QR_PREFIX)
+    ? [trimmed.slice(EVENT_TICKET_QR_PREFIX.length)]
+    : [trimmed];
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate);
+      if (typeof parsed?.code === "string" && parsed.code.trim()) {
+        return {
+          eventId:
+            typeof parsed.eventId === "string" ? parsed.eventId.trim() : null,
+          code: parsed.code.trim(),
+        };
+      }
+    } catch {}
+  }
+
+  return { eventId: null, code: trimmed };
+}
 
 export default function EventDetailScreen() {
   const colors = useColors();
@@ -61,7 +101,10 @@ export default function EventDetailScreen() {
   const [scannerVisible, setScannerVisible] = useState(false);
   const [scanLocked, setScanLocked] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
-  const qrValue = useMemo(() => (ticketCode ? ticketCode : ""), [ticketCode]);
+  const qrValue = useMemo(
+    () => (ticketCode && id ? buildTicketQrValue(id, ticketCode) : ""),
+    [id, ticketCode],
+  );
 
   useEffect(() => {
     if (!id) {
@@ -136,10 +179,13 @@ export default function EventDetailScreen() {
       if (data?.code) {
         setTicketCode(data.code);
       } else {
-        const { data: issued, error: issueError } = await supabase.rpc("issue_event_ticket", {
-          p_event_id: id,
-          p_user_id: user.id,
-        });
+        const { data: issued, error: issueError } = await supabase.rpc(
+          "issue_event_ticket",
+          {
+            p_event_id: id,
+            p_user_id: user.id,
+          },
+        );
         if (issueError) throw issueError;
         setTicketCode(typeof issued === "string" ? issued : null);
       }
@@ -182,22 +228,30 @@ export default function EventDetailScreen() {
       .select("ticket_id,checked_in_at")
       .eq("event_id", id);
     const byId = new Map((profiles ?? []).map((p: any) => [p.id, p]));
-    const ticketByUser = new Map((ticketRows ?? []).map((t: any) => [t.user_id, t.id]));
-    const checkinByTicket = new Map((checkinRows ?? []).map((c: any) => [c.ticket_id, c.checked_in_at]));
-    setAttendees(rows.map((r) => {
-      const p = byId.get(r.user_id);
-      const ticketId = ticketByUser.get(r.user_id);
-      return {
-        userId: r.user_id,
-        status: r.status ?? "pending",
-        requestNote: r.request_note ?? "",
-        decisionReason: r.decision_reason ?? null,
-        name: p?.display_name || p?.username || "Student",
-        username: p?.username || "student",
-        college: p?.college || "",
-        checkedInAt: ticketId ? (checkinByTicket.get(ticketId) ?? null) : null,
-      };
-    }));
+    const ticketByUser = new Map(
+      (ticketRows ?? []).map((t: any) => [t.user_id, t.id]),
+    );
+    const checkinByTicket = new Map(
+      (checkinRows ?? []).map((c: any) => [c.ticket_id, c.checked_in_at]),
+    );
+    setAttendees(
+      rows.map((r) => {
+        const p = byId.get(r.user_id);
+        const ticketId = ticketByUser.get(r.user_id);
+        return {
+          userId: r.user_id,
+          status: r.status ?? "pending",
+          requestNote: r.request_note ?? "",
+          decisionReason: r.decision_reason ?? null,
+          name: p?.display_name || p?.username || "Student",
+          username: p?.username || "student",
+          college: p?.college || "",
+          checkedInAt: ticketId
+            ? (checkinByTicket.get(ticketId) ?? null)
+            : null,
+        };
+      }),
+    );
   }, [id, isHost]);
 
   useEffect(() => {
@@ -208,13 +262,31 @@ export default function EventDetailScreen() {
     if (!id) return;
     const channel = supabase
       .channel(`event-sync-${id}-${user?.id ?? "anon"}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "event_rsvps", filter: `event_id=eq.${id}` }, () => {
-        loadAttendees();
-        loadRsvpStatus();
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "event_tickets", filter: `event_id=eq.${id}` }, () => {
-        loadTicket();
-      })
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "event_rsvps",
+          filter: `event_id=eq.${id}`,
+        },
+        () => {
+          loadAttendees();
+          loadRsvpStatus();
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "event_tickets",
+          filter: `event_id=eq.${id}`,
+        },
+        () => {
+          loadTicket();
+        },
+      )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
@@ -226,7 +298,11 @@ export default function EventDetailScreen() {
     const shareLink = buildEventShareLink(event.id);
     const message = `Check out this event on UConnect: ${event.title}\n${shareLink}`;
     try {
-      const result = await Share.share({ title: event.title, message, url: shareLink });
+      const result = await Share.share({
+        title: event.title,
+        message,
+        url: shareLink,
+      });
       if (result.action === Share.dismissedAction) return;
       showSuccess("Share ready", "Event link shared.");
     } catch {
@@ -238,27 +314,47 @@ export default function EventDetailScreen() {
   const handleRSVP = async () => {
     if (!event || !id || loading) return;
     if (!ghost.canPerformIdentityAction("rsvp_event")) {
-      showError("Ghost Mode active", "Turn off Ghost Mode before RSVPing to events.");
+      showError(
+        "Ghost Mode active",
+        "Turn off Ghost Mode before RSVPing to events.",
+      );
       return;
     }
     const canCancel = rsvpStatus === "pending" || rsvpStatus === "approved";
     const previousStatus = rsvpStatus;
-    const nextStatus = canCancel ? null : event.requiresApproval ? "pending" : "approved";
+    const nextStatus = canCancel
+      ? null
+      : event.requiresApproval
+        ? "pending"
+        : "approved";
     setRsvpStatus(nextStatus);
     if (user) {
       setLoading(true);
       try {
         if (!canCancel) {
-          const { error } = await supabase.rpc("rsvp_event", { p_user_id: user.id, p_event_id: id, p_request_note: "" });
+          const { error } = await supabase.rpc("rsvp_event", {
+            p_user_id: user.id,
+            p_event_id: id,
+            p_request_note: "",
+          });
           if (error) throw error;
-          showSuccess(event.requiresApproval ? "Request sent!" : "RSVP confirmed!", event?.title);
+          showSuccess(
+            event.requiresApproval ? "Request sent!" : "RSVP confirmed!",
+            event?.title,
+          );
           if (!event.requiresApproval) {
-            const { data: issued, error: issueError } = await supabase.rpc("issue_event_ticket", { p_event_id: id, p_user_id: user.id });
+            const { data: issued, error: issueError } = await supabase.rpc(
+              "issue_event_ticket",
+              { p_event_id: id, p_user_id: user.id },
+            );
             if (issueError) throw issueError;
             setTicketCode(typeof issued === "string" ? issued : null);
           }
         } else {
-          const { error } = await supabase.rpc("unrsvp_event", { p_user_id: user.id, p_event_id: id });
+          const { error } = await supabase.rpc("unrsvp_event", {
+            p_user_id: user.id,
+            p_event_id: id,
+          });
           if (error) throw error;
           showSuccess("RSVP cancelled");
           setTicketCode(null);
@@ -273,7 +369,10 @@ export default function EventDetailScreen() {
     }
   };
 
-  const handleHostDecision = async (targetUserId: string, decision: "approved" | "rejected") => {
+  const handleHostDecision = async (
+    targetUserId: string,
+    decision: "approved" | "rejected",
+  ) => {
     if (!id || !user || !event) return;
     setActioningUserId(targetUserId);
     const reason = reasonDrafts[targetUserId]?.trim() || null;
@@ -288,16 +387,19 @@ export default function EventDetailScreen() {
       if (error) throw error;
       setAttendees((prev) =>
         prev.map((a) =>
-          a.userId === targetUserId ? { ...a, status: decision, decisionReason: reason } : a,
+          a.userId === targetUserId
+            ? { ...a, status: decision, decisionReason: reason }
+            : a,
         ),
       );
       const notifyError = await safeInsertNotification({
         user_id: targetUserId,
         type: "event",
         title: `Event request ${decision}`,
-        body: decision === "approved"
-          ? `Your request for ${event.title} was approved.`
-          : `Your request for ${event.title} was rejected.`,
+        body:
+          decision === "approved"
+            ? `Your request for ${event.title} was approved.`
+            : `Your request for ${event.title} was rejected.`,
         action_id: id,
         action_type: "event_attendee_status",
         redirect_path: `/events/${id}`,
@@ -308,19 +410,31 @@ export default function EventDetailScreen() {
         metadata: { decision, reason: reason ?? null },
       });
       if (notifyError) {
-        showInfo("Request updated", "Status saved, but notification could not be sent.");
+        showInfo(
+          "Request updated",
+          "Status saved, but notification could not be sent.",
+        );
       }
       if (decision === "approved") {
-        const { error: issueError } = await supabase.rpc("issue_event_ticket_by_host", {
-          p_event_id: id,
-          p_user_id: targetUserId,
-        });
+        const { error: issueError } = await supabase.rpc(
+          "issue_event_ticket_by_host",
+          {
+            p_event_id: id,
+            p_user_id: targetUserId,
+          },
+        );
         if (issueError) {
-          showInfo("Approved, ticket pending", "Approval was saved but ticket generation failed.");
+          showInfo(
+            "Approved, ticket pending",
+            "Approval was saved but ticket generation failed.",
+          );
         }
         showSuccess(`Approved ${target?.name ?? "request"}`, event.title);
       } else {
-        showInfo(`Rejected ${target?.name ?? "request"}`, reason ?? "Request updated");
+        showInfo(
+          `Rejected ${target?.name ?? "request"}`,
+          reason ?? "Request updated",
+        );
       }
     } catch {
       showError("Could not update request", "Please try again.");
@@ -330,11 +444,27 @@ export default function EventDetailScreen() {
 
   const handleScanTicket = async (data: string) => {
     if (scanLocked || !id) return;
+    const ticket = parseTicketQrValue(data);
+    if (!ticket?.code) {
+      showError(
+        "Invalid ticket",
+        "This QR code is not a UConnect event ticket.",
+      );
+      setScanLocked(true);
+      setTimeout(() => setScanLocked(false), SCAN_ERROR_COOLDOWN_MS);
+      return;
+    }
+    if (ticket.eventId && ticket.eventId !== id) {
+      showError("Wrong event", "This ticket belongs to a different event.");
+      setScanLocked(true);
+      setTimeout(() => setScanLocked(false), SCAN_ERROR_COOLDOWN_MS);
+      return;
+    }
     setScanLocked(true);
     try {
       const { error } = await supabase.rpc("checkin_event_ticket", {
         p_event_id: id,
-        p_ticket_code: data,
+        p_ticket_code: ticket.code,
       });
       if (error) {
         showError("Invalid ticket", "This ticket could not be verified.");
@@ -353,14 +483,26 @@ export default function EventDetailScreen() {
   if (eventLoading) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, borderBottomColor: colors.border }]}>
+        <View
+          style={[
+            styles.header,
+            {
+              paddingTop: Platform.OS === "web" ? 67 : insets.top + 8,
+              borderBottomColor: colors.border,
+            },
+          ]}
+        >
           <TouchableOpacity onPress={() => router.back()}>
             <Feather name="arrow-left" size={22} color={colors.foreground} />
           </TouchableOpacity>
-          <Text style={[styles.title, { color: colors.foreground }]}>Event Details</Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>
+            Event Details
+          </Text>
           <View style={{ width: 20 }} />
         </View>
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+        <View
+          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+        >
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </View>
@@ -370,16 +512,40 @@ export default function EventDetailScreen() {
   if (!event) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, borderBottomColor: colors.border }]}>
+        <View
+          style={[
+            styles.header,
+            {
+              paddingTop: Platform.OS === "web" ? 67 : insets.top + 8,
+              borderBottomColor: colors.border,
+            },
+          ]}
+        >
           <TouchableOpacity onPress={() => router.back()}>
             <Feather name="arrow-left" size={22} color={colors.foreground} />
           </TouchableOpacity>
-          <Text style={[styles.title, { color: colors.foreground }]}>Event Details</Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>
+            Event Details
+          </Text>
           <View style={{ width: 20 }} />
         </View>
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 20 }}>
+        <View
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
           <Feather name="calendar" size={36} color={colors.mutedForeground} />
-          <Text style={[styles.desc, { color: colors.foreground, marginTop: 12, textAlign: "center" }]}>Event not found</Text>
+          <Text
+            style={[
+              styles.desc,
+              { color: colors.foreground, marginTop: 12, textAlign: "center" },
+            ]}
+          >
+            Event not found
+          </Text>
         </View>
       </View>
     );
@@ -387,127 +553,398 @@ export default function EventDetailScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, borderBottomColor: colors.border }]}>
+      <View
+        style={[
+          styles.header,
+          {
+            paddingTop: Platform.OS === "web" ? 67 : insets.top + 8,
+            borderBottomColor: colors.border,
+          },
+        ]}
+      >
         <TouchableOpacity onPress={() => router.back()}>
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.foreground }]}>Event Details</Text>
+        <Text style={[styles.title, { color: colors.foreground }]}>
+          Event Details
+        </Text>
         <TouchableOpacity onPress={handleShare}>
           <Feather name="share-2" size={20} color={colors.primary} />
         </TouchableOpacity>
       </View>
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 20, paddingBottom: 100 }}>
-        <View style={[styles.heroCard, { backgroundColor: colors.card, borderColor: rsvpStatus ? colors.primary + "50" : colors.border }]}>
-          <View style={[styles.eventIcon, { backgroundColor: colors.primary + "15" }]}>
+      <ScrollView
+        contentContainerStyle={{ padding: 20, gap: 20, paddingBottom: 100 }}
+      >
+        <View
+          style={[
+            styles.heroCard,
+            {
+              backgroundColor: colors.card,
+              borderColor: rsvpStatus ? colors.primary + "50" : colors.border,
+            },
+          ]}
+        >
+          <View
+            style={[
+              styles.eventIcon,
+              { backgroundColor: colors.primary + "15" },
+            ]}
+          >
             <Feather name="calendar" size={40} color={colors.primary} />
           </View>
-          <Text style={[styles.eventTitle, { color: colors.foreground }]}>{event.title}</Text>
-          <Text style={[styles.organizer, { color: colors.mutedForeground }]}>by {event.organizer}</Text>
+          <Text style={[styles.eventTitle, { color: colors.foreground }]}>
+            {event.title}
+          </Text>
+          <Text style={[styles.organizer, { color: colors.mutedForeground }]}>
+            by {event.organizer}
+          </Text>
           {rsvpStatus && (
-            <View style={[styles.goingBadge, { backgroundColor: colors.primary + "15" }]}>
-              <Feather name={rsvpStatus === "pending" ? "clock" : rsvpStatus === "approved" ? "check-circle" : "x-circle"} size={14} color={rsvpStatus === "rejected" ? "#EF4444" : colors.primary} />
-              <Text style={[styles.goingText, { color: rsvpStatus === "rejected" ? "#EF4444" : colors.primary }]}>
-                {rsvpStatus === "pending" ? "Pending approval" : rsvpStatus === "approved" ? "You're going!" : "Request rejected"}
+            <View
+              style={[
+                styles.goingBadge,
+                { backgroundColor: colors.primary + "15" },
+              ]}
+            >
+              <Feather
+                name={
+                  rsvpStatus === "pending"
+                    ? "clock"
+                    : rsvpStatus === "approved"
+                      ? "check-circle"
+                      : "x-circle"
+                }
+                size={14}
+                color={rsvpStatus === "rejected" ? "#EF4444" : colors.primary}
+              />
+              <Text
+                style={[
+                  styles.goingText,
+                  {
+                    color:
+                      rsvpStatus === "rejected" ? "#EF4444" : colors.primary,
+                  },
+                ]}
+              >
+                {rsvpStatus === "pending"
+                  ? "Pending approval"
+                  : rsvpStatus === "approved"
+                    ? "You're going!"
+                    : "Request rejected"}
               </Text>
             </View>
           )}
         </View>
-        <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            {[
-              { icon: "calendar", label: "Date", value: event.date },
-              { icon: "map-pin", label: "Location", value: event.location },
-              { icon: "users", label: "Attendees", value: `${event.rsvpCount + (rsvpStatus === "approved" ? 1 : 0)} going` },
-            ].map((item) => (
-              <View key={item.label} style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-              <View style={[styles.infoIcon, { backgroundColor: colors.primary + "15" }]}>
-                <Feather name={item.icon as any} size={16} color={colors.primary} />
+        <View
+          style={[
+            styles.infoCard,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
+          {[
+            { icon: "calendar", label: "Date", value: event.date },
+            { icon: "map-pin", label: "Location", value: event.location },
+            {
+              icon: "users",
+              label: "Attendees",
+              value: `${event.rsvpCount + (rsvpStatus === "approved" ? 1 : 0)} going`,
+            },
+          ].map((item) => (
+            <View
+              key={item.label}
+              style={[styles.infoRow, { borderBottomColor: colors.border }]}
+            >
+              <View
+                style={[
+                  styles.infoIcon,
+                  { backgroundColor: colors.primary + "15" },
+                ]}
+              >
+                <Feather
+                  name={item.icon as any}
+                  size={16}
+                  color={colors.primary}
+                />
               </View>
               <View>
-                <Text style={[styles.infoLabel, { color: colors.mutedForeground }]}>{item.label}</Text>
-                <Text style={[styles.infoValue, { color: colors.foreground }]}>{item.value}</Text>
+                <Text
+                  style={[styles.infoLabel, { color: colors.mutedForeground }]}
+                >
+                  {item.label}
+                </Text>
+                <Text style={[styles.infoValue, { color: colors.foreground }]}>
+                  {item.value}
+                </Text>
               </View>
             </View>
           ))}
         </View>
         <View>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>About</Text>
-          <Text style={[styles.desc, { color: colors.foreground }]}>{event.description}</Text>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+            About
+          </Text>
+          <Text style={[styles.desc, { color: colors.foreground }]}>
+            {event.description}
+          </Text>
         </View>
         {!isHost && rsvpStatus === "approved" && (
-          <View style={[styles.ticketCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Your Ticket</Text>
+          <View
+            style={[
+              styles.ticketCard,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+          >
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+              Your Ticket
+            </Text>
             {ticketLoading ? (
               <ActivityIndicator color={colors.primary} />
             ) : ticketCode ? (
               <>
                 <View style={styles.qrWrap}>
-                  <QRCode value={qrValue} size={180} backgroundColor="#FFFFFF" color="#111827" />
+                  <QRCode
+                    value={qrValue}
+                    size={180}
+                    backgroundColor="#FFFFFF"
+                    color="#111827"
+                  />
                 </View>
-                <Text style={[styles.ticketCode, { color: colors.mutedForeground }]}>Code: {ticketCode}</Text>
+                <Text
+                  style={[styles.ticketCode, { color: colors.mutedForeground }]}
+                >
+                  Code: {ticketCode}
+                </Text>
+                <Text
+                  style={[styles.ticketHint, { color: colors.mutedForeground }]}
+                >
+                  Only the host for this event can scan and verify this ticket.
+                </Text>
               </>
             ) : (
-              <Text style={[styles.desc, { color: colors.mutedForeground }]}>Ticket will appear once your RSVP is approved.</Text>
+              <Text style={[styles.desc, { color: colors.mutedForeground }]}>
+                Ticket will appear once your RSVP is approved.
+              </Text>
             )}
           </View>
         )}
         {isHost ? (
           <View style={styles.hostSection}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Attendee Requests</Text>
-            <View style={[styles.scanCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+              Attendee Requests
+            </Text>
+            <View
+              style={[
+                styles.scanCard,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
               <View style={{ flex: 1 }}>
-                <Text style={[styles.scanTitle, { color: colors.foreground }]}>Ticket Scanner</Text>
-                <Text style={[styles.scanSubtitle, { color: colors.mutedForeground }]}>Scan QR codes to check in attendees.</Text>
+                <Text style={[styles.scanTitle, { color: colors.foreground }]}>
+                  Ticket Scanner
+                </Text>
+                <Text
+                  style={[
+                    styles.scanSubtitle,
+                    { color: colors.mutedForeground },
+                  ]}
+                >
+                  Scan QR codes to check in attendees.
+                </Text>
               </View>
-              <TouchableOpacity onPress={() => setScannerVisible(true)} style={[styles.scanBtn, { backgroundColor: colors.primary }]}>
+              <TouchableOpacity
+                onPress={() => setScannerVisible(true)}
+                style={[styles.scanBtn, { backgroundColor: colors.primary }]}
+              >
                 <Feather name="camera" size={15} color="#FFF" />
                 <Text style={styles.scanBtnText}>Scan</Text>
               </TouchableOpacity>
             </View>
             {attendees.length === 0 ? (
-              <Text style={[styles.desc, { color: colors.mutedForeground }]}>No attendee requests yet.</Text>
-            ) : attendees.map((a) => (
-              <View key={a.userId} style={[styles.attendeeCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <View style={styles.attendeeHeader}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.attendeeName, { color: colors.foreground }]}>{a.name}</Text>
-                    <Text style={[styles.attendeeMeta, { color: colors.mutedForeground }]}>@{a.username}{a.college ? ` • ${a.college}` : ""}</Text>
-                  </View>
-                  <View style={[styles.attendeeStatus, { backgroundColor: a.status === "rejected" ? "#EF444414" : a.status === "approved" ? "#00A86B14" : "#F59E0B14" }]}>
-                    <Text style={[styles.attendeeStatusText, { color: a.status === "rejected" ? "#EF4444" : a.status === "approved" ? "#00A86B" : "#F59E0B" }]}>{a.status}</Text>
-                  </View>
-                </View>
-                {a.requestNote ? <Text style={[styles.attendeeNote, { color: colors.foreground }]}>{a.requestNote}</Text> : null}
-                {a.decisionReason ? <Text style={[styles.attendeeReason, { color: colors.mutedForeground }]}>Reason: {a.decisionReason}</Text> : null}
-                {a.status === "approved" && (
-                  <Text style={[styles.attendeeCheckin, { color: a.checkedInAt ? "#00A86B" : colors.mutedForeground }]}>
-                    {a.checkedInAt ? `Checked in ${formatRelativeTime(a.checkedInAt)}` : "Not checked in"}
-                  </Text>
-                )}
-                {a.status === "pending" ? (
-                  <>
-                    <TextInput
-                      placeholder="Optional decision reason"
-                      placeholderTextColor={colors.placeholder}
-                      style={[styles.reasonInput, { color: colors.foreground, backgroundColor: colors.input, borderColor: colors.border }]}
-                      value={reasonDrafts[a.userId] ?? ""}
-                      onChangeText={(t) => setReasonDrafts((prev) => ({ ...prev, [a.userId]: t }))}
-                    />
-                    <View style={styles.attendeeActions}>
-                      <TouchableOpacity disabled={actioningUserId === a.userId} onPress={() => handleHostDecision(a.userId, "approved")} style={[styles.attendeeApprove, { backgroundColor: "#00A86B18", borderColor: "#00A86B55" }]}>
-                        <Text style={[styles.attendeeActionText, { color: "#00A86B" }]}>Approve</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity disabled={actioningUserId === a.userId} onPress={() => handleHostDecision(a.userId, "rejected")} style={[styles.attendeeReject, { backgroundColor: "#EF444418", borderColor: "#EF444455" }]}>
-                        <Text style={[styles.attendeeActionText, { color: "#EF4444" }]}>Reject</Text>
-                      </TouchableOpacity>
+              <Text style={[styles.desc, { color: colors.mutedForeground }]}>
+                No attendee requests yet.
+              </Text>
+            ) : (
+              attendees.map((a) => (
+                <View
+                  key={a.userId}
+                  style={[
+                    styles.attendeeCard,
+                    {
+                      backgroundColor: colors.card,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                >
+                  <View style={styles.attendeeHeader}>
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={[
+                          styles.attendeeName,
+                          { color: colors.foreground },
+                        ]}
+                      >
+                        {a.name}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.attendeeMeta,
+                          { color: colors.mutedForeground },
+                        ]}
+                      >
+                        @{a.username}
+                        {a.college ? ` • ${a.college}` : ""}
+                      </Text>
                     </View>
-                  </>
-                ) : null}
-              </View>
-            ))}
+                    <View
+                      style={[
+                        styles.attendeeStatus,
+                        {
+                          backgroundColor:
+                            a.status === "rejected"
+                              ? "#EF444414"
+                              : a.status === "approved"
+                                ? "#00A86B14"
+                                : "#F59E0B14",
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.attendeeStatusText,
+                          {
+                            color:
+                              a.status === "rejected"
+                                ? "#EF4444"
+                                : a.status === "approved"
+                                  ? "#00A86B"
+                                  : "#F59E0B",
+                          },
+                        ]}
+                      >
+                        {a.status}
+                      </Text>
+                    </View>
+                  </View>
+                  {a.requestNote ? (
+                    <Text
+                      style={[
+                        styles.attendeeNote,
+                        { color: colors.foreground },
+                      ]}
+                    >
+                      {a.requestNote}
+                    </Text>
+                  ) : null}
+                  {a.decisionReason ? (
+                    <Text
+                      style={[
+                        styles.attendeeReason,
+                        { color: colors.mutedForeground },
+                      ]}
+                    >
+                      Reason: {a.decisionReason}
+                    </Text>
+                  ) : null}
+                  {a.status === "approved" && (
+                    <Text
+                      style={[
+                        styles.attendeeCheckin,
+                        {
+                          color: a.checkedInAt
+                            ? "#00A86B"
+                            : colors.mutedForeground,
+                        },
+                      ]}
+                    >
+                      {a.checkedInAt
+                        ? `Checked in ${formatRelativeTime(a.checkedInAt)}`
+                        : "Not checked in"}
+                    </Text>
+                  )}
+                  {a.status === "pending" ? (
+                    <>
+                      <TextInput
+                        placeholder="Optional decision reason"
+                        placeholderTextColor={colors.placeholder}
+                        style={[
+                          styles.reasonInput,
+                          {
+                            color: colors.foreground,
+                            backgroundColor: colors.input,
+                            borderColor: colors.border,
+                          },
+                        ]}
+                        value={reasonDrafts[a.userId] ?? ""}
+                        onChangeText={(t) =>
+                          setReasonDrafts((prev) => ({
+                            ...prev,
+                            [a.userId]: t,
+                          }))
+                        }
+                      />
+                      <View style={styles.attendeeActions}>
+                        <TouchableOpacity
+                          disabled={actioningUserId === a.userId}
+                          onPress={() =>
+                            handleHostDecision(a.userId, "approved")
+                          }
+                          style={[
+                            styles.attendeeApprove,
+                            {
+                              backgroundColor: "#00A86B18",
+                              borderColor: "#00A86B55",
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.attendeeActionText,
+                              { color: "#00A86B" },
+                            ]}
+                          >
+                            Approve
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          disabled={actioningUserId === a.userId}
+                          onPress={() =>
+                            handleHostDecision(a.userId, "rejected")
+                          }
+                          style={[
+                            styles.attendeeReject,
+                            {
+                              backgroundColor: "#EF444418",
+                              borderColor: "#EF444455",
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.attendeeActionText,
+                              { color: "#EF4444" },
+                            ]}
+                          >
+                            Reject
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  ) : null}
+                </View>
+              ))
+            )}
           </View>
         ) : null}
       </ScrollView>
-      <View style={[styles.bottomBar, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 8 }]}>
+      <View
+        style={[
+          styles.bottomBar,
+          {
+            backgroundColor: colors.background,
+            borderTopColor: colors.border,
+            paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 8,
+          },
+        ]}
+      >
         {!isHost ? (
           <AppButton
             title={
@@ -522,27 +959,50 @@ export default function EventDetailScreen() {
                       : "RSVP — I'm Going!"
             }
             onPress={handleRSVP}
-            variant={rsvpStatus === "pending" || rsvpStatus === "approved" ? "outline" : "primary"}
+            variant={
+              rsvpStatus === "pending" || rsvpStatus === "approved"
+                ? "outline"
+                : "primary"
+            }
             fullWidth
             size="lg"
           />
         ) : null}
       </View>
-      <Modal visible={scannerVisible} transparent animationType="fade" onRequestClose={() => setScannerVisible(false)}>
+      <Modal
+        visible={scannerVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setScannerVisible(false)}
+      >
         <View style={[styles.scanOverlay, { backgroundColor: colors.overlay }]}>
-          <View style={[styles.scanModal, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View
+            style={[
+              styles.scanModal,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+          >
             <View style={styles.scanHeader}>
-              <Text style={[styles.scanTitle, { color: colors.foreground }]}>Scan Ticket</Text>
+              <Text style={[styles.scanTitle, { color: colors.foreground }]}>
+                Scan Ticket
+              </Text>
               <TouchableOpacity onPress={() => setScannerVisible(false)}>
                 <Feather name="x" size={18} color={colors.mutedForeground} />
               </TouchableOpacity>
             </View>
             {Platform.OS === "web" ? (
-              <Text style={[styles.desc, { color: colors.mutedForeground }]}>Scanner works in the mobile app.</Text>
+              <Text style={[styles.desc, { color: colors.mutedForeground }]}>
+                Scanner works in the mobile app.
+              </Text>
             ) : !permission?.granted ? (
               <View style={styles.scanCenter}>
-                <Text style={[styles.desc, { color: colors.mutedForeground }]}>Allow camera permission to scan tickets.</Text>
-                <TouchableOpacity onPress={requestPermission} style={[styles.scanBtn, { backgroundColor: colors.primary }]}>
+                <Text style={[styles.desc, { color: colors.mutedForeground }]}>
+                  Allow camera permission to scan tickets.
+                </Text>
+                <TouchableOpacity
+                  onPress={requestPermission}
+                  style={[styles.scanBtn, { backgroundColor: colors.primary }]}
+                >
                   <Feather name="camera" size={15} color="#FFF" />
                   <Text style={styles.scanBtnText}>Allow Camera</Text>
                 </TouchableOpacity>
@@ -565,50 +1025,186 @@ export default function EventDetailScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: 1 },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+  },
   title: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  heroCard: { borderRadius: 14, borderWidth: 1, padding: 24, alignItems: "center", gap: 10 },
-  eventIcon: { width: 72, height: 72, borderRadius: 20, alignItems: "center", justifyContent: "center" },
-  eventTitle: { fontSize: 20, fontFamily: "Inter_700Bold", textAlign: "center", lineHeight: 28 },
+  heroCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 24,
+    alignItems: "center",
+    gap: 10,
+  },
+  eventIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  eventTitle: {
+    fontSize: 20,
+    fontFamily: "Inter_700Bold",
+    textAlign: "center",
+    lineHeight: 28,
+  },
   organizer: { fontSize: 14, fontFamily: "Inter_400Regular" },
-  goingBadge: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+  goingBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
   goingText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   infoCard: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
-  infoRow: { flexDirection: "row", alignItems: "center", gap: 14, padding: 14, borderBottomWidth: 1 },
-  infoIcon: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    padding: 14,
+    borderBottomWidth: 1,
+  },
+  infoIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   infoLabel: { fontSize: 11, fontFamily: "Inter_400Regular" },
   infoValue: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   sectionTitle: { fontSize: 16, fontFamily: "Inter_700Bold", marginBottom: 10 },
   desc: { fontSize: 15, fontFamily: "Inter_400Regular", lineHeight: 22 },
-  ticketCard: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 12, alignItems: "center" },
+  ticketCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    gap: 12,
+    alignItems: "center",
+  },
   qrWrap: { backgroundColor: "#FFFFFF", padding: 12, borderRadius: 12 },
   ticketCode: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
-  scanCard: { flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 14, borderWidth: 1, padding: 14 },
+  ticketHint: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+  },
+  scanCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+  },
   scanTitle: { fontSize: 14, fontFamily: "Inter_700Bold" },
   scanSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular" },
-  scanBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 },
+  scanBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
   scanBtnText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#FFF" },
-  highlight: { flexDirection: "row", alignItems: "flex-start", gap: 10, marginBottom: 8 },
-  highlightText: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 20, flex: 1 },
-  bottomBar: { position: "absolute", bottom: 0, left: 0, right: 0, padding: 16, borderTopWidth: 1 },
+  highlight: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    marginBottom: 8,
+  },
+  highlightText: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 20,
+    flex: 1,
+  },
+  bottomBar: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
+    borderTopWidth: 1,
+  },
   hostSection: { gap: 10 },
   attendeeCard: { borderRadius: 12, borderWidth: 1, padding: 12, gap: 10 },
   attendeeHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
   attendeeName: { fontSize: 14, fontFamily: "Inter_700Bold" },
   attendeeMeta: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
-  attendeeStatus: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
-  attendeeStatusText: { fontSize: 11, textTransform: "capitalize", fontFamily: "Inter_600SemiBold" },
+  attendeeStatus: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  attendeeStatusText: {
+    fontSize: 11,
+    textTransform: "capitalize",
+    fontFamily: "Inter_600SemiBold",
+  },
   attendeeNote: { fontSize: 13, fontFamily: "Inter_400Regular" },
   attendeeReason: { fontSize: 12, fontFamily: "Inter_400Regular" },
   attendeeCheckin: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
-  reasonInput: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, fontFamily: "Inter_400Regular" },
+  reasonInput: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+  },
   attendeeActions: { flexDirection: "row", gap: 8 },
-  attendeeApprove: { flex: 1, borderWidth: 1, borderRadius: 10, paddingVertical: 10, alignItems: "center", justifyContent: "center" },
-  attendeeReject: { flex: 1, borderWidth: 1, borderRadius: 10, paddingVertical: 10, alignItems: "center", justifyContent: "center" },
+  attendeeApprove: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  attendeeReject: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   attendeeActionText: { fontSize: 13, fontFamily: "Inter_700Bold" },
-  scanOverlay: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", padding: 20 },
-  scanModal: { width: "100%", maxWidth: 400, borderRadius: 16, borderWidth: 1, padding: 16, gap: 12 },
-  scanHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  scanOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+  },
+  scanModal: {
+    width: "100%",
+    maxWidth: 400,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    gap: 12,
+  },
+  scanHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   scanCenter: { alignItems: "center", gap: 12 },
-  cameraBox: { width: "100%", aspectRatio: 1, borderRadius: 14, overflow: "hidden", borderWidth: 1 },
+  cameraBox: {
+    width: "100%",
+    aspectRatio: 1,
+    borderRadius: 14,
+    overflow: "hidden",
+    borderWidth: 1,
+  },
 });
