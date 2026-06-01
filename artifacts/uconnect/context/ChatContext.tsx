@@ -63,6 +63,7 @@ interface ChatContextType {
   revealIdentity: (conversationId: string) => void;
   blockUser: (conversationId: string) => Promise<boolean>;
   deleteConversation: (conversationId: string) => void;
+  setActiveConversation: (conversationId: string | null) => void;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -93,6 +94,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     publicKeyRaw: string;
     privateKeyJwk: JsonWebKey;
   } | null>(null);
+  const [activeConversationId, setActiveConversation] = useState<string | null>(null);
 
   useEffect(() => {
     if (!userId) {
@@ -283,18 +285,44 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!userId) return;
-    const channel = supabase
-      .channel(`chat-sync-${userId}`)
+    const userAChannel = supabase
+      .channel(`conversations-user-a-${userId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "messages" },
+        { event: "*", schema: "public", table: "conversations", filter: `user_a=eq.${userId}` },
         () => {
           loadConversations();
         },
       )
+      .subscribe();
+    const userBChannel = supabase
+      .channel(`conversations-user-b-${userId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "conversations" },
+        { event: "*", schema: "public", table: "conversations", filter: `user_b=eq.${userId}` },
+        () => {
+          loadConversations();
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(userAChannel);
+      supabase.removeChannel(userBChannel);
+    };
+  }, [userId, loadConversations]);
+
+  useEffect(() => {
+    if (!userId || !activeConversationId) return;
+    const channel = supabase
+      .channel(`messages-${activeConversationId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "messages",
+          filter: `conversation_id=eq.${activeConversationId}`,
+        },
         () => {
           loadConversations();
         },
@@ -303,7 +331,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId, loadConversations]);
+  }, [userId, activeConversationId, loadConversations]);
 
   const verifyEncryptionReadiness = useCallback(
     async (conv: Conversation): Promise<EncryptionReadiness> => {
@@ -713,6 +741,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         revealIdentity,
         blockUser,
         deleteConversation,
+        setActiveConversation,
       }}
     >
       {children}

@@ -94,19 +94,17 @@ export function GhostModeProvider({ children }: { children: React.ReactNode }) {
   }, [refreshGhostMode]);
 
   useEffect(() => {
-    const channel = supabase
-      .channel("ghost-presence-count")
-      .on("postgres_changes", { event: "*", schema: "public", table: "ghost_sessions" }, refreshGhostMode)
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [refreshGhostMode]);
+    if (!user) return;
+    const pollId = setInterval(refreshGhostMode, 60_000);
+    return () => clearInterval(pollId);
+  }, [user?.id, refreshGhostMode]);
 
   const secondsRemaining = session ? Math.max(0, Math.floor((new Date(session.expiresAt).getTime() - now) / 1000)) : 0;
   const isGhostActive = Boolean(session && secondsRemaining > 0 && !session.endedAt);
 
   useEffect(() => {
     if (!session) return;
-    if (secondsRemaining <= 0 && isGhostActive) {
+    if (session && secondsRemaining <= 0 && !session.endedAt) {
       notifications.addNotification({ type: "system", title: "Ghost expired", body: "Your Ghost Mode session has faded out.", actionType: "system", metadata: { feature: "ghost_mode" } });
       refreshGhostMode();
       return;

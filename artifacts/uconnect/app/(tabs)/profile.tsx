@@ -1,5 +1,5 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { DimensionValue } from "react-native";
 import {
@@ -44,7 +44,7 @@ export default function ProfileScreen() {
   const { confessions } = useConfessions();
   const { followingIds } = useSocial();
   const { settings } = useSettings();
-  const { data: vaultSummary } = useVaultSummary(user?.id);
+  const { data: vaultSummary, refetch: refetchVaultSummary } = useVaultSummary(user?.id);
   const { showSuccess } = useToast();
   const [activeTab, setActiveTab] = useState<TabId>("posts");
   const [refreshing, setRefreshing] = useState(false);
@@ -55,6 +55,12 @@ export default function ProfileScreen() {
   const [rsvpEvents, setRsvpEvents] = useState<any[]>([]);
   const [savedNotes, setSavedNotes] = useState<any[]>([]);
   const [repostRows, setRepostRows] = useState<{ post_id: string; created_at: string }[]>([]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      refetchVaultSummary();
+    }, [refetchVaultSummary]),
+  );
 
   useEffect(() => {
     Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: Platform.OS !== "web" }).start();

@@ -1,5 +1,5 @@
 import { Feather } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Easing, FlatList, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -108,13 +108,21 @@ export default function TeamsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { teams, requestJoin, cancelRequest, getPendingRequests, getMyTeams } = useTeams();
+  const { teams, requestJoin, cancelRequest, getPendingRequests, getMyTeams, refreshTeamsAndMemberships } = useTeams();
   const { showSuccess, showInfo } = useToast();
   const ghost = useGhostMode();
   const [selectedType, setSelectedType] = useState("All");
   const [requestedIds, setRequestedIds] = useState<Set<string>>(new Set());
   const headerAnim = useRef(new Animated.Value(0)).current;
   const headerSlide = useRef(new Animated.Value(-14)).current;
+
+  useFocusEffect(
+    React.useCallback(() => {
+      refreshTeamsAndMemberships();
+      const refreshId = setInterval(refreshTeamsAndMemberships, 60_000);
+      return () => clearInterval(refreshId);
+    }, [refreshTeamsAndMemberships]),
+  );
 
   useEffect(() => {
     Animated.parallel([

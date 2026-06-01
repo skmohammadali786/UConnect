@@ -168,10 +168,10 @@ export function NotificationsProvider({
 
   useEffect(() => {
     if (!user) return;
-    const pollId = setInterval(() => {
+    const recoveryPollId = setInterval(() => {
       loadNotifications();
-    }, 20000);
-    return () => clearInterval(pollId);
+    }, 5 * 60 * 1000);
+    return () => clearInterval(recoveryPollId);
   }, [user?.id, loadNotifications]);
 
   useEffect(() => {

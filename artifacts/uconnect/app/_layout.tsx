@@ -11,7 +11,7 @@ import * as Linking from "expo-linking";
 import * as SplashScreen from "expo-splash-screen";
 import * as SystemUI from "expo-system-ui";
 import React, { useCallback, useEffect, useState } from "react";
-import { View, useWindowDimensions } from "react-native";
+import { AppState, Platform, View, useWindowDimensions } from "react-native";
 import { supabase } from "@/lib/supabase";
 import { extractEventIdFromLink, extractPostIdFromLink, extractReferralCodeFromLink } from "@/utils/postLinks";
 import { getResponsiveContentMaxWidth } from "@/utils/responsiveLayout";
@@ -28,10 +28,11 @@ import { NotificationsProvider } from "@/context/NotificationsContext";
 import { SettingsProvider } from "@/context/SettingsContext";
 import { ConfessionsProvider } from "@/context/ConfessionsContext";
 import { GhostModeProvider } from "@/context/GhostModeContext";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, focusManager } from "@tanstack/react-query";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { SocialProvider } from "@/context/SocialContext";
 import { TeamsProvider } from "@/context/TeamsContext";
+import { QUERY_CACHE_TIMES, QUERY_STALE_TIMES } from "@/constants/queryConfig";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -95,7 +96,19 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
-  const [queryClient] = useState(() => new QueryClient());
+  const [queryClient] = useState(() => new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: QUERY_STALE_TIMES.feed,
+        gcTime: QUERY_CACHE_TIMES.feed,
+        refetchOnWindowFocus: true,
+        refetchOnReconnect: true,
+      },
+      mutations: {
+        retry: 1,
+      },
+    },
+  }));
   const [fontsLoaded, fontError] = useFonts({
     DMSans_500Medium,
     DMSans_700Bold,
@@ -104,6 +117,15 @@ export default function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
   });
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (status) => {
+      if (Platform.OS !== "web") {
+        focusManager.setFocused(status === "active");
+      }
+    });
+    return () => subscription.remove();
+  }, []);
 
   const handleDeepLink = useCallback(async (url: string) => {
     const isRecoveryType = (params: URLSearchParams) => {
