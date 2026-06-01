@@ -53,11 +53,14 @@ export function VaultRadarCard({
   skills,
   colors,
   compact = false,
+  mode,
 }: {
   skills?: RadarSkill[] | null;
   colors: any;
   compact?: boolean;
+  mode?: "mini" | "compact" | "full";
 }) {
+  const isCompact = compact || mode === "compact" || mode === "mini";
   const normalizedSkills = Array.isArray(skills) ? skills : [];
   const fallbackSkills = [
     "Code",
@@ -67,7 +70,7 @@ export function VaultRadarCard({
     "Community",
   ].map((skill_name) => ({ skill_name, strength: 0, trend: 0 }));
   const data = (normalizedSkills.length ? normalizedSkills : fallbackSkills)
-    .slice(0, compact ? 4 : 5)
+    .slice(0, isCompact ? 4 : 5)
     .map((skill, index) => ({
       skill_name: skillLabel(skill?.skill_name, index),
       strength: clampStrength(skill?.strength),
@@ -86,7 +89,7 @@ export function VaultRadarCard({
   );
   const risingCount = data.filter((skill) => skill.trend > 0).length;
   const hasSignal = data.some((skill) => skill.strength > 0);
-  const radarSize = compact ? 150 : 184;
+  const radarSize = isCompact ? 132 : 184;
   const center = radarSize / 2;
   const radius = radarSize * 0.31;
   const labelRadius = radarSize * 0.43;
@@ -122,6 +125,7 @@ export function VaultRadarCard({
       end={{ x: 1, y: 1 }}
       style={[
         styles.card,
+        isCompact && styles.compactCard,
         {
           borderColor: hexToRgba(primary, 0.24),
           shadowColor: colors.shadow ?? primary,
@@ -129,7 +133,7 @@ export function VaultRadarCard({
       ]}
     >
       <View style={styles.glowOrb} />
-      <View style={styles.headerRow}>
+      <View style={[styles.headerRow, isCompact && styles.compactHeaderRow]}>
         <View
           style={[
             styles.iconWrap,
@@ -168,7 +172,7 @@ export function VaultRadarCard({
         </View>
       </View>
 
-      <View style={styles.radarRow}>
+      <View style={[styles.radarRow, isCompact && styles.compactRadarRow]}>
         <View
           style={[
             styles.radarShell,
@@ -297,7 +301,7 @@ export function VaultRadarCard({
         </View>
       </View>
 
-      <View style={styles.insightRow}>
+      {mode === "full" ? <View style={styles.insightRow}>
         <View
           style={[
             styles.insightCard,
@@ -352,7 +356,7 @@ export function VaultRadarCard({
             </Text>
           </View>
         </View>
-      </View>
+      </View> : null}
     </LinearGradient>
   );
 }
@@ -367,6 +371,7 @@ const styles = StyleSheet.create({
     elevation: 3,
     overflow: "hidden",
   },
+  compactCard: { borderRadius: 22, padding: 12 },
   glowOrb: {
     position: "absolute",
     right: -36,
@@ -390,6 +395,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  compactHeaderRow: { marginBottom: 10 },
   headerText: { flex: 1 },
   eyebrow: { fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 1.8 },
   title: { fontSize: 22, fontFamily: "Inter_700Bold", marginTop: 2 },
@@ -414,6 +420,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
   radarRow: { flexDirection: "row", gap: 14, alignItems: "center" },
+  compactRadarRow: { gap: 10 },
   radarShell: {
     borderWidth: 1,
     borderRadius: 24,
