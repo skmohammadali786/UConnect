@@ -18,7 +18,7 @@ create table if not exists profiles (
   bio text not null default '',
   social_link text not null default '',
   avatar text,
-  avatar_ring_color text not null default '#6366F1',
+  avatar_ring_color text not null default 'gradient:#6366F1,#8B5CF6,#EC4899' check (avatar_ring_color ~* '^#[0-9a-f]{3}([0-9a-f]{3})?$' or avatar_ring_color ~* '^gradient:#[0-9a-f]{3}([0-9a-f]{3})?(,#[0-9a-f]{3}([0-9a-f]{3})?){1,3}$'),
   banner text,
   interests text[] not null default '{}',
   followers int not null default 0,
@@ -1843,7 +1843,7 @@ alter table profiles
   add column if not exists referral_at timestamptz;
 
 alter table profiles
-  add column if not exists avatar_ring_color text not null default '#6366F1';
+  add column if not exists avatar_ring_color text not null default 'gradient:#6366F1,#8B5CF6,#EC4899';
 
 alter table profiles
   add column if not exists social_link text not null default '';

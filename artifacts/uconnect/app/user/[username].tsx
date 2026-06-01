@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PostCard } from "@/components/PostCard";
+import { AuraRingAvatar } from "@/components/AuraRingAvatar";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { usePosts } from "@/context/PostsContext";
@@ -25,6 +26,7 @@ import { useToast } from "@/components/Toast";
 import { supabase } from "@/lib/supabase";
 import { useVaultSummary } from "@/hooks/useVault";
 import { getSocialLinkInfo } from "@/utils/socialLink";
+import { DEFAULT_AURA_RING, normalizeAuraRingValue } from "@/utils/auraRing";
 
 const ND = Platform.OS !== "web";
 const OFFICIAL_UCONNECT_BADGE_COLOR = "#EE4B2B";
@@ -109,7 +111,7 @@ export default function UserProfileScreen() {
             following: data.following ?? 0,
             isVerified: Boolean(data.is_verified),
             avatar: data.avatar || null,
-            avatarRingColor: data.avatar_ring_color || "#6366F1",
+            avatarRingColor: normalizeAuraRingValue(data.avatar_ring_color || DEFAULT_AURA_RING),
             banner: data.banner || null,
             socialLink: data.social_link || "",
           });
@@ -129,7 +131,7 @@ export default function UserProfileScreen() {
             followers: 0,
             following: 0,
             isVerified: false,
-            avatarRingColor: "#6366F1",
+            avatarRingColor: DEFAULT_AURA_RING,
             banner: null,
             socialLink: "",
           });
@@ -148,7 +150,7 @@ export default function UserProfileScreen() {
           followers: 0,
           following: 0,
           isVerified: false,
-          avatarRingColor: "#6366F1",
+          avatarRingColor: DEFAULT_AURA_RING,
           banner: null,
           socialLink: "",
         });
@@ -331,33 +333,15 @@ export default function UserProfileScreen() {
               <View style={styles.coverAccent} />
 
               <View style={styles.avatarRow}>
-                {profile.avatar ? (
-                  <Image
-                    source={{ uri: profile.avatar }}
-                    style={[
-                      styles.avatarImg,
-                      { borderColor: profile.avatarRingColor || colors.card },
-                    ]}
-                  />
-                ) : (
-                  <View
-                    style={[
-                      styles.avatar,
-                      {
-                        backgroundColor:
-                          (profile.avatarRingColor || colors.primary) + "20",
-                        borderColor: profile.avatarRingColor || colors.card,
-                        borderWidth: 4,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[styles.avatarText, { color: colors.primary }]}
-                    >
-                      {initials}
-                    </Text>
-                  </View>
-                )}
+                <AuraRingAvatar
+                  avatarUri={profile.avatar}
+                  initials={initials}
+                  ringValue={profile.avatarRingColor || colors.primary}
+                  size={92}
+                  ringWidth={4}
+                  textColor={colors.primary}
+                  textSize={38}
+                />
                 <View style={styles.actionRow}>
                   {!isMe && (
                     <>

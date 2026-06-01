@@ -7,6 +7,7 @@ import React, {
   useState,
 } from "react";
 import { supabase } from "@/lib/supabase";
+import { DEFAULT_AURA_RING, normalizeAuraRingValue } from "@/utils/auraRing";
 import { useAuth } from "@/context/AuthContext";
 import { useGhostMode } from "@/context/GhostModeContext";
 
@@ -131,9 +132,7 @@ function rowToPost(
     authorAvatar: row.is_ghost || row.is_anonymous ? null : row.author_avatar,
     authorAuraRingColor: row.is_ghost || row.is_anonymous
       ? undefined
-      : (row.author_aura_ring_color ??
-        row.author_avatar_ring_color ??
-        "#6366F1"),
+      : normalizeAuraRingValue(row.author_aura_ring_color ?? row.author_avatar_ring_color ?? DEFAULT_AURA_RING),
     authorIsVerified: row.is_ghost || row.is_anonymous
       ? false
       : (row.author_is_verified ?? false),
@@ -339,7 +338,7 @@ export function PostsProvider({ children }: { children: React.ReactNode }) {
                   : (profile?.avatar ?? row.author_avatar),
                 author_aura_ring_color: row.is_ghost || row.is_anonymous
                   ? null
-                  : (profile?.avatar_ring_color ?? "#6366F1"),
+                  : normalizeAuraRingValue(profile?.avatar_ring_color ?? DEFAULT_AURA_RING),
                 author_is_verified: row.is_ghost || row.is_anonymous
                   ? false
                   : Boolean(profile?.is_verified),

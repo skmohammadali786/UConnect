@@ -24,6 +24,7 @@ import { usePosts } from "@/context/PostsContext";
 import { useSocial } from "@/context/SocialContext";
 import { ReportModal } from "@/components/ReportModal";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { AuraRingAvatar } from "@/components/AuraRingAvatar";
 import { formatRelativeTime } from "@/utils/time";
 import { buildPostShareLink } from "@/utils/postLinks";
 
@@ -289,12 +290,16 @@ export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardP
               <View style={[styles.avatarWrap, { backgroundColor: colors.muted, borderColor: "transparent" }]}>
                 <Feather name="user-x" size={14} color={colors.mutedForeground} />
               </View>
-            ) : post.authorAvatar ? (
-              <Image source={{ uri: post.authorAvatar }} style={[styles.avatarWrap, styles.avatarImg, { borderColor: auraRingColor }]} />
             ) : (
-              <View style={[styles.avatarWrap, { backgroundColor: auraRingColor + "22", borderColor: auraRingColor }]}>
-                <Text style={[styles.avatarInitial, { color: colors.primary }]}>{initials}</Text>
-              </View>
+              <AuraRingAvatar
+                avatarUri={post.authorAvatar}
+                initials={initials}
+                ringValue={auraRingColor}
+                size={36}
+                ringWidth={2}
+                textColor={colors.primary}
+                textSize={15}
+              />
             )}
             <View>
               <View style={styles.usernameRow}>
