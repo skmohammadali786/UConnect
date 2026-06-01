@@ -12,6 +12,7 @@ export interface User {
   branch: string;
   year: string;
   bio: string;
+  socialLink: string;
   avatar: string | null;
   avatarRingColor: string;
   banner: string | null;
@@ -48,6 +49,7 @@ function rowToUser(row: any): User {
     branch: row.branch ?? "",
     year: row.year ?? "",
     bio: row.bio ?? "",
+    socialLink: row.social_link ?? "",
     avatar: row.avatar ?? null,
     avatarRingColor: row.avatar_ring_color ?? "#6366F1",
     banner: row.banner ?? null,
@@ -164,6 +166,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       branch: updated.branch,
       year: updated.year,
       bio: updated.bio,
+      social_link: updated.socialLink,
       avatar: updated.avatar,
       avatar_ring_color: updated.avatarRingColor,
       banner: updated.banner,
@@ -184,6 +187,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       branch: newUser.branch,
       year: newUser.year,
       bio: newUser.bio,
+      social_link: newUser.socialLink,
       avatar: newUser.avatar,
       avatar_ring_color: newUser.avatarRingColor,
       banner: newUser.banner,

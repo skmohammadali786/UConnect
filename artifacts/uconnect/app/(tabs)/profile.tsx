@@ -3,7 +3,7 @@ import { router } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { DimensionValue } from "react-native";
 import {
-  Animated, FlatList, Image, Platform, RefreshControl, ScrollView,
+  Animated, FlatList, Image, Linking, Platform, RefreshControl, ScrollView,
   StyleSheet, Text, TouchableOpacity, View, GestureResponderEvent,
 } from "react-native";
 import { useSocial } from "@/context/SocialContext";
@@ -22,6 +22,7 @@ import { formatRelativeTime } from "@/utils/time";
 import { useSettings } from "@/context/SettingsContext";
 import { useVaultSummary } from "@/hooks/useVault";
 import { VaultRadarCard } from "@/components/vault/VaultRadarCard";
+import { getSocialLinkInfo } from "@/utils/socialLink";
 
 
 type TabId = "posts" | "saved" | "reposts" | "confessions" | "activity";
@@ -228,6 +229,8 @@ export default function ProfileScreen() {
     </View>
   );
 
+  const socialLinkInfo = getSocialLinkInfo(user.socialLink);
+
   const postListData: Post[] = (() => {
     if (activeTab === "posts") return myPosts;
     if (activeTab === "saved") return savedPosts;
@@ -323,6 +326,20 @@ export default function ProfileScreen() {
           </View>
 
           {user.bio ? <Text style={[styles.bio, { color: colors.foreground }]}>{user.bio}</Text> : null}
+
+          {socialLinkInfo ? (
+            <TouchableOpacity
+              onPress={() => Linking.openURL(socialLinkInfo.url)}
+              activeOpacity={0.85}
+              style={[styles.socialLinkBtn, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "30" }]}
+            >
+              <MaterialCommunityIcons name={socialLinkInfo.icon as any} size={15} color={colors.primary} />
+              <Text style={[styles.socialLinkText, { color: colors.primary }]} numberOfLines={1}>
+                {socialLinkInfo.label}
+              </Text>
+              <Feather name="external-link" size={12} color={colors.primary} />
+            </TouchableOpacity>
+          ) : null}
         </View>
 
         <View style={[styles.statsCard, elevatedCard, { backgroundColor: colors.background, borderColor: colors.border, marginHorizontal: 16, marginBottom: 16 }]}>
@@ -577,6 +594,8 @@ const styles = StyleSheet.create({
   metaPill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 20 },
   metaText: { fontSize: 11, fontFamily: "Inter_500Medium" },
   bio: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 21, marginTop: 4 },
+  socialLinkBtn: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, maxWidth: "100%", borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, marginTop: 2 },
+  socialLinkText: { fontSize: 12, fontFamily: "Inter_600SemiBold", maxWidth: 190 },
   statsCard: { flexDirection: "row", alignItems: "center", justifyContent: "space-around", borderRadius: 16, borderWidth: 1, paddingVertical: 14 },
   vaultProfileCard: { marginHorizontal: 16, marginBottom: 14, borderWidth: 1, borderRadius: 18, padding: 10, gap: 9 },
   vaultProfileHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
