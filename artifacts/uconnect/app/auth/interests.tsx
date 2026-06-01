@@ -8,6 +8,7 @@ import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { ALL_INTERESTS } from "@/constants/interests";
+import { DEFAULT_AURA_RING } from "@/utils/auraRing";
 
 export default function InterestsScreen() {
   const colors = useColors();
@@ -51,7 +52,7 @@ export default function InterestsScreen() {
         date_of_birth: dateOfBirth || null,
         bio: bio || "",
         avatar: null,
-        avatar_ring_color: "#6366F1",
+        avatar_ring_color: DEFAULT_AURA_RING,
         banner: null,
         interests: selected,
         followers: 0,
@@ -101,7 +102,7 @@ export default function InterestsScreen() {
         bio: profile.bio,
         socialLink: "",
         avatar: null,
-        avatarRingColor: "#6366F1",
+        avatarRingColor: DEFAULT_AURA_RING,
         banner: null,
         interests: selected,
         followers: 0,

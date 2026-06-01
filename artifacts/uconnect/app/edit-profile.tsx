@@ -10,6 +10,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppButton } from "@/components/AppButton";
 import { AppInput } from "@/components/AppInput";
+import { AuraRingAvatar } from "@/components/AuraRingAvatar";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/Toast";
@@ -17,13 +18,10 @@ import { ALL_INTERESTS } from "@/constants/interests";
 import { supabase } from "@/lib/supabase";
 import { isRemoteUri, uploadMediaUriToR2 } from "@/utils/r2Upload";
 import { normalizeSocialLink } from "@/utils/socialLink";
+import { AURA_RING_PRESETS, DEFAULT_AURA_RING, normalizeAuraRingValue } from "@/utils/auraRing";
 
 const ND = Platform.OS !== "web";
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "Postgraduate", "PhD", "Alumni"];
-const DEFAULT_AVATAR_RING_COLOR = "#6366F1";
-const RING_SWATCHES = ["#6366F1", "#EF4444", "#F59E0B", "#10B981", "#06B6D4", "#8B5CF6", "#EC4899", "#111827"];
-
-const isValidHexColor = (value: string) => /^#([0-9A-F]{3}|[0-9A-F]{6})$/i.test(value.trim());
 type SelectedImage = { uri: string; mimeType?: string; fileName?: string };
 type VerificationRequest = {
   status: "pending" | "approved" | "rejected";
@@ -81,7 +79,7 @@ export default function EditProfileScreen() {
   const [year, setYear] = useState(user?.year || "");
   const [selectedInterests, setSelectedInterests] = useState<string[]>(user?.interests || []);
   const [avatarUri, setAvatarUri] = useState<string | null>(user?.avatar || null);
-  const [avatarRingColor, setAvatarRingColor] = useState(user?.avatarRingColor || DEFAULT_AVATAR_RING_COLOR);
+  const [avatarRingColor, setAvatarRingColor] = useState(normalizeAuraRingValue(user?.avatarRingColor ?? DEFAULT_AURA_RING));
   const [bannerUri, setBannerUri] = useState<string | null>(user?.banner || null);
   const [saving, setSaving] = useState(false);
   const [verificationLoading, setVerificationLoading] = useState(false);
@@ -272,7 +270,7 @@ export default function EditProfileScreen() {
       showError("Name required", "Please enter a display name.");
       return;
     }
-    const normalizedRingColor = isValidHexColor(avatarRingColor) ? avatarRingColor.trim().toUpperCase() : DEFAULT_AVATAR_RING_COLOR;
+    const normalizedRingColor = normalizeAuraRingValue(avatarRingColor);
     setSaving(true);
     try {
       const shouldUploadAvatar = !!avatarUri && !isRemoteUri(avatarUri);
@@ -313,7 +311,7 @@ export default function EditProfileScreen() {
   };
 
   const initials = displayName?.charAt(0)?.toUpperCase() || user?.username?.charAt(0)?.toUpperCase() || "U";
-  const previewRingColor = isValidHexColor(avatarRingColor) ? avatarRingColor : DEFAULT_AVATAR_RING_COLOR;
+  const previewRingColor = normalizeAuraRingValue(avatarRingColor);
   const isProfileVerified = Boolean(user?.isVerified || verificationRequest?.status === "approved");
 
   return (
@@ -343,13 +341,15 @@ export default function EditProfileScreen() {
 
           <View style={styles.avatarSection}>
             <TouchableOpacity onPress={handlePickPhoto} style={styles.avatarTap} activeOpacity={0.85}>
-              {avatarUri ? (
-                <Image source={{ uri: avatarUri }} style={[styles.avatarImg, { borderColor: previewRingColor }]} />
-              ) : (
-                <View style={[styles.avatar, { backgroundColor: previewRingColor + "20", borderColor: previewRingColor }]}>
-                  <Text style={[styles.avatarText, { color: colors.primary }]}>{initials}</Text>
-                </View>
-              )}
+              <AuraRingAvatar
+                avatarUri={avatarUri}
+                initials={initials}
+                ringValue={previewRingColor}
+                size={90}
+                ringWidth={3}
+                textColor={colors.primary}
+                textSize={38}
+              />
               <View style={[styles.cameraOverlay, { backgroundColor: colors.primary }]}>
                 <Feather name="camera" size={13} color="#FFF" />
               </View>
@@ -361,29 +361,42 @@ export default function EditProfileScreen() {
           </View>
 
           <View style={{ gap: 8 }}>
-            <Text style={[styles.label, { color: colors.mutedForeground }]}>Aura Ring Color</Text>
-            <View style={[styles.colorInputWrap, { backgroundColor: colors.input, borderColor: isValidHexColor(avatarRingColor) ? avatarRingColor : colors.border }]}>
-              <View style={[styles.colorPreview, { backgroundColor: isValidHexColor(avatarRingColor) ? avatarRingColor : "transparent", borderColor: colors.border }]} />
-              <TextInput
-                value={avatarRingColor}
-                onChangeText={setAvatarRingColor}
-                autoCapitalize="characters"
-                autoCorrect={false}
-                placeholder="#6366F1"
-                placeholderTextColor={colors.placeholder}
-                style={[styles.colorInput, { color: colors.foreground }]}
-              />
+            <Text style={[styles.label, { color: colors.mutedForeground }]}>Aura Ring Gradient</Text>
+            <View style={styles.gradientGrid}>
+              {AURA_RING_PRESETS.map((preset) => {
+                const selected = normalizeAuraRingValue(avatarRingColor) === preset.value;
+                return (
+                  <TouchableOpacity
+                    key={preset.value}
+                    onPress={() => setAvatarRingColor(preset.value)}
+                    activeOpacity={0.85}
+                    style={[
+                      styles.gradientOption,
+                      {
+                        backgroundColor: colors.card,
+                        borderColor: selected ? colors.foreground : colors.border,
+                      },
+                    ]}
+                  >
+                    <AuraRingAvatar
+                      initials={initials}
+                      ringValue={preset.value}
+                      size={42}
+                      ringWidth={4}
+                      textColor={colors.foreground}
+                      textSize={16}
+                    />
+                    <Text style={[styles.gradientName, { color: selected ? colors.foreground : colors.mutedForeground }]}>{preset.name}</Text>
+                    {selected ? (
+                      <View style={[styles.gradientCheck, { backgroundColor: colors.primary }]}>
+                        <Feather name="check" size={10} color="#FFF" />
+                      </View>
+                    ) : null}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
-            <View style={styles.colorSwatches}>
-              {RING_SWATCHES.map((swatch) => (
-                <TouchableOpacity
-                  key={swatch}
-                  onPress={() => setAvatarRingColor(swatch)}
-                  style={[styles.swatchBtn, { backgroundColor: swatch, borderColor: avatarRingColor.toLowerCase() === swatch.toLowerCase() ? colors.foreground : "transparent" }]}
-                />
-              ))}
-            </View>
-            <Text style={[styles.helperText, { color: colors.mutedForeground }]}>Use any HEX color (example: #22C55E). Your Aura Ring is visible on your profile and feed posts.</Text>
+            <Text style={[styles.helperText, { color: colors.mutedForeground }]}>Pick a gradient Aura Ring. It is visible on your profile, search, and feed posts.</Text>
           </View>
 
           <AppInput
@@ -564,17 +577,13 @@ const styles = StyleSheet.create({
   bannerText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   avatarSection: { alignItems: "center", gap: 12 },
   avatarTap: { position: "relative" },
-  avatar: { width: 90, height: 90, borderRadius: 45, borderWidth: 2.5, alignItems: "center", justifyContent: "center" },
-  avatarImg: { width: 90, height: 90, borderRadius: 45, borderWidth: 2.5 },
-  avatarText: { fontSize: 38, fontFamily: "Inter_700Bold" },
   cameraOverlay: { position: "absolute", bottom: 2, right: 2, width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center", borderWidth: 2.5, borderColor: "#fff" },
   changePhotoBtn: { flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 20, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 8 },
   changePhotoText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  colorInputWrap: { flexDirection: "row", alignItems: "center", borderRadius: 12, borderWidth: 1.5, paddingHorizontal: 12, paddingVertical: 10, gap: 10 },
-  colorPreview: { width: 20, height: 20, borderRadius: 10, borderWidth: 1 },
-  colorInput: { flex: 1, fontSize: 15, fontFamily: "Inter_500Medium" },
-  colorSwatches: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 2 },
-  swatchBtn: { width: 24, height: 24, borderRadius: 12, borderWidth: 2 },
+  gradientGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  gradientOption: { width: "47%", minWidth: 140, flexGrow: 1, position: "relative", flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 14, borderWidth: 1.5, padding: 10 },
+  gradientName: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  gradientCheck: { position: "absolute", top: 8, right: 8, width: 18, height: 18, borderRadius: 9, alignItems: "center", justifyContent: "center" },
   helperText: { fontSize: 12, fontFamily: "Inter_400Regular" },
   label: { fontSize: 13, fontFamily: "Inter_500Medium" },
   bioWrap: { borderRadius: 12, borderWidth: 1.5, padding: 12 },
