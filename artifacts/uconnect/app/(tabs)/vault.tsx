@@ -1,5 +1,5 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { DimensionValue } from "react-native";
 import { ActivityIndicator, Animated, Easing, Modal, Platform, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
@@ -54,6 +54,12 @@ export default function VaultScreen() {
   const [voteOverrides, setVoteOverrides] = useState<Record<string, number>>({});
   const screenFade = useRef(new Animated.Value(0)).current;
   const screenSlide = useRef(new Animated.Value(28)).current;
+
+  useFocusEffect(
+    React.useCallback(() => {
+      refetch();
+    }, [refetch]),
+  );
 
   useEffect(() => {
     Animated.parallel([

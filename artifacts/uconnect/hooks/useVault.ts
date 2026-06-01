@@ -1,31 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
-import { supabase } from "@/lib/supabase";
+import { QUERY_CACHE_TIMES, QUERY_STALE_TIMES } from "@/constants/queryConfig";
 import { useAuth } from "@/context/AuthContext";
-import { fetchVaultSummary, createVaultAlert, nominateVaultLegend, joinVaultDebate, createVaultDebate, createVaultWikiArticle, voteVaultTarget } from "@/services/vault";
+import { fetchVaultSummary, createVaultAlert, nominateVaultLegend, joinVaultDebate, createVaultDebate, createVaultWikiArticle, voteVaultTarget, type VaultSummary } from "@/services/vault";
 
 export function useVaultSummary(profileUserId?: string) {
   const { user } = useAuth();
   const userId = profileUserId ?? user?.id;
-  const subscriptionId = useRef(`vault-${Math.random().toString(36).slice(2)}`);
   const query = useQuery({
     queryKey: ["vault-summary", userId],
     queryFn: () => fetchVaultSummary(userId),
-    staleTime: 30_000,
+    staleTime: QUERY_STALE_TIMES.vault,
+    gcTime: QUERY_CACHE_TIMES.vault,
+    refetchOnWindowFocus: true,
   });
-
-  useEffect(() => {
-    const channel = supabase
-      .channel(`vault-home-${userId ?? "public"}-${subscriptionId.current}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "vault_alerts" }, () => query.refetch())
-      .on("postgres_changes", { event: "*", schema: "public", table: "vault_debates" }, () => query.refetch())
-      .on("postgres_changes", { event: "*", schema: "public", table: "vault_nominations" }, () => query.refetch())
-      .on("postgres_changes", { event: "*", schema: "public", table: "vault_legend_badges" }, () => query.refetch())
-      .on("postgres_changes", { event: "*", schema: "public", table: "vault_scores" }, () => query.refetch())
-      .on("postgres_changes", { event: "*", schema: "public", table: "vault_wiki_articles" }, () => query.refetch())
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [query.refetch, userId]);
 
   return query;
 }
@@ -39,6 +26,32 @@ export function useVaultActions() {
     joinDebate: useMutation({ mutationFn: joinVaultDebate, onSuccess: invalidate }),
     createDebate: useMutation({ mutationFn: createVaultDebate, onSuccess: invalidate }),
     createWikiArticle: useMutation({ mutationFn: createVaultWikiArticle, onSuccess: invalidate }),
-    voteTarget: useMutation({ mutationFn: ({ targetType, targetId, vote }: { targetType: "legend_nomination" | "wiki_article"; targetId: string; vote?: "up" | "down" }) => voteVaultTarget(targetType, targetId, vote), onSuccess: invalidate }),
+    voteTarget: useMutation({
+      mutationFn: ({ targetType, targetId, vote }: { targetType: "legend_nomination" | "wiki_article"; targetId: string; vote?: "up" | "down" }) => voteVaultTarget(targetType, targetId, vote),
+      onMutate: async ({ targetType, targetId, vote }) => {
+        await queryClient.cancelQueries({ queryKey: ["vault-summary"] });
+        const snapshots = queryClient.getQueriesData<VaultSummary>({ queryKey: ["vault-summary"] });
+        const delta = vote === "down" ? -1 : 1;
+        snapshots.forEach(([queryKey, previous]) => {
+          if (!previous) return;
+          queryClient.setQueryData<VaultSummary>(queryKey, {
+            ...previous,
+            legends: targetType === "legend_nomination"
+              ? previous.legends.map((legend) => legend.id === targetId ? { ...legend, votes_count: Math.max(0, legend.votes_count + delta) } : legend)
+              : previous.legends,
+            wiki: targetType === "wiki_article"
+              ? previous.wiki.map((article) => article.id === targetId ? { ...article, upvotes: Math.max(0, article.upvotes + delta) } : article)
+              : previous.wiki,
+          });
+        });
+        return { snapshots };
+      },
+      onError: (_error, _variables, context) => {
+        context?.snapshots.forEach(([queryKey, previous]) => {
+          queryClient.setQueryData(queryKey, previous);
+        });
+      },
+      onSettled: invalidate,
+    }),
   };
 }

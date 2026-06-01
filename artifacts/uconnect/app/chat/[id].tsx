@@ -38,6 +38,7 @@ export default function ChatScreen() {
     revealIdentity,
     blockUser,
     startConversation,
+    setActiveConversation,
   } = useChat();
   const { user } = useAuth();
   const { showError, showInfo } = useToast();
@@ -45,6 +46,12 @@ export default function ChatScreen() {
   const [blockModalVisible, setBlockModalVisible] = useState(false);
   const [revealModalVisible, setRevealModalVisible] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+
+  useEffect(() => {
+    if (!id) return;
+    setActiveConversation(id);
+    return () => setActiveConversation(null);
+  }, [id, setActiveConversation]);
 
   const conv = conversations.find((c) => c.id === id);
   const incomingUnreadCount = conv

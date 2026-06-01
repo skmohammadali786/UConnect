@@ -138,13 +138,15 @@ export default function TeamDetailScreen() {
   const insets = useSafeAreaInsets();
   const { id, tab, itemType, itemId } = useLocalSearchParams<{ id: string; tab?: string; itemType?: string; itemId?: string }>();
   const { user } = useAuth();
-  const { teams, requestJoin, cancelRequest, approveRequest, denyRequest, getMembership, isTeamAdmin } = useTeams();
+  const { teams, requestJoin, cancelRequest, approveRequest, denyRequest, getMembership, isTeamAdmin, refreshTeamsAndMemberships } = useTeams();
   const { showSuccess, showError, showInfo } = useToast();
   const [requested, setRequested] = useState(false);
   const [joinVisible, setJoinVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<"feed" | "details" | "requests">("details");
   const [feedItems, setFeedItems] = useState<TeamFeedItem[]>([]);
   const [feedLoading, setFeedLoading] = useState(false);
+  const [pollSubscriptionIds, setPollSubscriptionIds] = useState<string[]>([]);
+  const [taskListSubscriptionIds, setTaskListSubscriptionIds] = useState<string[]>([]);
   const [postContent, setPostContent] = useState("");
   const [postMedia, setPostMedia] = useState<string | null>(null);
   const [postMediaMeta, setPostMediaMeta] = useState<{ fileType?: string; fileName?: string } | null>(null);
@@ -167,6 +169,10 @@ export default function TeamDetailScreen() {
   const isMember = Boolean(team && user && (isAdmin || membership));
   const lastTeamIdRef = useRef<string | null>(null);
   const highlightedFeedItemId = typeof itemId === "string" && typeof itemType === "string" ? itemId : undefined;
+
+  useEffect(() => {
+    refreshTeamsAndMemberships();
+  }, [refreshTeamsAndMemberships]);
 
   useEffect(() => {
     if (team && user) {
@@ -278,12 +284,14 @@ export default function TeamDetailScreen() {
 
       const taskLists = (taskListRes.data ?? []) as any[];
       const taskListIds = taskLists.map((t) => t.id);
+      setTaskListSubscriptionIds(taskListIds);
       const taskItemsRes = taskListIds.length > 0
         ? await supabase.from("team_task_items").select("*").in("task_list_id", taskListIds)
         : { data: [] as any[] };
 
       const polls = (pollRes.data ?? []) as any[];
       const pollIds = polls.map((p) => p.id);
+      setPollSubscriptionIds(pollIds);
       const pollVotesRes = pollIds.length > 0
         ? await supabase.from("team_poll_votes").select("poll_id,option_index,user_id").in("poll_id", pollIds)
         : { data: [] as any[] };
@@ -373,19 +381,25 @@ export default function TeamDetailScreen() {
 
   useEffect(() => {
     if (!team?.id) return;
-    const channel = supabase
+    let channel = supabase
       .channel(`team-feed-${team.id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "team_posts", filter: `team_id=eq.${team.id}` }, () => loadFeed())
       .on("postgres_changes", { event: "*", schema: "public", table: "team_polls", filter: `team_id=eq.${team.id}` }, () => loadFeed())
-      .on("postgres_changes", { event: "*", schema: "public", table: "team_poll_votes" }, () => loadFeed())
       .on("postgres_changes", { event: "*", schema: "public", table: "team_task_lists", filter: `team_id=eq.${team.id}` }, () => loadFeed())
-      .on("postgres_changes", { event: "*", schema: "public", table: "team_task_items" }, () => loadFeed())
-      .on("postgres_changes", { event: "*", schema: "public", table: "team_events", filter: `team_id=eq.${team.id}` }, () => loadFeed())
-      .subscribe();
+      .on("postgres_changes", { event: "*", schema: "public", table: "team_events", filter: `team_id=eq.${team.id}` }, () => loadFeed());
+
+    pollSubscriptionIds.forEach((pollId) => {
+      channel = channel.on("postgres_changes", { event: "*", schema: "public", table: "team_poll_votes", filter: `poll_id=eq.${pollId}` }, () => loadFeed());
+    });
+    taskListSubscriptionIds.forEach((taskListId) => {
+      channel = channel.on("postgres_changes", { event: "*", schema: "public", table: "team_task_items", filter: `task_list_id=eq.${taskListId}` }, () => loadFeed());
+    });
+
+    channel.subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [team?.id, loadFeed]);
+  }, [team?.id, pollSubscriptionIds.join(","), taskListSubscriptionIds.join(","), loadFeed]);
 
   const notifyTeamMembers = useCallback(async (feedItem: { id: string; type: "post" | "poll" | "task" | "event"; title: string; body: string }) => {
     if (!user || !team) return;

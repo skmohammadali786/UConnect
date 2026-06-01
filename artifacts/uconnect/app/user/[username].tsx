@@ -1,5 +1,5 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -49,9 +49,15 @@ export default function UserProfileScreen() {
   const [repostRows, setRepostRows] = useState<
     { post_id: string; created_at: string }[]
   >([]);
-  const { data: vaultSummary } = useVaultSummary(profile?.id);
+  const { data: vaultSummary, refetch: refetchVaultSummary } = useVaultSummary(profile?.id);
 
   const key = username?.toLowerCase() || "";
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (profile?.id) refetchVaultSummary();
+    }, [profile?.id, refetchVaultSummary]),
+  );
 
   useEffect(() => {
     Animated.parallel([

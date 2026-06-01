@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 
@@ -46,6 +46,7 @@ interface TeamsContextType {
   getMembership: (teamId: string) => TeamMembership | null;
   isTeamAdmin: (teamId: string) => boolean;
   getPendingRequests: (userId: string) => { team: Team; request: TeamRequest }[];
+  refreshTeamsAndMemberships: () => Promise<void>;
 }
 
 const TeamsContext = createContext<TeamsContextType | undefined>(undefined);
@@ -126,23 +127,6 @@ export function TeamsProvider({ children }: { children: React.ReactNode }) {
       setMemberships([]);
     }
   }, [user?.id]);
-
-  useEffect(() => {
-    refreshTeamsAndMemberships();
-  }, [refreshTeamsAndMemberships]);
-
-  useEffect(() => {
-    if (!user) return;
-    const channel = supabase
-      .channel(`teams-sync-${user.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "teams" }, () => refreshTeamsAndMemberships())
-      .on("postgres_changes", { event: "*", schema: "public", table: "team_requests" }, () => refreshTeamsAndMemberships())
-      .on("postgres_changes", { event: "*", schema: "public", table: "team_members" }, () => refreshTeamsAndMemberships())
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user?.id, refreshTeamsAndMemberships]);
 
   const createTeam = useCallback(async (data: Omit<Team, "id" | "members" | "requests" | "createdAt">): Promise<Team> => {
     if (!user) {
@@ -274,7 +258,7 @@ export function TeamsProvider({ children }: { children: React.ReactNode }) {
   }, [teams]);
 
   return (
-    <TeamsContext.Provider value={{ teams, memberships, createTeam, requestJoin, cancelRequest, approveRequest, denyRequest, getMyTeams, getMembership, isTeamAdmin, getPendingRequests }}>
+    <TeamsContext.Provider value={{ teams, memberships, createTeam, requestJoin, cancelRequest, approveRequest, denyRequest, getMyTeams, getMembership, isTeamAdmin, getPendingRequests, refreshTeamsAndMemberships }}>
       {children}
     </TeamsContext.Provider>
   );
