@@ -12,10 +12,12 @@ import { useAuth } from "@/context/AuthContext";
 import { useSocial } from "@/context/SocialContext";
 import { useToast } from "@/components/Toast";
 import { PostCard } from "@/components/PostCard";
+import { AuraRingAvatar } from "@/components/AuraRingAvatar";
 import { formatRelativeTime } from "@/utils/time";
 import { TypewriterText } from "@/components/TypewriterText";
 import { supabase } from "@/lib/supabase";
 import { getItem, removeItem, setItem, STORAGE_KEYS } from "@/utils/storage";
+import { DEFAULT_AURA_RING, normalizeAuraRingValue } from "@/utils/auraRing";
 
 const ND = Platform.OS !== "web";
 const MAX_RECENT_SEARCHES = 8;
@@ -166,14 +168,14 @@ export default function SearchScreen() {
             id: r.id, username: r.username, displayName: r.display_name,
             college: r.college, followers: r.followers ?? 0,
             avatar: r.avatar ?? null,
-            avatarRingColor: r.avatar_ring_color ?? "#6366F1",
+            avatarRingColor: normalizeAuraRingValue(r.avatar_ring_color ?? DEFAULT_AURA_RING),
             isVerified: Boolean(r.is_verified),
           })));
         } else {
-          setSuggestedPeople(SAMPLE_PEOPLE.map((p) => ({ id: p.id, username: p.username, displayName: p.displayName, college: p.college, followers: p.followers, avatar: null, avatarRingColor: "#6366F1", isVerified: false })));
+          setSuggestedPeople(SAMPLE_PEOPLE.map((p) => ({ id: p.id, username: p.username, displayName: p.displayName, college: p.college, followers: p.followers, avatar: null, avatarRingColor: DEFAULT_AURA_RING, isVerified: false })));
         }
       } catch {
-        setSuggestedPeople(SAMPLE_PEOPLE.map((p) => ({ id: p.id, username: p.username, displayName: p.displayName, college: p.college, followers: p.followers, avatar: null, avatarRingColor: "#6366F1", isVerified: false })));
+        setSuggestedPeople(SAMPLE_PEOPLE.map((p) => ({ id: p.id, username: p.username, displayName: p.displayName, college: p.college, followers: p.followers, avatar: null, avatarRingColor: DEFAULT_AURA_RING, isVerified: false })));
       }
     })();
   }, []);
@@ -214,7 +216,7 @@ export default function SearchScreen() {
           followers: r.followers ?? 0,
           bio: r.bio ?? "",
           avatar: r.avatar ?? null,
-          avatarRingColor: r.avatar_ring_color ?? "#6366F1",
+          avatarRingColor: normalizeAuraRingValue(r.avatar_ring_color ?? DEFAULT_AURA_RING),
           isVerified: Boolean(r.is_verified),
         })));
       } catch { setPeople([]); }
@@ -337,15 +339,14 @@ export default function SearchScreen() {
           activeOpacity={0.88}
           style={[styles.personCard, { backgroundColor: colors.card, borderColor: colors.border }, elevatedCard]}
         >
-          {item.avatar ? (
-            <Image source={{ uri: item.avatar }} style={[styles.personAvatarImg, { borderColor: ringColor }]} />
-          ) : (
-            <View style={[styles.personAvatar, { backgroundColor: ringColor + "20", borderColor: ringColor }]}>
-              <Text style={[styles.personInitial, { color: ringColor }]}>
-                {item.displayName.charAt(0).toUpperCase()}
-              </Text>
-            </View>
-          )}
+          <AuraRingAvatar
+            avatarUri={item.avatar}
+            initials={item.displayName.charAt(0).toUpperCase()}
+            ringValue={ringColor}
+            size={46}
+            ringWidth={2}
+            textSize={20}
+          />
             <View style={{ flex: 1 }}>
               <View style={styles.personNameRow}>
                 <Text style={[styles.personName, { color: colors.foreground }]}>{item.displayName}</Text>
@@ -620,15 +621,14 @@ export default function SearchScreen() {
                         style={[styles.personHorizontalCard, { backgroundColor: colors.card, borderColor: colors.border }, elevatedCard]}
                         activeOpacity={0.85}
                       >
-                        {person.avatar ? (
-                          <Image source={{ uri: person.avatar }} style={[styles.personHorizontalAvatarImg, { borderColor: ringColor }]} />
-                        ) : (
-                          <View style={[styles.personHorizontalAvatar, { backgroundColor: ringColor + "22", borderColor: ringColor }]}>
-                            <Text style={[styles.personHorizontalInitial, { color: ringColor }]}>
-                              {(person.displayName ?? person.username).charAt(0).toUpperCase()}
-                            </Text>
-                          </View>
-                        )}
+                        <AuraRingAvatar
+                          avatarUri={person.avatar}
+                          initials={(person.displayName ?? person.username).charAt(0).toUpperCase()}
+                          ringValue={ringColor}
+                          size={54}
+                          ringWidth={2}
+                          textSize={22}
+                        />
                         <View style={styles.personHorizontalNameRow}>
                           <Text style={[styles.personHorizontalName, { color: colors.foreground }]}>{person.displayName}</Text>
                           {person.isVerified && (
@@ -731,9 +731,6 @@ const styles = StyleSheet.create({
   discoverLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   discoverDesc: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 },
   personCard: { flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 14, borderWidth: 1, padding: 14 },
-  personAvatar: { width: 46, height: 46, borderRadius: 23, alignItems: "center", justifyContent: "center", borderWidth: 2 },
-  personAvatarImg: { width: 46, height: 46, borderRadius: 23, borderWidth: 2 },
-  personInitial: { fontSize: 20, fontFamily: "Inter_700Bold" },
   personNameRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   personName: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   verifiedBadge: { width: 15, height: 15, borderRadius: 8, alignItems: "center", justifyContent: "center" },

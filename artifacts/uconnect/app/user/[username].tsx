@@ -16,7 +16,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PostCard } from "@/components/PostCard";
-import { ProfileActionButton, ProfileHero, ProfileHeroIconButton, ProfileLayout, ProfileStatsCard, ProfileTabs, ProfileVaultSummary } from "@/components/profile";
+import { AuraRingAvatar } from "@/components/AuraRingAvatar";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { usePosts } from "@/context/PostsContext";
@@ -26,6 +26,7 @@ import { useToast } from "@/components/Toast";
 import { supabase } from "@/lib/supabase";
 import { useVaultSummary } from "@/hooks/useVault";
 import { getSocialLinkInfo } from "@/utils/socialLink";
+import { DEFAULT_AURA_RING, normalizeAuraRingValue } from "@/utils/auraRing";
 
 const ND = Platform.OS !== "web";
 const OFFICIAL_UCONNECT_BADGE_COLOR = "#EE4B2B";
@@ -110,7 +111,7 @@ export default function UserProfileScreen() {
             following: data.following ?? 0,
             isVerified: Boolean(data.is_verified),
             avatar: data.avatar || null,
-            avatarRingColor: data.avatar_ring_color || "#6366F1",
+            avatarRingColor: normalizeAuraRingValue(data.avatar_ring_color || DEFAULT_AURA_RING),
             banner: data.banner || null,
             socialLink: data.social_link || "",
           });
@@ -130,7 +131,7 @@ export default function UserProfileScreen() {
             followers: 0,
             following: 0,
             isVerified: false,
-            avatarRingColor: "#6366F1",
+            avatarRingColor: DEFAULT_AURA_RING,
             banner: null,
             socialLink: "",
           });
@@ -149,7 +150,7 @@ export default function UserProfileScreen() {
           followers: 0,
           following: 0,
           isVerified: false,
-          avatarRingColor: "#6366F1",
+          avatarRingColor: DEFAULT_AURA_RING,
           banner: null,
           socialLink: "",
         });
@@ -285,40 +286,324 @@ export default function UserProfileScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
         ListHeaderComponent={
-          <ProfileLayout>
-            <ProfileHero
-              profile={profile}
-              colors={colors}
-              topInset={Platform.OS === "web" ? 55 : insets.top + 8}
-              leftControl={
-                <ProfileHeroIconButton onPress={() => router.back()} colors={colors}>
-                  <Feather name="arrow-left" size={22} color={colors.foreground} />
-                </ProfileHeroIconButton>
-              }
-              rightControls={
-                <ProfileHeroIconButton colors={colors}>
-                  <Feather name="more-horizontal" size={21} color={colors.foreground} />
-                </ProfileHeroIconButton>
-              }
-              actions={
-                isMe ? (
-                  <ProfileActionButton
-                    icon="edit-2"
-                    label="Edit Profile"
-                    variant="outline"
-                    colors={colors}
-                    onPress={() => router.push("/edit-profile")}
-                  />
-                ) : (
-                  <>
-                    <ProfileActionButton icon="message-circle" label="Message" variant="soft" colors={colors} onPress={handleMessage} />
-                    <Animated.View style={{ transform: [{ scale: followAnim }] }}>
-                      <ProfileActionButton
-                        icon={following ? "user-check" : "user-plus"}
-                        label={following ? "Following" : "Follow"}
-                        variant={following ? "outline" : "primary"}
-                        colors={colors}
-                        onPress={handleFollow}
+          <View>
+            <View
+              style={[
+                styles.header,
+                {
+                  paddingTop: Platform.OS === "web" ? 67 : insets.top + 8,
+                  backgroundColor: colors.headerBg,
+                  borderBottomColor: colors.border,
+                },
+              ]}
+            >
+              <TouchableOpacity
+                onPress={() => router.back()}
+                style={styles.backBtn}
+              >
+                <Feather
+                  name="arrow-left"
+                  size={22}
+                  color={colors.foreground}
+                />
+              </TouchableOpacity>
+              <Text style={[styles.headerTitle, { color: colors.foreground }]}>
+                @{key}
+              </Text>
+              <View style={{ width: 38 }} />
+            </View>
+
+            <View style={{ backgroundColor: colors.card }}>
+              {profile.banner ? (
+                <Image
+                  source={{ uri: profile.banner }}
+                  style={styles.cover}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View
+                  style={[
+                    styles.cover,
+                    { backgroundColor: colors.primary + "12" },
+                  ]}
+                />
+              )}
+              <View style={styles.coverOverlay} />
+              <View style={styles.coverAccent} />
+
+              <View style={styles.avatarRow}>
+                <AuraRingAvatar
+                  avatarUri={profile.avatar}
+                  initials={initials}
+                  ringValue={profile.avatarRingColor || colors.primary}
+                  size={92}
+                  ringWidth={4}
+                  textColor={colors.primary}
+                  textSize={38}
+                />
+                <View style={styles.actionRow}>
+                  {!isMe && (
+                    <>
+                      <TouchableOpacity
+                        onPress={handleMessage}
+                        style={[
+                          styles.messageBtn,
+                          {
+                            backgroundColor: colors.secondary,
+                            borderColor: colors.border,
+                          },
+                        ]}
+                      >
+                        <Feather
+                          name="message-circle"
+                          size={15}
+                          color={colors.foreground}
+                        />
+                        <Text
+                          style={[
+                            styles.messageBtnText,
+                            { color: colors.foreground },
+                          ]}
+                        >
+                          Message
+                        </Text>
+                      </TouchableOpacity>
+                      <Animated.View
+                        style={{ transform: [{ scale: followAnim }] }}
+                      >
+                        <TouchableOpacity
+                          onPress={handleFollow}
+                          style={[
+                            styles.followBtn,
+                            following
+                              ? {
+                                  backgroundColor: colors.secondary,
+                                  borderColor: colors.border,
+                                }
+                              : {
+                                  backgroundColor: colors.primary,
+                                  borderColor: colors.primary,
+                                },
+                          ]}
+                        >
+                          <Feather
+                            name={following ? "user-check" : "user-plus"}
+                            size={14}
+                            color={following ? colors.foreground : "#FFF"}
+                          />
+                          <Text
+                            style={[
+                              styles.followText,
+                              { color: following ? colors.foreground : "#FFF" },
+                            ]}
+                          >
+                            {following ? "Following" : "Follow"}
+                          </Text>
+                        </TouchableOpacity>
+                      </Animated.View>
+                    </>
+                  )}
+                  {isMe && (
+                    <TouchableOpacity
+                      onPress={() => router.push("/edit-profile")}
+                      style={[
+                        styles.editBtn,
+                        {
+                          backgroundColor: colors.secondary,
+                          borderColor: colors.border,
+                        },
+                      ]}
+                    >
+                      <Feather
+                        name="edit-2"
+                        size={14}
+                        color={colors.foreground}
+                      />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+
+              <View style={styles.nameSection}>
+                <View style={styles.nameRow}>
+                  <Text
+                    style={[styles.displayName, { color: colors.foreground }]}
+                  >
+                    {profile.displayName}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() =>
+                      router.push({
+                        pathname: "/scan-connect" as any,
+                        params: {
+                          username: profile.username,
+                          allowScan: isMe ? "1" : "0",
+                        },
+                      })
+                    }
+                    style={[
+                      styles.qrBtn,
+                      {
+                        backgroundColor: colors.primary + "15",
+                        borderColor: colors.primary + "30",
+                      },
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name="qrcode"
+                      size={14}
+                      color={colors.primary}
+                    />
+                  </TouchableOpacity>
+                  {profile.isVerified && (
+                    <View
+                      style={[
+                        styles.verifiedBadge,
+                        {
+                          backgroundColor:
+                            profile.username?.toLowerCase() === "uconnect"
+                              ? OFFICIAL_UCONNECT_BADGE_COLOR
+                              : DEFAULT_VERIFIED_BADGE_COLOR,
+                        },
+                      ]}
+                    >
+                      <Feather name="check" size={10} color="#FFF" />
+                    </View>
+                  )}
+                </View>
+                <View style={styles.metaRow}>
+                  {profile.college ? (
+                    <View
+                      style={[
+                        styles.metaPill,
+                        { backgroundColor: colors.secondary },
+                      ]}
+                    >
+                      <Feather
+                        name="book"
+                        size={11}
+                        color={colors.mutedForeground}
+                      />
+                      <Text
+                        style={[
+                          styles.metaText,
+                          { color: colors.mutedForeground },
+                        ]}
+                      >
+                        {profile.college}
+                      </Text>
+                    </View>
+                  ) : null}
+                  {profile.year ? (
+                    <View
+                      style={[
+                        styles.metaPill,
+                        { backgroundColor: colors.secondary },
+                      ]}
+                    >
+                      <Feather
+                        name="award"
+                        size={11}
+                        color={colors.mutedForeground}
+                      />
+                      <Text
+                        style={[
+                          styles.metaText,
+                          { color: colors.mutedForeground },
+                        ]}
+                      >
+                        {profile.year}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+                {profile.bio ? (
+                  <Text style={[styles.bio, { color: colors.foreground }]}>
+                    {profile.bio}
+                  </Text>
+                ) : null}
+                {socialLinkInfo ? (
+                  <TouchableOpacity
+                    onPress={() => Linking.openURL(socialLinkInfo.url)}
+                    activeOpacity={0.85}
+                    style={[styles.socialLinkBtn, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "30" }]}
+                  >
+                    <MaterialCommunityIcons name={socialLinkInfo.icon as any} size={15} color={colors.primary} />
+                    <Text style={[styles.socialLinkText, { color: colors.primary }]} numberOfLines={1}>
+                      {socialLinkInfo.label}
+                    </Text>
+                    <Feather name="external-link" size={12} color={colors.primary} />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+
+              <View
+                style={[
+                  styles.statsRow,
+                  {
+                    borderColor: colors.border,
+                    marginHorizontal: 16,
+                    marginBottom: 16,
+                  },
+                ]}
+              >
+                {[
+                  { num: userPosts.length, label: "Posts" },
+                  {
+                    num: followerCount,
+                    label: "Followers",
+                    mode: "followers" as const,
+                  },
+                  {
+                    num: profile.following,
+                    label: "Following",
+                    mode: "following" as const,
+                  },
+                ].map((s, i, arr) => (
+                  <React.Fragment key={s.label}>
+                    {s.mode ? (
+                      <TouchableOpacity
+                        style={styles.statItem}
+                        onPress={() => openConnections(s.mode)}
+                        activeOpacity={0.85}
+                      >
+                        <Text
+                          style={[styles.statNum, { color: colors.primary }]}
+                        >
+                          {s.num}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.statLabel,
+                            { color: colors.mutedForeground },
+                          ]}
+                        >
+                          {s.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={styles.statItem}>
+                        <Text
+                          style={[styles.statNum, { color: colors.primary }]}
+                        >
+                          {s.num}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.statLabel,
+                            { color: colors.mutedForeground },
+                          ]}
+                        >
+                          {s.label}
+                        </Text>
+                      </View>
+                    )}
+                    {i < arr.length - 1 && (
+                      <View
+                        style={[
+                          styles.statDivider,
+                          { backgroundColor: colors.border },
+                        ]}
                       />
                     </Animated.View>
                     <ProfileActionButton icon="chevron-down" variant="icon" colors={colors} />

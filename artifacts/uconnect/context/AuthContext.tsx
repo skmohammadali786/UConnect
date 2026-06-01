@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { DEFAULT_AURA_RING, normalizeAuraRingValue } from "@/utils/auraRing";
 
 export interface User {
   id: string;
@@ -51,7 +52,7 @@ function rowToUser(row: any): User {
     bio: row.bio ?? "",
     socialLink: row.social_link ?? "",
     avatar: row.avatar ?? null,
-    avatarRingColor: row.avatar_ring_color ?? "#6366F1",
+    avatarRingColor: normalizeAuraRingValue(row.avatar_ring_color ?? DEFAULT_AURA_RING),
     banner: row.banner ?? null,
     interests: row.interests ?? [],
     followers: row.followers ?? 0,
@@ -168,7 +169,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       bio: updated.bio,
       social_link: updated.socialLink,
       avatar: updated.avatar,
-      avatar_ring_color: updated.avatarRingColor,
+      avatar_ring_color: normalizeAuraRingValue(updated.avatarRingColor),
       banner: updated.banner,
       interests: updated.interests,
       phone: updated.phone,
@@ -189,7 +190,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       bio: newUser.bio,
       social_link: newUser.socialLink,
       avatar: newUser.avatar,
-      avatar_ring_color: newUser.avatarRingColor,
+      avatar_ring_color: normalizeAuraRingValue(newUser.avatarRingColor),
       banner: newUser.banner,
       interests: newUser.interests,
       followers: newUser.followers,

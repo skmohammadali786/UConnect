@@ -9,7 +9,7 @@ import {
 import { useSocial } from "@/context/SocialContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PostCard } from "@/components/PostCard";
-import { ProfileActionButton, ProfileHero, ProfileHeroIconButton, ProfileLayout, ProfileStatsCard, ProfileTabs, ProfileVaultSummary } from "@/components/profile";
+import { AuraRingAvatar } from "@/components/AuraRingAvatar";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { usePosts } from "@/context/PostsContext";
@@ -253,25 +253,35 @@ export default function ProfileScreen() {
     { icon: "zap", label: "Community Leader" },
   ] as const;
 
-  const ListHeader = (
-    <ProfileLayout>
-      <ProfileHero
-        profile={user}
-        colors={colors}
-        self
-        topInset={Platform.OS === "web" ? 55 : insets.top + 8}
-        title={
-          <TypewriterText
-            text="Profile"
-            style={[styles.topBarTitle, { color: "#FFF" }]}
-            delay={260}
-            speed={70}
-          />
-        }
-        rightControls={
-          <>
-            <ProfileHeroIconButton
-              colors={colors}
+        <View style={styles.avatarRow}>
+          <View style={styles.avatarContainer}>
+            <AuraRingAvatar
+              avatarUri={user.avatar}
+              initials={user.displayName?.charAt(0)?.toUpperCase() || user.username?.charAt(0)?.toUpperCase() || "U"}
+              ringValue={user.avatarRingColor || colors.primary}
+              size={82}
+              ringWidth={4}
+              textColor={colors.primary}
+              textSize={34}
+            />
+            <TouchableOpacity onPress={() => router.push("/edit-profile")} style={[styles.cameraBtn, { backgroundColor: colors.primary }]}>
+              <Feather name="camera" size={11} color="#FFF" />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.profileActions}>
+            <TouchableOpacity onPress={() => router.push("/edit-profile")} style={[styles.editBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+              <Feather name="edit-2" size={14} color={colors.foreground} />
+              </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push("/invite")} style={[styles.shareBtn, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "30" }]}>
+              <Feather name="user-plus" size={14} color={colors.primary} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.nameSection}>
+          <View style={styles.nameRow}>
+            <Text style={[styles.displayName, { color: colors.foreground }]}>{user.displayName || user.username}</Text>
+            <TouchableOpacity
               onPress={() => router.push({ pathname: "/scan-connect" as any, params: { username: user.username, allowScan: "1" } })}
             >
               <MaterialCommunityIcons name="qrcode" size={18} color={colors.foreground} />
@@ -489,9 +499,6 @@ const styles = StyleSheet.create({
   bannerAccentDot: { width: 8, height: 8, borderRadius: 99 },
   avatarRow: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", paddingHorizontal: 16, marginTop: -36, marginBottom: 12 },
   avatarContainer: { position: "relative" },
-  avatar: { width: 82, height: 82, borderRadius: 41, alignItems: "center", justifyContent: "center" },
-  avatarImg: { width: 82, height: 82, borderRadius: 41, borderWidth: 4 },
-  avatarText: { fontSize: 34, fontFamily: "Inter_700Bold" },
   cameraBtn: { position: "absolute", bottom: 2, right: 2, width: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#fff" },
   profileActions: { flexDirection: "row", gap: 8, alignItems: "center", paddingBottom: 4 },
   editBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, borderWidth: 1 },

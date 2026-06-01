@@ -11,6 +11,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/Toast";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { supabase } from "@/lib/supabase";
+import { DEFAULT_AURA_RING, normalizeAuraRingValue } from "@/utils/auraRing";
 import type { Comment, Post } from "@/context/PostsContext";
 
 const LOCAL_ID_PREFIX = "local_";
@@ -106,7 +107,7 @@ export default function PostDetailScreen() {
           authorId: row.author_id,
           authorUsername: row.is_ghost ? (row.ghost_alias_snapshot ?? "Neon Phantom") : row.is_anonymous ? "anonymous" : (profile?.username ?? row.author_username ?? "user"),
           authorAvatar: row.is_ghost || row.is_anonymous ? null : (profile?.avatar ?? row.author_avatar ?? null),
-          authorAuraRingColor: row.is_ghost || row.is_anonymous ? undefined : (profile?.avatar_ring_color ?? "#6366F1"),
+          authorAuraRingColor: row.is_ghost || row.is_anonymous ? undefined : normalizeAuraRingValue(profile?.avatar_ring_color ?? DEFAULT_AURA_RING),
           authorIsVerified: row.is_ghost || row.is_anonymous ? false : Boolean(profile?.is_verified),
           college: row.college,
           isAnonymous: row.is_anonymous,
