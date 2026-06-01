@@ -6,6 +6,7 @@ import {
   Animated,
   FlatList,
   Image,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -23,6 +24,7 @@ import { useChat } from "@/context/ChatContext";
 import { useToast } from "@/components/Toast";
 import { supabase } from "@/lib/supabase";
 import { useVaultSummary } from "@/hooks/useVault";
+import { getSocialLinkInfo } from "@/utils/socialLink";
 
 const ND = Platform.OS !== "web";
 const OFFICIAL_UCONNECT_BADGE_COLOR = "#EE4B2B";
@@ -103,6 +105,7 @@ export default function UserProfileScreen() {
             avatar: data.avatar || null,
             avatarRingColor: data.avatar_ring_color || "#6366F1",
             banner: data.banner || null,
+            socialLink: data.social_link || "",
           });
           setRepostRows(
             (repostData ?? []) as { post_id: string; created_at: string }[],
@@ -122,6 +125,7 @@ export default function UserProfileScreen() {
             isVerified: false,
             avatarRingColor: "#6366F1",
             banner: null,
+            socialLink: "",
           });
           setRepostRows([]);
         }
@@ -140,6 +144,7 @@ export default function UserProfileScreen() {
           isVerified: false,
           avatarRingColor: "#6366F1",
           banner: null,
+          socialLink: "",
         });
         setRepostRows([]);
       }
@@ -256,6 +261,7 @@ export default function UserProfileScreen() {
     })
     .filter(Boolean) as typeof posts;
   const listData = activeTab === "posts" ? userPosts : repostedPosts;
+  const socialLinkInfo = getSocialLinkInfo(profile.socialLink);
 
   return (
     <Animated.View
@@ -526,6 +532,19 @@ export default function UserProfileScreen() {
                   <Text style={[styles.bio, { color: colors.foreground }]}>
                     {profile.bio}
                   </Text>
+                ) : null}
+                {socialLinkInfo ? (
+                  <TouchableOpacity
+                    onPress={() => Linking.openURL(socialLinkInfo.url)}
+                    activeOpacity={0.85}
+                    style={[styles.socialLinkBtn, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "30" }]}
+                  >
+                    <MaterialCommunityIcons name={socialLinkInfo.icon as any} size={15} color={colors.primary} />
+                    <Text style={[styles.socialLinkText, { color: colors.primary }]} numberOfLines={1}>
+                      {socialLinkInfo.label}
+                    </Text>
+                    <Feather name="external-link" size={12} color={colors.primary} />
+                  </TouchableOpacity>
                 ) : null}
               </View>
 
@@ -861,6 +880,19 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginTop: 4,
   },
+  socialLinkBtn: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    maxWidth: "100%",
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginTop: 3,
+  },
+  socialLinkText: { fontSize: 12, fontFamily: "Inter_600SemiBold", maxWidth: 190 },
   statsRow: {
     flexDirection: "row",
     alignItems: "center",

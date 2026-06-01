@@ -16,6 +16,7 @@ import { useToast } from "@/components/Toast";
 import { ALL_INTERESTS } from "@/constants/interests";
 import { supabase } from "@/lib/supabase";
 import { isRemoteUri, uploadMediaUriToR2 } from "@/utils/r2Upload";
+import { normalizeSocialLink } from "@/utils/socialLink";
 
 const ND = Platform.OS !== "web";
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "Postgraduate", "PhD", "Alumni"];
@@ -76,6 +77,7 @@ export default function EditProfileScreen() {
 
   const [displayName, setDisplayName] = useState(user?.displayName || "");
   const [bio, setBio] = useState(user?.bio || "");
+  const [socialLink, setSocialLink] = useState(user?.socialLink || "");
   const [year, setYear] = useState(user?.year || "");
   const [selectedInterests, setSelectedInterests] = useState<string[]>(user?.interests || []);
   const [avatarUri, setAvatarUri] = useState<string | null>(user?.avatar || null);
@@ -291,6 +293,7 @@ export default function EditProfileScreen() {
       await updateUser({
         displayName: displayName.trim(),
         bio: bio.trim(),
+        socialLink: normalizeSocialLink(socialLink),
         year,
         interests: selectedInterests,
         avatar: avatarUrl,
@@ -405,6 +408,18 @@ export default function EditProfileScreen() {
             </View>
             <Text style={[styles.charCount, { color: colors.mutedForeground }]}>{bio.length}/160</Text>
           </View>
+
+
+          <AppInput
+            label="Social Media Link"
+            placeholder="https://instagram.com/yourusername"
+            value={socialLink}
+            onChangeText={setSocialLink}
+            leftIcon="link"
+            autoCapitalize="none"
+            keyboardType="url"
+          />
+          <Text style={[styles.helperText, { color: colors.mutedForeground, marginTop: -14 }]}>Add one public social profile link. It will show as a tappable button on your profile.</Text>
 
           <View style={{ gap: 6 }}>
             <Text style={[styles.label, { color: colors.mutedForeground }]}>College</Text>

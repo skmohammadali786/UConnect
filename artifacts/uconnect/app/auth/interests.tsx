@@ -99,6 +99,7 @@ export default function InterestsScreen() {
         branch: profile.branch,
         year: profile.year,
         bio: profile.bio,
+        socialLink: "",
         avatar: null,
         avatarRingColor: "#6366F1",
         banner: null,

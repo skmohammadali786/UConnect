@@ -16,6 +16,7 @@ create table if not exists profiles (
   year text not null default '',
   date_of_birth date,
   bio text not null default '',
+  social_link text not null default '',
   avatar text,
   avatar_ring_color text not null default '#6366F1',
   banner text,
@@ -1835,6 +1836,9 @@ alter table profiles
 
 alter table profiles
   add column if not exists avatar_ring_color text not null default '#6366F1';
+
+alter table profiles
+  add column if not exists social_link text not null default '';
 
 create table if not exists referral_attributions (
   id uuid primary key default uuid_generate_v4(),
