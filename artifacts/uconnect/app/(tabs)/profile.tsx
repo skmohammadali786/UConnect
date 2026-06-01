@@ -245,31 +245,13 @@ export default function ProfileScreen() {
     return [];
   })();
 
-  const ListHeader = (
-    <View>
-      <View style={[styles.topBar, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, backgroundColor: colors.headerBg, borderBottomColor: colors.border }]}>
-        <TypewriterText
-          text="Profile"
-          style={[styles.topBarTitle, { color: colors.foreground }]}
-          delay={260}
-          speed={70}
-        />
-        <View style={{ width: 36 }} />
-      </View>
-
-      <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -8 }}>
-        <View style={[styles.coverBanner, { backgroundColor: colors.primary + "18" }]}>
-          {user.banner ? (
-            <Image source={{ uri: user.banner }} style={styles.coverImage} resizeMode="cover" />
-          ) : (
-            <View style={styles.coverGradient} />
-          )}
-          <View style={styles.bannerOverlay} />
-          <View style={styles.bannerAccentRow}>
-            <View style={[styles.bannerAccentDot, { backgroundColor: colors.primary + "70" }]} />
-            <View style={[styles.bannerAccentDot, { backgroundColor: colors.primary + "40" }]} />
-          </View>
-        </View>
+  const achievementItems = [
+    { icon: "award", label: "Campus Explorer" },
+    { icon: "star", label: "Top Contributor" },
+    { icon: "book-open", label: "Knowledge Builder" },
+    { icon: "check-circle", label: "Verified Student" },
+    { icon: "zap", label: "Community Leader" },
+  ] as const;
 
         <View style={styles.avatarRow}>
           <View style={styles.avatarContainer}>
@@ -301,139 +283,73 @@ export default function ProfileScreen() {
             <Text style={[styles.displayName, { color: colors.foreground }]}>{user.displayName || user.username}</Text>
             <TouchableOpacity
               onPress={() => router.push({ pathname: "/scan-connect" as any, params: { username: user.username, allowScan: "1" } })}
-              style={[styles.qrBtn, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "30" }]}
             >
-              <MaterialCommunityIcons name="qrcode" size={14} color={colors.primary} />
-            </TouchableOpacity>
-            {user.isVerified && (
-              <View style={[styles.verifiedBadge, { backgroundColor: user.username?.toLowerCase() === "uconnect" ? OFFICIAL_UCONNECT_BADGE_COLOR : DEFAULT_VERIFIED_BADGE_COLOR }]}>
-                <Feather name="check" size={10} color="#FFF" />
-              </View>
-            )}
-          </View>
-          <Text style={[styles.username, { color: colors.mutedForeground }]}>@{user.username}</Text>
+              <MaterialCommunityIcons name="qrcode" size={18} color={colors.foreground} />
+            </ProfileHeroIconButton>
+            <ProfileHeroIconButton colors={colors} onPress={() => router.push("/settings")}>
+              <Feather name="more-horizontal" size={21} color={colors.foreground} />
+            </ProfileHeroIconButton>
+          </>
+        }
+        actions={
+          <>
+            <ProfileActionButton icon="edit-2" label="Edit Profile" variant="outline" colors={colors} onPress={() => router.push("/edit-profile")} />
+            <ProfileActionButton icon="user-plus" variant="icon" colors={colors} onPress={() => router.push("/invite")} />
+          </>
+        }
+        onAvatarPress={() => router.push("/edit-profile")}
+        onQrPress={() => router.push({ pathname: "/scan-connect" as any, params: { username: user.username, allowScan: "1" } })}
+      />
 
-          <View style={styles.metaRow}>
-            <View style={[styles.metaPill, { backgroundColor: colors.secondary }]}>
-              <Feather name="book" size={11} color={colors.mutedForeground} />
-              <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{user.college}</Text>
+      <ProfileStatsCard
+        colors={colors}
+        items={[
+          { label: "Posts", value: myPosts.length || user.postsCount || 0 },
+          { label: "Followers", value: user.followers, onPress: () => openConnections("followers") },
+          { label: "Following", value: followingIds.size || user.following || 0, onPress: () => openConnections("following") },
+          { label: "Activity", value: totalActivity },
+        ]}
+        attachedTile={{ label: "Vault Score", value: vaultSummary?.score ?? 0, icon: "award" }}
+      />
+
+      <ProfileVaultSummary summary={vaultSummary} colors={colors} mode="full" />
+
+      {user.interests && user.interests.length > 0 ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.interestsRow}>
+          {user.interests.map((interest) => (
+            <View key={interest} style={[styles.interestChip, { backgroundColor: colors.profileSoftGreen, borderColor: colors.primary + "25" }]}>
+              <Text style={[styles.interestText, { color: colors.primary }]}>{interest}</Text>
             </View>
-            {user.branch ? (
-              <View style={[styles.metaPill, { backgroundColor: colors.secondary }]}>
-                <Feather name="code" size={11} color={colors.mutedForeground} />
-                <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{user.branch}</Text>
-              </View>
-            ) : null}
-            {user.year ? (
-              <View style={[styles.metaPill, { backgroundColor: colors.secondary }]}>
-                <Feather name="award" size={11} color={colors.mutedForeground} />
-                <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{user.year}</Text>
-              </View>
-            ) : null}
-          </View>
-
-          {user.bio ? <Text style={[styles.bio, { color: colors.foreground }]}>{user.bio}</Text> : null}
-
-          {socialLinkInfo ? (
-            <TouchableOpacity
-              onPress={() => Linking.openURL(socialLinkInfo.url)}
-              activeOpacity={0.85}
-              style={[styles.socialLinkBtn, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "30" }]}
-            >
-              <MaterialCommunityIcons name={socialLinkInfo.icon as any} size={15} color={colors.primary} />
-              <Text style={[styles.socialLinkText, { color: colors.primary }]} numberOfLines={1}>
-                {socialLinkInfo.label}
-              </Text>
-              <Feather name="external-link" size={12} color={colors.primary} />
-            </TouchableOpacity>
-          ) : null}
-        </View>
-
-        <View style={[styles.statsCard, elevatedCard, { backgroundColor: colors.background, borderColor: colors.border, marginHorizontal: 16, marginBottom: 16 }]}>
-          {[
-            { num: myPosts.length || user.postsCount || 0, label: "Posts" },
-            { num: user.followers, label: "Followers", mode: "followers" as const },
-            { num: followingIds.size || user.following || 0, label: "Following", mode: "following" as const },
-            { num: totalActivity, label: "Activity" },
-          ].map((s, i, arr) => (
-            <React.Fragment key={s.label}>
-              {s.mode ? (
-                <TouchableOpacity style={styles.statItem} onPress={() => openConnections(s.mode)} activeOpacity={0.85}>
-                  <Text style={[styles.statNum, { color: colors.primary }]}>{s.num}</Text>
-                  <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>{s.label}</Text>
-                </TouchableOpacity>
-              ) : (
-                <View style={styles.statItem}>
-                  <Text style={[styles.statNum, { color: colors.primary }]}>{s.num}</Text>
-                  <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>{s.label}</Text>
-                </View>
-              )}
-              {i < arr.length - 1 && <View style={[styles.statDivider, { backgroundColor: colors.border }]} />}
-            </React.Fragment>
           ))}
+        </ScrollView>
+      ) : null}
+
+      <View style={styles.achievementsSection}>
+        <View style={styles.achievementHeader}>
+          <Text style={[styles.vaultKicker, { color: colors.primary }]}>ACHIEVEMENTS</Text>
+          <Text style={[styles.viewAllText, { color: colors.primary }]}>View All</Text>
         </View>
-
-
-        <View style={[styles.vaultProfileCard, elevatedCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={styles.vaultProfileHeader}>
-            <View>
-              <Text style={[styles.vaultKicker, { color: colors.primary }]}>THE VAULT</Text>
-              <Text style={[styles.vaultTitle, { color: colors.foreground }]}>Reputation Engine</Text>
-            </View>
-            <View style={[styles.vaultLevelPill, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "35" }]}>
-              <Text style={[styles.vaultLevelText, { color: colors.primary }]}>{vaultSummary?.level ?? "Explorer"}</Text>
-            </View>
-          </View>
-          <View style={styles.vaultStatsRow}>
-            <View style={styles.vaultStat}><Text style={[styles.vaultStatNum, { color: colors.primary }]}>{vaultSummary?.score ?? 0}</Text><Text style={[styles.vaultStatLabel, { color: colors.mutedForeground }]}>Vault Score</Text></View>
-            <View style={styles.vaultStat}><Text style={[styles.vaultStatNum, { color: colors.primary }]}>{vaultSummary?.skillStrength ?? 0}%</Text><Text style={[styles.vaultStatLabel, { color: colors.mutedForeground }]}>Skill Strength</Text></View>
-            <View style={styles.vaultStat}><Text style={[styles.vaultStatNum, { color: colors.primary }]}>{vaultSummary?.badges?.length ?? 0}</Text><Text style={[styles.vaultStatLabel, { color: colors.mutedForeground }]}>Badges</Text></View>
-          </View>
-          <View style={[styles.vaultProgress, { backgroundColor: colors.secondary }]}><View style={[styles.vaultProgressFill, { backgroundColor: colors.primary, width: percentWidth(vaultSummary?.progress) }]} /></View>
-          <VaultRadarCard skills={vaultSummary?.skills ?? []} colors={colors} compact />
-        </View>
-
-        {user.interests && user.interests.length > 0 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.interestsRow}>
-            {user.interests.map((interest) => (
-              <View key={interest} style={[styles.interestChip, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "25" }]}>
-                <Text style={[styles.interestText, { color: colors.primary }]}>{interest}</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.achievementRow}>
+          {achievementItems.map((achievement) => (
+            <View key={achievement.label} style={[styles.achievementCard, { backgroundColor: colors.profileCard, borderColor: colors.profileCardBorder }]}>
+              <View style={[styles.achievementIcon, { backgroundColor: colors.profileSoftGreen }]}>
+                <Feather name={achievement.icon} size={19} color={colors.primary} />
               </View>
-            ))}
-          </ScrollView>
-        )}
-
-        <View style={[styles.joinedRow, { borderTopColor: colors.border }]}>
-          <Feather name="calendar" size={12} color={colors.mutedForeground} />
-          <Text style={[styles.joinedText, { color: colors.mutedForeground }]}>Joined {joinedDate}</Text>
-        </View>
+              <Text style={[styles.achievementLabel, { color: colors.foreground }]} numberOfLines={2}>{achievement.label}</Text>
+            </View>
+          ))}
+        </ScrollView>
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={[styles.tabRow, { backgroundColor: colors.card, borderBottomColor: colors.border }]}
-        contentContainerStyle={styles.tabRowContent}
-      >
-        {tabItems.map((t) => (
-          <TouchableOpacity
-            key={t.key}
-            onPress={() => setActiveTab(t.key)}
-            style={[styles.tabBtn, activeTab === t.key && { borderBottomColor: colors.primary, borderBottomWidth: 2.5 }]}
-          >
-            <Feather name={t.icon as any} size={15} color={activeTab === t.key ? colors.primary : colors.mutedForeground} />
-            <Text style={[styles.tabLabel, { color: activeTab === t.key ? colors.primary : colors.mutedForeground }]}>{t.label}</Text>
-            {t.count > 0 && (
-              <View style={[styles.tabCount, { backgroundColor: activeTab === t.key ? colors.primary : colors.secondary }]}>
-                <Text style={[styles.tabCountText, { color: activeTab === t.key ? "#FFF" : colors.mutedForeground }]}>{t.count}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <View style={[styles.joinedRow, { borderTopColor: colors.border }]}>
+        <Feather name="calendar" size={12} color={colors.mutedForeground} />
+        <Text style={[styles.joinedText, { color: colors.mutedForeground }]}>Joined {joinedDate}</Text>
+      </View>
+
+      <ProfileTabs colors={colors} activeKey={activeTab} onChange={setActiveTab} items={tabItems as any} />
 
       {activeTab === "activity" && renderActivity()}
-    </View>
+    </ProfileLayout>
   );
 
   if (activeTab === "activity") {
@@ -620,6 +536,13 @@ const styles = StyleSheet.create({
   interestsRow: { paddingHorizontal: 16, paddingBottom: 14, gap: 6 },
   interestChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1 },
   interestText: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  achievementsSection: { paddingHorizontal: 16, paddingBottom: 14, gap: 10 },
+  achievementHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  viewAllText: { fontSize: 12, fontFamily: "Inter_700Bold" },
+  achievementRow: { gap: 10, paddingRight: 16 },
+  achievementCard: { width: 84, minHeight: 92, borderWidth: 1, borderRadius: 18, padding: 9, alignItems: "center", justifyContent: "center", gap: 7 },
+  achievementIcon: { width: 42, height: 42, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  achievementLabel: { fontSize: 10, fontFamily: "Inter_700Bold", textAlign: "center", lineHeight: 13 },
   joinedRow: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1 },
   joinedText: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1 },
   tabRow: { borderBottomWidth: 1 },

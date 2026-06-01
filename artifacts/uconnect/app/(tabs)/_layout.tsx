@@ -64,8 +64,8 @@ export default function TabLayout() {
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
   const contentMaxWidth = getResponsiveContentMaxWidth(width);
-  const tabBarHeight = isWeb ? (width >= TABLET_BREAKPOINT ? 88 : 74) : 70;
-  const tabBarBottomPadding = isWeb ? (width >= TABLET_BREAKPOINT ? 12 : 6) : 12;
+  const tabBarHeight = isWeb ? (width >= TABLET_BREAKPOINT ? 90 : 78) : 76;
+  const tabBarBottomPadding = isWeb ? (width >= TABLET_BREAKPOINT ? 13 : 8) : 14;
   const isDarkTheme = themeMode === "dark" || (themeMode === "system" && (scheme ?? "dark") === "dark");
   const { unreadCount } = useNotifications();
   const [isTabBarVisible, setIsTabBarVisible] = React.useState(true);
@@ -108,13 +108,13 @@ export default function TabLayout() {
           borderTopWidth: 0,
           elevation: 0,
           height: tabBarHeight,
-          borderRadius: 22,
-          marginHorizontal: 10,
-          marginBottom: isWeb ? 8 : 10,
-          shadowColor: colors.shadow,
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.2,
-          shadowRadius: 16,
+          borderRadius: 26,
+          marginHorizontal: 12,
+          marginBottom: isWeb ? 10 : 12,
+          shadowColor: colors.profileShadow ?? colors.shadow,
+          shadowOffset: { width: 0, height: 10 },
+          shadowOpacity: 0.18,
+          shadowRadius: 20,
           paddingBottom: tabBarBottomPadding,
           width: "100%",
           alignSelf: "center",
@@ -126,7 +126,7 @@ export default function TabLayout() {
           isIOS ? (
             <BlurView intensity={90} tint={isDarkTheme ? "dark" : "light"} style={StyleSheet.absoluteFill} />
           ) : (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.tabBar, borderRadius: 22, borderWidth: 1, borderColor: colors.border }]} />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.tabBar, borderRadius: 26, borderWidth: 1, borderColor: colors.profileCardBorder ?? colors.border }]} />
           ),
         tabBarLabelStyle: {
           fontFamily: "Inter_500Medium",
