@@ -2,8 +2,18 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Animated, FlatList, Image, Linking, Platform, RefreshControl, ScrollView,
-  StyleSheet, Text, TouchableOpacity, View, GestureResponderEvent,
+  Animated,
+  FlatList,
+  Image,
+  Linking,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  GestureResponderEvent,
 } from "react-native";
 import { useSocial } from "@/context/SocialContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -23,13 +33,10 @@ import { useVaultSummary } from "@/hooks/useVault";
 import { ProfileVaultSummary } from "@/components/profile";
 import { getSocialLinkInfo } from "@/utils/socialLink";
 
-
 type TabId = "posts" | "saved" | "reposts" | "confessions" | "activity";
 const PROFILE_TAB_MIN_WIDTH = 92;
 const OFFICIAL_UCONNECT_BADGE_COLOR = "#EE4B2B";
 const DEFAULT_VERIFIED_BADGE_COLOR = "#16A34A";
-
-
 
 export default function ProfileScreen() {
   const colors = useColors();
@@ -39,17 +46,23 @@ export default function ProfileScreen() {
   const { confessions } = useConfessions();
   const { followingIds } = useSocial();
   const { settings } = useSettings();
-  const { data: vaultSummary, refetch: refetchVaultSummary } = useVaultSummary(user?.id);
+  const { data: vaultSummary, refetch: refetchVaultSummary } = useVaultSummary(
+    user?.id,
+  );
   const { showSuccess } = useToast();
   const [activeTab, setActiveTab] = useState<TabId>("posts");
   const [refreshing, setRefreshing] = useState(false);
-  const [revealedConfessionIds, setRevealedConfessionIds] = useState<Set<string>>(new Set());
+  const [revealedConfessionIds, setRevealedConfessionIds] = useState<
+    Set<string>
+  >(new Set());
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const [appliedInternships, setAppliedInternships] = useState<any[]>([]);
   const [rsvpEvents, setRsvpEvents] = useState<any[]>([]);
   const [savedNotes, setSavedNotes] = useState<any[]>([]);
-  const [repostRows, setRepostRows] = useState<{ post_id: string; created_at: string }[]>([]);
+  const [repostRows, setRepostRows] = useState<
+    { post_id: string; created_at: string }[]
+  >([]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -58,20 +71,41 @@ export default function ProfileScreen() {
   );
 
   useEffect(() => {
-    Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: Platform.OS !== "web" }).start();
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: Platform.OS !== "web",
+    }).start();
   }, []);
 
   const loadActivity = useCallback(async () => {
     if (!user) return;
     try {
       const [apps, rsvps, noteSaves] = await Promise.all([
-        supabase.from("internship_applications").select("internship_id, internships(id, company, role, stipend, location)").eq("user_id", user.id),
-        supabase.from("event_rsvps").select("event_id, events(id, title, date, location)").eq("user_id", user.id),
-        supabase.from("note_saves").select("note_id, notes(id, title, subject, uploader_username)").eq("user_id", user.id),
+        supabase
+          .from("internship_applications")
+          .select(
+            "internship_id, internships(id, company, role, stipend, location)",
+          )
+          .eq("user_id", user.id),
+        supabase
+          .from("event_rsvps")
+          .select("event_id, events(id, title, date, location)")
+          .eq("user_id", user.id),
+        supabase
+          .from("note_saves")
+          .select("note_id, notes(id, title, subject, uploader_username)")
+          .eq("user_id", user.id),
       ]);
-      setAppliedInternships((apps.data ?? []).map((r: any) => r.internships).filter(Boolean));
-      setRsvpEvents((rsvps.data ?? []).map((r: any) => r.events).filter(Boolean));
-      setSavedNotes((noteSaves.data ?? []).map((r: any) => r.notes).filter(Boolean));
+      setAppliedInternships(
+        (apps.data ?? []).map((r: any) => r.internships).filter(Boolean),
+      );
+      setRsvpEvents(
+        (rsvps.data ?? []).map((r: any) => r.events).filter(Boolean),
+      );
+      setSavedNotes(
+        (noteSaves.data ?? []).map((r: any) => r.notes).filter(Boolean),
+      );
     } catch {}
   }, [user?.id]);
 
@@ -89,7 +123,10 @@ export default function ProfileScreen() {
     }
   }, [user?.id]);
 
-  useEffect(() => { loadActivity(); loadReposts(); }, [loadActivity, loadReposts]);
+  useEffect(() => {
+    loadActivity();
+    loadReposts();
+  }, [loadActivity, loadReposts]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -106,29 +143,53 @@ export default function ProfileScreen() {
     elevation: 3,
   };
 
-  const openConnections = useCallback((mode: "followers" | "following") => {
-    if (!user) return;
-    router.push({
-      pathname: "/connections",
-      params: { userId: user.id, mode, username: user.username },
-    });
-  }, [user?.id, user?.username]);
+  const openConnections = useCallback(
+    (mode: "followers" | "following") => {
+      if (!user) return;
+      router.push({
+        pathname: "/connections",
+        params: { userId: user.id, mode, username: user.username },
+      });
+    },
+    [user?.id, user?.username],
+  );
 
-  const handleDeletePost = useCallback((id: string) => {
-    deletePost(id);
-    showSuccess("Post deleted");
-  }, [deletePost, showSuccess]);
+  const handleDeletePost = useCallback(
+    (id: string) => {
+      deletePost(id);
+      showSuccess("Post deleted");
+    },
+    [deletePost, showSuccess],
+  );
 
   if (!user) {
     return (
       <View style={[styles.authWall, { backgroundColor: colors.background }]}>
-        <View style={[styles.authCard, elevatedCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={[styles.authIconWrap, { backgroundColor: colors.primary + "15" }]}>
+        <View
+          style={[
+            styles.authCard,
+            elevatedCard,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
+          <View
+            style={[
+              styles.authIconWrap,
+              { backgroundColor: colors.primary + "15" },
+            ]}
+          >
             <Feather name="user" size={40} color={colors.primary} />
           </View>
-          <Text style={[styles.authTitle, { color: colors.foreground }]}>Join UConnect</Text>
-          <Text style={[styles.authSub, { color: colors.mutedForeground }]}>Sign in with your college email to access your profile.</Text>
-          <TouchableOpacity onPress={() => router.push("/auth/welcome")} style={[styles.signInBtn, { backgroundColor: colors.primary }]}>
+          <Text style={[styles.authTitle, { color: colors.foreground }]}>
+            Join UConnect
+          </Text>
+          <Text style={[styles.authSub, { color: colors.mutedForeground }]}>
+            Sign in with your college email to access your profile.
+          </Text>
+          <TouchableOpacity
+            onPress={() => router.push("/auth/welcome")}
+            style={[styles.signInBtn, { backgroundColor: colors.primary }]}
+          >
             <Text style={styles.signInBtnText}>Sign In / Sign Up</Text>
           </TouchableOpacity>
         </View>
@@ -139,9 +200,13 @@ export default function ProfileScreen() {
   const myPosts = posts.filter((p) => p.authorId === user.id);
   const myConfessions = confessions.filter((c) => c.authorId === user.id);
   const savedPosts = posts.filter((p) => p.isBookmarked);
-  const joinedDate = new Date(user.joinedAt).toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+  const joinedDate = new Date(user.joinedAt).toLocaleDateString("en-IN", {
+    month: "long",
+    year: "numeric",
+  });
 
-  const totalActivity = appliedInternships.length + rsvpEvents.length + savedNotes.length;
+  const totalActivity =
+    appliedInternships.length + rsvpEvents.length + savedNotes.length;
   const repostedPosts = repostRows
     .map((r) => {
       const original = posts.find((p) => p.id === r.post_id);
@@ -153,31 +218,80 @@ export default function ProfileScreen() {
       };
     })
     .filter(Boolean) as typeof posts;
-  const tabItems: { key: TabId; icon: string; label: string; count: number }[] = [
-    { key: "posts", icon: "file-text", label: "Posts", count: myPosts.length },
-    { key: "confessions", icon: "message-square", label: "Confessions", count: myConfessions.length },
-    { key: "saved", icon: "bookmark", label: "Saved", count: savedPosts.length },
-    { key: "reposts", icon: "repeat", label: "Reposted", count: repostedPosts.length },
-    { key: "activity", icon: "activity", label: "Activity", count: totalActivity },
-  ];
+  const tabItems: { key: TabId; icon: string; label: string; count: number }[] =
+    [
+      {
+        key: "posts",
+        icon: "file-text",
+        label: "Posts",
+        count: myPosts.length,
+      },
+      {
+        key: "confessions",
+        icon: "message-square",
+        label: "Confessions",
+        count: myConfessions.length,
+      },
+      {
+        key: "saved",
+        icon: "bookmark",
+        label: "Saved",
+        count: savedPosts.length,
+      },
+      {
+        key: "reposts",
+        icon: "repeat",
+        label: "Reposted",
+        count: repostedPosts.length,
+      },
+      {
+        key: "activity",
+        icon: "activity",
+        label: "Activity",
+        count: totalActivity,
+      },
+    ];
 
   const renderActivity = () => (
     <View style={{ padding: 16, gap: 16 }}>
       {appliedInternships.length > 0 && (
         <View>
-          <Text style={[styles.actSection, { color: colors.foreground }]}>Applied Internships</Text>
+          <Text style={[styles.actSection, { color: colors.foreground }]}>
+            Applied Internships
+          </Text>
           {appliedInternships.map((item) => (
-            <TouchableOpacity key={item.id} onPress={() => router.push("/internships")} style={[styles.actCard, elevatedCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <TouchableOpacity
+              key={item.id}
+              onPress={() => router.push("/internships")}
+              style={[
+                styles.actCard,
+                elevatedCard,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
               <View style={[styles.actIcon, { backgroundColor: "#8B5CF620" }]}>
                 <Feather name="briefcase" size={16} color="#8B5CF6" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.actTitle, { color: colors.foreground }]}>{item.role}</Text>
-                <Text style={[styles.actSub, { color: colors.mutedForeground }]}>{item.company} · {item.stipend}</Text>
+                <Text style={[styles.actTitle, { color: colors.foreground }]}>
+                  {item.role}
+                </Text>
+                <Text
+                  style={[styles.actSub, { color: colors.mutedForeground }]}
+                >
+                  {item.company} · {item.stipend}
+                </Text>
               </View>
-              <View style={[styles.appliedPill, { backgroundColor: "#00A86B15", borderColor: "#00A86B30" }]}>
+              <View
+                style={[
+                  styles.appliedPill,
+                  { backgroundColor: "#00A86B15", borderColor: "#00A86B30" },
+                ]}
+              >
                 <Feather name="check" size={11} color="#00A86B" />
-                <Text style={[styles.appliedText, { color: "#00A86B" }]}>Applied</Text>
+                <Text style={[styles.appliedText, { color: "#00A86B" }]}>
+                  Applied
+                </Text>
               </View>
             </TouchableOpacity>
           ))}
@@ -185,18 +299,41 @@ export default function ProfileScreen() {
       )}
       {rsvpEvents.length > 0 && (
         <View>
-          <Text style={[styles.actSection, { color: colors.foreground }]}>Attending Events</Text>
+          <Text style={[styles.actSection, { color: colors.foreground }]}>
+            Attending Events
+          </Text>
           {rsvpEvents.map((item) => (
-            <TouchableOpacity key={item.id} onPress={() => router.push("/events")} style={[styles.actCard, elevatedCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <TouchableOpacity
+              key={item.id}
+              onPress={() => router.push("/events")}
+              style={[
+                styles.actCard,
+                elevatedCard,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
               <View style={[styles.actIcon, { backgroundColor: "#F59E0B20" }]}>
                 <Feather name="calendar" size={16} color="#F59E0B" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.actTitle, { color: colors.foreground }]}>{item.title}</Text>
-                <Text style={[styles.actSub, { color: colors.mutedForeground }]}>{item.date} · {item.location}</Text>
+                <Text style={[styles.actTitle, { color: colors.foreground }]}>
+                  {item.title}
+                </Text>
+                <Text
+                  style={[styles.actSub, { color: colors.mutedForeground }]}
+                >
+                  {item.date} · {item.location}
+                </Text>
               </View>
-              <View style={[styles.appliedPill, { backgroundColor: "#F59E0B15", borderColor: "#F59E0B30" }]}>
-                <Text style={[styles.appliedText, { color: "#F59E0B" }]}>Going</Text>
+              <View
+                style={[
+                  styles.appliedPill,
+                  { backgroundColor: "#F59E0B15", borderColor: "#F59E0B30" },
+                ]}
+              >
+                <Text style={[styles.appliedText, { color: "#F59E0B" }]}>
+                  Going
+                </Text>
               </View>
             </TouchableOpacity>
           ))}
@@ -204,15 +341,31 @@ export default function ProfileScreen() {
       )}
       {savedNotes.length > 0 && (
         <View>
-          <Text style={[styles.actSection, { color: colors.foreground }]}>Saved Notes</Text>
+          <Text style={[styles.actSection, { color: colors.foreground }]}>
+            Saved Notes
+          </Text>
           {savedNotes.map((item) => (
-            <TouchableOpacity key={item.id} onPress={() => router.push("/notes")} style={[styles.actCard, elevatedCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <TouchableOpacity
+              key={item.id}
+              onPress={() => router.push("/notes")}
+              style={[
+                styles.actCard,
+                elevatedCard,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
               <View style={[styles.actIcon, { backgroundColor: "#3B82F620" }]}>
                 <Feather name="book-open" size={16} color="#3B82F6" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.actTitle, { color: colors.foreground }]}>{item.title}</Text>
-                <Text style={[styles.actSub, { color: colors.mutedForeground }]}>{item.subject} · @{item.uploader_username}</Text>
+                <Text style={[styles.actTitle, { color: colors.foreground }]}>
+                  {item.title}
+                </Text>
+                <Text
+                  style={[styles.actSub, { color: colors.mutedForeground }]}
+                >
+                  {item.subject} · @{item.uploader_username}
+                </Text>
               </View>
             </TouchableOpacity>
           ))}
@@ -223,8 +376,12 @@ export default function ProfileScreen() {
           <View style={[styles.emptyIcon, { backgroundColor: colors.card }]}>
             <Feather name="activity" size={32} color={colors.mutedForeground} />
           </View>
-          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No activity yet</Text>
-          <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>Apply to internships, RSVP to events, save notes, or join teams.</Text>
+          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
+            No activity yet
+          </Text>
+          <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>
+            Apply to internships, RSVP to events, save notes, or join teams.
+          </Text>
         </View>
       )}
     </View>
@@ -241,17 +398,44 @@ export default function ProfileScreen() {
 
   const ListHeader = (
     <View>
-      <View style={[styles.profileShell, { paddingTop: Platform.OS === "web" ? 24 : insets.top + 8, backgroundColor: colors.card }]}>
-        <View style={[styles.coverBanner, { backgroundColor: colors.primary + "18" }]}>
+      <View
+        style={[
+          styles.profileShell,
+          {
+            paddingTop: Platform.OS === "web" ? 24 : insets.top + 8,
+            backgroundColor: colors.card,
+          },
+        ]}
+      >
+        <View
+          style={[
+            styles.coverBanner,
+            { backgroundColor: colors.primary + "18" },
+          ]}
+        >
           {user.banner ? (
-            <Image source={{ uri: user.banner }} style={styles.coverImage} resizeMode="cover" />
+            <Image
+              source={{ uri: user.banner }}
+              style={styles.coverImage}
+              resizeMode="cover"
+            />
           ) : (
             <View style={styles.coverGradient} />
           )}
           <View style={styles.bannerOverlay} />
           <View style={styles.bannerAccentRow}>
-            <View style={[styles.bannerAccentDot, { backgroundColor: colors.primary + "70" }]} />
-            <View style={[styles.bannerAccentDot, { backgroundColor: colors.primary + "40" }]} />
+            <View
+              style={[
+                styles.bannerAccentDot,
+                { backgroundColor: colors.primary + "70" },
+              ]}
+            />
+            <View
+              style={[
+                styles.bannerAccentDot,
+                { backgroundColor: colors.primary + "40" },
+              ]}
+            />
           </View>
         </View>
 
@@ -259,22 +443,50 @@ export default function ProfileScreen() {
           <View style={styles.avatarContainer}>
             <AuraRingAvatar
               avatarUri={user.avatar}
-              initials={user.displayName?.charAt(0)?.toUpperCase() || user.username?.charAt(0)?.toUpperCase() || "U"}
+              initials={
+                user.displayName?.charAt(0)?.toUpperCase() ||
+                user.username?.charAt(0)?.toUpperCase() ||
+                "U"
+              }
               ringValue={user.avatarRingColor || colors.primary}
               size={82}
               ringWidth={4}
               textColor={colors.primary}
               textSize={34}
             />
-            <TouchableOpacity onPress={() => router.push("/edit-profile")} style={[styles.cameraBtn, { backgroundColor: colors.primary }]}>
+            <TouchableOpacity
+              onPress={() => router.push("/edit-profile")}
+              style={[styles.cameraBtn, { backgroundColor: colors.primary }]}
+            >
               <Feather name="camera" size={11} color="#FFF" />
             </TouchableOpacity>
           </View>
           <View style={styles.profileActions}>
-            <TouchableOpacity onPress={() => router.push("/edit-profile")} style={[styles.editBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
-              <Feather name="edit-2" size={14} color={colors.foreground} />
-              </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push("/invite")} style={[styles.shareBtn, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "30" }]}>
+            <TouchableOpacity
+              onPress={() => router.push("/edit-profile")}
+              style={[
+                styles.editBtn,
+                {
+                  backgroundColor: colors.primary + "10",
+                  borderColor: colors.primary + "35",
+                },
+              ]}
+            >
+              <Feather name="edit-2" size={14} color={colors.primary} />
+              <Text style={[styles.editBtnText, { color: colors.primary }]}>
+                Edit Profile
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push("/invite")}
+              style={[
+                styles.shareBtn,
+                {
+                  backgroundColor: colors.primary + "15",
+                  borderColor: colors.primary + "30",
+                },
+              ]}
+            >
               <Feather name="user-plus" size={14} color={colors.primary} />
             </TouchableOpacity>
           </View>
@@ -282,50 +494,118 @@ export default function ProfileScreen() {
 
         <View style={styles.nameSection}>
           <View style={styles.nameRow}>
-            <Text style={[styles.displayName, { color: colors.foreground }]}>{user.displayName || user.username}</Text>
+            <Text style={[styles.displayName, { color: colors.foreground }]}>
+              {user.displayName || user.username}
+            </Text>
             <TouchableOpacity
-              onPress={() => router.push({ pathname: "/scan-connect" as any, params: { username: user.username, allowScan: "1" } })}
-              style={[styles.qrBtn, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "30" }]}
+              onPress={() =>
+                router.push({
+                  pathname: "/scan-connect" as any,
+                  params: { username: user.username, allowScan: "1" },
+                })
+              }
+              style={[
+                styles.qrBtn,
+                {
+                  backgroundColor: colors.primary + "15",
+                  borderColor: colors.primary + "30",
+                },
+              ]}
             >
-              <MaterialCommunityIcons name="qrcode" size={14} color={colors.primary} />
+              <MaterialCommunityIcons
+                name="qrcode"
+                size={14}
+                color={colors.primary}
+              />
             </TouchableOpacity>
             {user.isVerified && (
-              <View style={[styles.verifiedBadge, { backgroundColor: user.username?.toLowerCase() === "uconnect" ? OFFICIAL_UCONNECT_BADGE_COLOR : DEFAULT_VERIFIED_BADGE_COLOR }]}>
+              <View
+                style={[
+                  styles.verifiedBadge,
+                  {
+                    backgroundColor:
+                      user.username?.toLowerCase() === "uconnect"
+                        ? OFFICIAL_UCONNECT_BADGE_COLOR
+                        : DEFAULT_VERIFIED_BADGE_COLOR,
+                  },
+                ]}
+              >
                 <Feather name="check" size={10} color="#FFF" />
               </View>
             )}
           </View>
-          <Text style={[styles.username, { color: colors.mutedForeground }]}>@{user.username}</Text>
+          <Text style={[styles.username, { color: colors.mutedForeground }]}>
+            @{user.username}
+          </Text>
 
           <View style={styles.metaRow}>
-            <View style={[styles.metaPill, { backgroundColor: colors.secondary }]}>
+            <View
+              style={[styles.metaPill, { backgroundColor: colors.secondary }]}
+            >
               <Feather name="book" size={11} color={colors.mutedForeground} />
-              <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{user.college}</Text>
+              <Text
+                style={[styles.metaText, { color: colors.mutedForeground }]}
+              >
+                {user.college}
+              </Text>
             </View>
             {user.branch ? (
-              <View style={[styles.metaPill, { backgroundColor: colors.secondary }]}>
+              <View
+                style={[styles.metaPill, { backgroundColor: colors.secondary }]}
+              >
                 <Feather name="code" size={11} color={colors.mutedForeground} />
-                <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{user.branch}</Text>
+                <Text
+                  style={[styles.metaText, { color: colors.mutedForeground }]}
+                >
+                  {user.branch}
+                </Text>
               </View>
             ) : null}
             {user.year ? (
-              <View style={[styles.metaPill, { backgroundColor: colors.secondary }]}>
-                <Feather name="award" size={11} color={colors.mutedForeground} />
-                <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{user.year}</Text>
+              <View
+                style={[styles.metaPill, { backgroundColor: colors.secondary }]}
+              >
+                <Feather
+                  name="award"
+                  size={11}
+                  color={colors.mutedForeground}
+                />
+                <Text
+                  style={[styles.metaText, { color: colors.mutedForeground }]}
+                >
+                  {user.year}
+                </Text>
               </View>
             ) : null}
           </View>
 
-          {user.bio ? <Text style={[styles.bio, { color: colors.foreground }]}>{user.bio}</Text> : null}
+          {user.bio ? (
+            <Text style={[styles.bio, { color: colors.foreground }]}>
+              {user.bio}
+            </Text>
+          ) : null}
 
           {socialLinkInfo ? (
             <TouchableOpacity
               onPress={() => Linking.openURL(socialLinkInfo.url)}
               activeOpacity={0.85}
-              style={[styles.socialLinkBtn, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "30" }]}
+              style={[
+                styles.socialLinkBtn,
+                {
+                  backgroundColor: colors.primary + "12",
+                  borderColor: colors.primary + "30",
+                },
+              ]}
             >
-              <MaterialCommunityIcons name={socialLinkInfo.icon as any} size={15} color={colors.primary} />
-              <Text style={[styles.socialLinkText, { color: colors.primary }]} numberOfLines={1}>
+              <MaterialCommunityIcons
+                name={socialLinkInfo.icon as any}
+                size={15}
+                color={colors.primary}
+              />
+              <Text
+                style={[styles.socialLinkText, { color: colors.primary }]}
+                numberOfLines={1}
+              >
                 {socialLinkInfo.label}
               </Text>
               <Feather name="external-link" size={12} color={colors.primary} />
@@ -333,30 +613,77 @@ export default function ProfileScreen() {
           ) : null}
         </View>
 
-        <View style={[styles.statsCard, elevatedCard, { backgroundColor: colors.background, borderColor: colors.border, marginHorizontal: 16, marginBottom: 16 }]}>
+        <View
+          style={[
+            styles.statsCard,
+            elevatedCard,
+            {
+              backgroundColor: colors.background,
+              borderColor: colors.border,
+              marginHorizontal: 16,
+              marginBottom: 16,
+            },
+          ]}
+        >
           {[
             { num: myPosts.length || user.postsCount || 0, label: "Posts" },
-            { num: user.followers, label: "Followers", mode: "followers" as const },
-            { num: followingIds.size || user.following || 0, label: "Following", mode: "following" as const },
+            {
+              num: user.followers,
+              label: "Followers",
+              mode: "followers" as const,
+            },
+            {
+              num: followingIds.size || user.following || 0,
+              label: "Following",
+              mode: "following" as const,
+            },
             { num: totalActivity, label: "Activity" },
           ].map((s, i, arr) => (
             <React.Fragment key={s.label}>
               {s.mode ? (
-                <TouchableOpacity style={styles.statItem} onPress={() => openConnections(s.mode)} activeOpacity={0.85}>
-                  <Text style={[styles.statNum, { color: colors.primary }]}>{s.num}</Text>
-                  <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>{s.label}</Text>
+                <TouchableOpacity
+                  style={styles.statItem}
+                  onPress={() => openConnections(s.mode)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.statNum, { color: colors.primary }]}>
+                    {s.num}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.statLabel,
+                      { color: colors.mutedForeground },
+                    ]}
+                  >
+                    {s.label}
+                  </Text>
                 </TouchableOpacity>
               ) : (
                 <View style={styles.statItem}>
-                  <Text style={[styles.statNum, { color: colors.primary }]}>{s.num}</Text>
-                  <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>{s.label}</Text>
+                  <Text style={[styles.statNum, { color: colors.primary }]}>
+                    {s.num}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.statLabel,
+                      { color: colors.mutedForeground },
+                    ]}
+                  >
+                    {s.label}
+                  </Text>
                 </View>
               )}
-              {i < arr.length - 1 && <View style={[styles.statDivider, { backgroundColor: colors.border }]} />}
+              {i < arr.length - 1 && (
+                <View
+                  style={[
+                    styles.statDivider,
+                    { backgroundColor: colors.border },
+                  ]}
+                />
+              )}
             </React.Fragment>
           ))}
         </View>
-
 
         <ProfileVaultSummary
           summary={vaultSummary}
@@ -365,10 +692,25 @@ export default function ProfileScreen() {
         />
 
         {user.interests && user.interests.length > 0 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.interestsRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.interestsRow}
+          >
             {user.interests.map((interest) => (
-              <View key={interest} style={[styles.interestChip, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "25" }]}>
-                <Text style={[styles.interestText, { color: colors.primary }]}>{interest}</Text>
+              <View
+                key={interest}
+                style={[
+                  styles.interestChip,
+                  {
+                    backgroundColor: colors.primary + "12",
+                    borderColor: colors.primary + "25",
+                  },
+                ]}
+              >
+                <Text style={[styles.interestText, { color: colors.primary }]}>
+                  {interest}
+                </Text>
               </View>
             ))}
           </ScrollView>
@@ -376,27 +718,74 @@ export default function ProfileScreen() {
 
         <View style={[styles.joinedRow, { borderTopColor: colors.border }]}>
           <Feather name="calendar" size={12} color={colors.mutedForeground} />
-          <Text style={[styles.joinedText, { color: colors.mutedForeground }]}>Joined {joinedDate}</Text>
+          <Text style={[styles.joinedText, { color: colors.mutedForeground }]}>
+            Joined {joinedDate}
+          </Text>
         </View>
       </View>
 
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={[styles.tabRow, { backgroundColor: colors.card, borderBottomColor: colors.border }]}
+        style={[
+          styles.tabRow,
+          { backgroundColor: colors.card, borderBottomColor: colors.border },
+        ]}
         contentContainerStyle={styles.tabRowContent}
       >
         {tabItems.map((t) => (
           <TouchableOpacity
             key={t.key}
             onPress={() => setActiveTab(t.key)}
-            style={[styles.tabBtn, activeTab === t.key && { borderBottomColor: colors.primary, borderBottomWidth: 2.5 }]}
+            style={[
+              styles.tabBtn,
+              activeTab === t.key && {
+                borderBottomColor: colors.primary,
+                borderBottomWidth: 2.5,
+              },
+            ]}
           >
-            <Feather name={t.icon as any} size={15} color={activeTab === t.key ? colors.primary : colors.mutedForeground} />
-            <Text style={[styles.tabLabel, { color: activeTab === t.key ? colors.primary : colors.mutedForeground }]}>{t.label}</Text>
+            <Feather
+              name={t.icon as any}
+              size={15}
+              color={
+                activeTab === t.key ? colors.primary : colors.mutedForeground
+              }
+            />
+            <Text
+              style={[
+                styles.tabLabel,
+                {
+                  color:
+                    activeTab === t.key
+                      ? colors.primary
+                      : colors.mutedForeground,
+                },
+              ]}
+            >
+              {t.label}
+            </Text>
             {t.count > 0 && (
-              <View style={[styles.tabCount, { backgroundColor: activeTab === t.key ? colors.primary : colors.secondary }]}>
-                <Text style={[styles.tabCountText, { color: activeTab === t.key ? "#FFF" : colors.mutedForeground }]}>{t.count}</Text>
+              <View
+                style={[
+                  styles.tabCount,
+                  {
+                    backgroundColor:
+                      activeTab === t.key ? colors.primary : colors.secondary,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.tabCountText,
+                    {
+                      color:
+                        activeTab === t.key ? "#FFF" : colors.mutedForeground,
+                    },
+                  ]}
+                >
+                  {t.count}
+                </Text>
               </View>
             )}
           </TouchableOpacity>
@@ -409,9 +798,20 @@ export default function ProfileScreen() {
 
   if (activeTab === "activity") {
     return (
-      <Animated.View style={[{ flex: 1 }, { backgroundColor: colors.background, opacity: fadeAnim }]}>
+      <Animated.View
+        style={[
+          { flex: 1 },
+          { backgroundColor: colors.background, opacity: fadeAnim },
+        ]}
+      >
         <ScrollView
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary}
+            />
+          }
           contentContainerStyle={{ paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
         >
@@ -423,66 +823,157 @@ export default function ProfileScreen() {
 
   if (activeTab === "confessions") {
     return (
-      <Animated.View style={[{ flex: 1 }, { backgroundColor: colors.background, opacity: fadeAnim }]}>
+      <Animated.View
+        style={[
+          { flex: 1 },
+          { backgroundColor: colors.background, opacity: fadeAnim },
+        ]}
+      >
         <FlatList<Confession>
           data={myConfessions}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <TouchableOpacity
               onPress={() => router.push(`/confessions/${item.id}`)}
-              style={[styles.confessionCard, elevatedCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+              style={[
+                styles.confessionCard,
+                elevatedCard,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
               activeOpacity={0.85}
             >
-              {item.hasSensitiveContent && !settings.showSensitiveContent && !revealedConfessionIds.has(item.id) ? (
+              {item.hasSensitiveContent &&
+              !settings.showSensitiveContent &&
+              !revealedConfessionIds.has(item.id) ? (
                 <View style={styles.sensitiveBlock}>
-                  <View style={[styles.sensitiveIcon, { backgroundColor: "#F59E0B15" }]}>
+                  <View
+                    style={[
+                      styles.sensitiveIcon,
+                      { backgroundColor: "#F59E0B15" },
+                    ]}
+                  >
                     <Feather name="alert-triangle" size={20} color="#F59E0B" />
                   </View>
-                  <Text style={[styles.sensitiveTitle, { color: colors.foreground }]}>Sensitive Content</Text>
+                  <Text
+                    style={[
+                      styles.sensitiveTitle,
+                      { color: colors.foreground },
+                    ]}
+                  >
+                    Sensitive Content
+                  </Text>
                   <TouchableOpacity
                     onPress={(e: GestureResponderEvent) => {
                       e.stopPropagation();
-                      setRevealedConfessionIds((prev) => new Set([...prev, item.id]));
+                      setRevealedConfessionIds(
+                        (prev) => new Set([...prev, item.id]),
+                      );
                     }}
-                    style={[styles.revealBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+                    style={[
+                      styles.revealBtn,
+                      {
+                        backgroundColor: colors.secondary,
+                        borderColor: colors.border,
+                      },
+                    ]}
                   >
-                    <Feather name="eye" size={13} color={colors.mutedForeground} />
-                    <Text style={[styles.revealText, { color: colors.mutedForeground }]}>Show anyway</Text>
+                    <Feather
+                      name="eye"
+                      size={13}
+                      color={colors.mutedForeground}
+                    />
+                    <Text
+                      style={[
+                        styles.revealText,
+                        { color: colors.mutedForeground },
+                      ]}
+                    >
+                      Show anyway
+                    </Text>
                   </TouchableOpacity>
                 </View>
               ) : (
-                <Text style={[styles.confessionContent, { color: colors.foreground }]} numberOfLines={4}>
+                <Text
+                  style={[
+                    styles.confessionContent,
+                    { color: colors.foreground },
+                  ]}
+                  numberOfLines={4}
+                >
                   {item.content}
                 </Text>
               )}
               <View style={styles.confessionMetaRow}>
-                <Text style={[styles.confessionMetaText, { color: colors.mutedForeground }]}>
+                <Text
+                  style={[
+                    styles.confessionMetaText,
+                    { color: colors.mutedForeground },
+                  ]}
+                >
                   {formatRelativeTime(item.createdAt)}
                 </Text>
                 <View style={styles.confessionCounts}>
                   <View style={styles.confessionCountItem}>
-                    <Feather name="arrow-up" size={14} color={colors.mutedForeground} />
-                    <Text style={[styles.confessionMetaText, { color: colors.mutedForeground }]}>{item.upvotes}</Text>
+                    <Feather
+                      name="arrow-up"
+                      size={14}
+                      color={colors.mutedForeground}
+                    />
+                    <Text
+                      style={[
+                        styles.confessionMetaText,
+                        { color: colors.mutedForeground },
+                      ]}
+                    >
+                      {item.upvotes}
+                    </Text>
                   </View>
                   <View style={styles.confessionCountItem}>
-                    <Feather name="message-circle" size={14} color={colors.mutedForeground} />
-                    <Text style={[styles.confessionMetaText, { color: colors.mutedForeground }]}>{item.commentCount}</Text>
+                    <Feather
+                      name="message-circle"
+                      size={14}
+                      color={colors.mutedForeground}
+                    />
+                    <Text
+                      style={[
+                        styles.confessionMetaText,
+                        { color: colors.mutedForeground },
+                      ]}
+                    >
+                      {item.commentCount}
+                    </Text>
                   </View>
                 </View>
               </View>
             </TouchableOpacity>
           )}
           ListHeaderComponent={ListHeader}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary}
+            />
+          }
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 100 }}
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <View style={[styles.emptyIcon, { backgroundColor: colors.card }]}>
-                <Feather name="message-square" size={32} color={colors.mutedForeground} />
+              <View
+                style={[styles.emptyIcon, { backgroundColor: colors.card }]}
+              >
+                <Feather
+                  name="message-square"
+                  size={32}
+                  color={colors.mutedForeground}
+                />
               </View>
-              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No confessions yet</Text>
-              <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>
+              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
+                No confessions yet
+              </Text>
+              <Text
+                style={[styles.emptySub, { color: colors.mutedForeground }]}
+              >
                 Your anonymous confessions will appear here.
               </Text>
             </View>
@@ -493,7 +984,12 @@ export default function ProfileScreen() {
   }
 
   return (
-    <Animated.View style={[{ flex: 1 }, { backgroundColor: colors.background, opacity: fadeAnim }]}>
+    <Animated.View
+      style={[
+        { flex: 1 },
+        { backgroundColor: colors.background, opacity: fadeAnim },
+      ]}
+    >
       <FlatList<Post>
         data={postListData}
         keyExtractor={(item) => item.id}
@@ -505,16 +1001,36 @@ export default function ProfileScreen() {
           />
         )}
         ListHeaderComponent={ListHeader}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
+        }
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <View style={[styles.emptyIcon, { backgroundColor: colors.card }]}>
-              <Feather name={activeTab === "posts" ? "file-text" : activeTab === "saved" ? "bookmark" : "repeat"} size={32} color={colors.mutedForeground} />
+              <Feather
+                name={
+                  activeTab === "posts"
+                    ? "file-text"
+                    : activeTab === "saved"
+                      ? "bookmark"
+                      : "repeat"
+                }
+                size={32}
+                color={colors.mutedForeground}
+              />
             </View>
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-              {activeTab === "posts" ? "No posts yet" : activeTab === "saved" ? "Nothing saved" : "No reposts yet"}
+              {activeTab === "posts"
+                ? "No posts yet"
+                : activeTab === "saved"
+                  ? "Nothing saved"
+                  : "No reposts yet"}
             </Text>
             <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>
               {activeTab === "posts"
@@ -524,7 +1040,10 @@ export default function ProfileScreen() {
                   : "Repost posts to share them with your profile audience."}
             </Text>
             {activeTab === "posts" && (
-              <TouchableOpacity onPress={() => router.push("/create-post")} style={[styles.createBtn, { backgroundColor: colors.primary }]}>
+              <TouchableOpacity
+                onPress={() => router.push("/create-post")}
+                style={[styles.createBtn, { backgroundColor: colors.primary }]}
+              >
                 <Text style={styles.createBtnText}>Create Post</Text>
               </TouchableOpacity>
             )}
@@ -536,46 +1055,213 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  authWall: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
-  authCard: { borderRadius: 20, borderWidth: 1, padding: 32, alignItems: "center", gap: 14, width: "100%", maxWidth: 360 },
-  authIconWrap: { width: 80, height: 80, borderRadius: 24, alignItems: "center", justifyContent: "center" },
+  authWall: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  authCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 32,
+    alignItems: "center",
+    gap: 14,
+    width: "100%",
+    maxWidth: 360,
+  },
+  authIconWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   authTitle: { fontSize: 24, fontFamily: "Inter_700Bold" },
-  authSub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
-  signInBtn: { paddingHorizontal: 32, paddingVertical: 14, borderRadius: 12, marginTop: 4 },
+  authSub: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  signInBtn: {
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginTop: 4,
+  },
   signInBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#FFF" },
-  profileShell: { paddingTop: 14, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: "hidden" },
-  coverBanner: { position: "relative", borderBottomLeftRadius: 24, borderBottomRightRadius: 24, overflow: "hidden", width: "92%", alignSelf: "center", aspectRatio: 16 / 7 },
+  profileShell: {
+    paddingTop: 14,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    overflow: "hidden",
+  },
+  coverBanner: {
+    position: "relative",
+    borderBottomLeftRadius: 26,
+    borderBottomRightRadius: 26,
+    overflow: "hidden",
+    width: "100%",
+    alignSelf: "center",
+    height: 238,
+  },
   coverImage: { width: "100%", height: "100%" },
   coverGradient: { position: "absolute", inset: 0 },
-  bannerGlow: { position: "absolute", width: 220, height: 220, borderRadius: 110, top: -90, right: -70 },
-  bannerOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.12)" },
-  bannerAccentRow: { position: "absolute", bottom: 12, right: 14, flexDirection: "row", gap: 8 },
+  bannerGlow: {
+    position: "absolute",
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    top: -90,
+    right: -70,
+  },
+  bannerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.18)",
+  },
+  bannerAccentRow: {
+    position: "absolute",
+    bottom: 12,
+    right: 14,
+    flexDirection: "row",
+    gap: 8,
+  },
   bannerAccentDot: { width: 8, height: 8, borderRadius: 99 },
-  avatarRow: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", paddingHorizontal: 16, marginTop: -36, marginBottom: 12 },
+  avatarRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    marginTop: -58,
+    marginBottom: 12,
+  },
   avatarContainer: { position: "relative" },
-  cameraBtn: { position: "absolute", bottom: 2, right: 2, width: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#fff" },
-  profileActions: { flexDirection: "row", gap: 8, alignItems: "center", paddingBottom: 4 },
-  editBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, borderWidth: 1 },
+  cameraBtn: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  profileActions: {
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "center",
+    paddingBottom: 8,
+  },
+  editBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
   editBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  shareBtn: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center", borderWidth: 1 },
-  nameSection: { paddingHorizontal: 16, gap: 6, marginBottom: 14 },
+  shareBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+  },
+  nameSection: { paddingHorizontal: 20, gap: 7, marginBottom: 16 },
   nameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  qrBtn: { width: 24, height: 24, borderRadius: 7, alignItems: "center", justifyContent: "center", borderWidth: 1 },
-  displayName: { fontSize: 22, fontFamily: "Inter_700Bold", letterSpacing: -0.3 },
-  verifiedBadge: { width: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  qrBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 7,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+  },
+  displayName: {
+    fontSize: 24,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: -0.4,
+  },
+  verifiedBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   username: { fontSize: 14, fontFamily: "Inter_400Regular", marginTop: -2 },
   metaRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 4 },
-  metaPill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 20 },
+  metaPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
   metaText: { fontSize: 11, fontFamily: "Inter_500Medium" },
-  bio: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 21, marginTop: 4 },
-  socialLinkBtn: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, maxWidth: "100%", borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, marginTop: 2 },
-  socialLinkText: { fontSize: 12, fontFamily: "Inter_600SemiBold", maxWidth: 190 },
-  statsCard: { flexDirection: "row", alignItems: "center", justifyContent: "space-around", borderRadius: 16, borderWidth: 1, paddingVertical: 14 },
-  vaultProfileCard: { marginHorizontal: 16, marginBottom: 14, borderWidth: 1, borderRadius: 18, padding: 10, gap: 9 },
-  vaultProfileHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  vaultKicker: { fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 1.8 },
+  bio: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 21,
+    marginTop: 4,
+  },
+  socialLinkBtn: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    maxWidth: "100%",
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginTop: 2,
+  },
+  socialLinkText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    maxWidth: 190,
+  },
+  statsCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingVertical: 15,
+  },
+  vaultProfileCard: {
+    marginHorizontal: 16,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 10,
+    gap: 9,
+  },
+  vaultProfileHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  vaultKicker: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 1.8,
+  },
   vaultTitle: { fontSize: 16, fontFamily: "Inter_700Bold", marginTop: 1 },
-  vaultLevelPill: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 },
+  vaultLevelPill: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
   vaultLevelText: { fontSize: 11, fontFamily: "Inter_700Bold" },
   vaultStatsRow: { flexDirection: "row", gap: 8 },
   vaultStat: { flex: 1 },
@@ -588,38 +1274,130 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 11, fontFamily: "Inter_400Regular" },
   statDivider: { width: 1, height: 28 },
   interestsRow: { paddingHorizontal: 16, paddingBottom: 14, gap: 6 },
-  interestChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1 },
+  interestChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
   interestText: { fontSize: 12, fontFamily: "Inter_500Medium" },
-  joinedRow: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1 },
+  joinedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+  },
   joinedText: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1 },
   tabRow: { borderBottomWidth: 1 },
   tabRowContent: { paddingHorizontal: 12 },
-  tabBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 12, paddingHorizontal: 10, minWidth: PROFILE_TAB_MIN_WIDTH },
+  tabBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    minWidth: PROFILE_TAB_MIN_WIDTH,
+  },
   tabLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   tabCount: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
   tabCountText: { fontSize: 11, fontFamily: "Inter_700Bold" },
-  confessionCard: { borderRadius: 16, borderWidth: 1, padding: 14, marginHorizontal: 16, marginTop: 10, gap: 10 },
-  confessionContent: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 21 },
-  confessionMetaRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  confessionCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 14,
+    marginHorizontal: 16,
+    marginTop: 10,
+    gap: 10,
+  },
+  confessionContent: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 21,
+  },
+  confessionMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   confessionMetaText: { fontSize: 12, fontFamily: "Inter_400Regular" },
   confessionCounts: { flexDirection: "row", alignItems: "center", gap: 12 },
   confessionCountItem: { flexDirection: "row", alignItems: "center", gap: 4 },
   sensitiveBlock: { alignItems: "center", gap: 8, paddingVertical: 6 },
-  sensitiveIcon: { width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  sensitiveIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   sensitiveTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  revealBtn: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderRadius: 10, paddingHorizontal: 13, paddingVertical: 7 },
+  revealBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+  },
   revealText: { fontSize: 12, fontFamily: "Inter_500Medium" },
   actSection: { fontSize: 13, fontFamily: "Inter_700Bold", marginBottom: 8 },
-  actCard: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 14, borderWidth: 1, marginBottom: 10 },
-  actIcon: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  actCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 10,
+  },
+  actIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   actTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   actSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
-  appliedPill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1 },
+  appliedPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
   appliedText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
-  emptyState: { alignItems: "center", gap: 12, paddingTop: 48, paddingHorizontal: 32 },
-  emptyIcon: { width: 80, height: 80, borderRadius: 24, alignItems: "center", justifyContent: "center" },
+  emptyState: {
+    alignItems: "center",
+    gap: 12,
+    paddingTop: 48,
+    paddingHorizontal: 32,
+  },
+  emptyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   emptyTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  emptySub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
-  createBtn: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12, marginTop: 4 },
+  emptySub: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  createBtn: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 4,
+  },
   createBtnText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#FFF" },
 });

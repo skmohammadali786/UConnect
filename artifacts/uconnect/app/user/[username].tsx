@@ -52,7 +52,9 @@ export default function UserProfileScreen() {
   const [repostRows, setRepostRows] = useState<
     { post_id: string; created_at: string }[]
   >([]);
-  const { data: vaultSummary, refetch: refetchVaultSummary } = useVaultSummary(profile?.id);
+  const { data: vaultSummary, refetch: refetchVaultSummary } = useVaultSummary(
+    profile?.id,
+  );
 
   const key = username?.toLowerCase() || "";
 
@@ -112,7 +114,9 @@ export default function UserProfileScreen() {
             following: data.following ?? 0,
             isVerified: Boolean(data.is_verified),
             avatar: data.avatar || null,
-            avatarRingColor: normalizeAuraRingValue(data.avatar_ring_color || DEFAULT_AURA_RING),
+            avatarRingColor: normalizeAuraRingValue(
+              data.avatar_ring_color || DEFAULT_AURA_RING,
+            ),
             banner: data.banner || null,
             socialLink: data.social_link || "",
           });
@@ -294,8 +298,8 @@ export default function UserProfileScreen() {
                 styles.header,
                 {
                   paddingTop: Platform.OS === "web" ? 67 : insets.top + 8,
-                  backgroundColor: colors.headerBg,
-                  borderBottomColor: colors.border,
+                  backgroundColor: "transparent",
+                  borderBottomColor: "transparent",
                 },
               ]}
             >
@@ -303,13 +307,9 @@ export default function UserProfileScreen() {
                 onPress={() => router.back()}
                 style={styles.backBtn}
               >
-                <Feather
-                  name="arrow-left"
-                  size={22}
-                  color={colors.foreground}
-                />
+                <Feather name="arrow-left" size={22} color="#FFF" />
               </TouchableOpacity>
-              <Text style={[styles.headerTitle, { color: colors.foreground }]}>
+              <Text style={[styles.headerTitle, { color: "#FFF" }]}>
                 @{key}
               </Text>
               <View style={{ width: 38 }} />
@@ -473,7 +473,14 @@ export default function UserProfileScreen() {
                     </View>
                   )}
                 </View>
-                <Text style={[styles.usernameText, { color: colors.mutedForeground }]}>@{profile.username}</Text>
+                <Text
+                  style={[
+                    styles.usernameText,
+                    { color: colors.mutedForeground },
+                  ]}
+                >
+                  @{profile.username}
+                </Text>
                 <View style={styles.metaRow}>
                   {profile.college ? (
                     <View
@@ -551,13 +558,30 @@ export default function UserProfileScreen() {
                   <TouchableOpacity
                     onPress={() => Linking.openURL(socialLinkInfo.url)}
                     activeOpacity={0.85}
-                    style={[styles.socialLinkBtn, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "30" }]}
+                    style={[
+                      styles.socialLinkBtn,
+                      {
+                        backgroundColor: colors.primary + "12",
+                        borderColor: colors.primary + "30",
+                      },
+                    ]}
                   >
-                    <MaterialCommunityIcons name={socialLinkInfo.icon as any} size={15} color={colors.primary} />
-                    <Text style={[styles.socialLinkText, { color: colors.primary }]} numberOfLines={1}>
+                    <MaterialCommunityIcons
+                      name={socialLinkInfo.icon as any}
+                      size={15}
+                      color={colors.primary}
+                    />
+                    <Text
+                      style={[styles.socialLinkText, { color: colors.primary }]}
+                      numberOfLines={1}
+                    >
                       {socialLinkInfo.label}
                     </Text>
-                    <Feather name="external-link" size={12} color={colors.primary} />
+                    <Feather
+                      name="external-link"
+                      size={12}
+                      color={colors.primary}
+                    />
                   </TouchableOpacity>
                 ) : null}
               </View>
@@ -584,7 +608,10 @@ export default function UserProfileScreen() {
                     label: "Following",
                     mode: "following" as const,
                   },
-                  { num: `${vaultSummary?.skillStrength ?? 0}%`, label: "Skill Strength" },
+                  {
+                    num: `${vaultSummary?.skillStrength ?? 0}%`,
+                    label: "Skill Strength",
+                  },
                 ].map((s, i, arr) => (
                   <React.Fragment key={s.label}>
                     {s.mode ? (
@@ -635,7 +662,6 @@ export default function UserProfileScreen() {
                   </React.Fragment>
                 ))}
               </View>
-
 
               <ProfileVaultSummary
                 summary={vaultSummary}
@@ -773,23 +799,41 @@ export default function UserProfileScreen() {
 
 const styles = StyleSheet.create({
   header: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 20,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingBottom: 12,
-    borderBottomWidth: 1,
+    borderBottomWidth: 0,
   },
-  backBtn: { padding: 4 },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.18)",
+  },
   headerTitle: { fontSize: 17, fontFamily: "Inter_700Bold" },
-  cover: { marginHorizontal: 16, marginTop: 14, borderRadius: 24, aspectRatio: 16 / 7 },
+  cover: {
+    width: "100%",
+    height: 222,
+    borderBottomLeftRadius: 26,
+    borderBottomRightRadius: 26,
+  },
   coverOverlay: {
     position: "absolute",
-    left: 16,
-    right: 16,
-    top: 14,
-    aspectRatio: 16 / 7,
-    borderRadius: 24,
+    left: 0,
+    right: 0,
+    top: 0,
+    height: 222,
+    borderBottomLeftRadius: 26,
+    borderBottomRightRadius: 26,
     backgroundColor: "rgba(0,0,0,0.12)",
   },
   coverAccent: {
@@ -806,8 +850,8 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    marginTop: -28,
-    marginBottom: 10,
+    marginTop: -54,
+    marginBottom: 12,
   },
   avatar: {
     width: 76,
@@ -821,16 +865,16 @@ const styles = StyleSheet.create({
   actionRow: {
     flexDirection: "row",
     gap: 8,
-    paddingBottom: 4,
+    paddingBottom: 8,
     alignItems: "center",
   },
   messageBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    borderRadius: 12,
     borderWidth: 1,
   },
   messageBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
@@ -838,9 +882,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 12,
     borderWidth: 1.5,
   },
   followText: { fontSize: 14, fontFamily: "Inter_700Bold" },
@@ -854,7 +898,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   editBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  nameSection: { paddingHorizontal: 16, gap: 5, marginBottom: 14 },
+  nameSection: { paddingHorizontal: 20, gap: 7, marginBottom: 16 },
   nameRow: { flexDirection: "row", alignItems: "center", gap: 7 },
   qrBtn: {
     width: 24,
@@ -864,7 +908,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
   },
-  displayName: { fontSize: 20, fontFamily: "Inter_700Bold" },
+  displayName: {
+    fontSize: 24,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: -0.4,
+  },
   verifiedBadge: {
     width: 18,
     height: 18,
@@ -872,14 +920,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  usernameText: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  usernameText: { fontSize: 14, fontFamily: "Inter_400Regular" },
   metaRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 4 },
   metaPill: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
     borderRadius: 20,
   },
   metaText: { fontSize: 11, fontFamily: "Inter_500Medium" },
@@ -901,26 +949,41 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     marginTop: 3,
   },
-  socialLinkText: { fontSize: 12, fontFamily: "Inter_600SemiBold", maxWidth: 190 },
+  socialLinkText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    maxWidth: 190,
+  },
   statsRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",
-    borderRadius: 14,
+    borderRadius: 18,
     borderWidth: 1,
-    paddingVertical: 14,
+    paddingVertical: 15,
   },
   statItem: { alignItems: "center", gap: 2, flex: 1 },
-  statNum: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  statNum: { fontSize: 20, fontFamily: "Inter_700Bold" },
   statLabel: { fontSize: 11, fontFamily: "Inter_400Regular" },
   statDivider: { width: 1, height: 28 },
-  vaultMiniCard: { marginHorizontal: 16, marginBottom: 16, borderWidth: 1, borderRadius: 20, padding: 14, gap: 12 },
-  vaultMiniKicker: { fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 1.6 },
+  vaultMiniCard: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderRadius: 20,
+    padding: 14,
+    gap: 12,
+  },
+  vaultMiniKicker: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 1.6,
+  },
   vaultMiniTitle: { fontSize: 18, fontFamily: "Inter_700Bold", marginTop: 2 },
   vaultMiniStats: { flexDirection: "row", justifyContent: "space-between" },
   vaultMiniNum: { fontSize: 18, fontFamily: "Inter_700Bold" },
   vaultMiniLabel: { fontSize: 11, fontFamily: "Inter_500Medium", marginTop: 2 },
-  interestsRow: { paddingHorizontal: 16, paddingBottom: 14, gap: 6 },
+  interestsRow: { paddingHorizontal: 16, paddingBottom: 16, gap: 6 },
   chip: {
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -934,8 +997,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 5,
-    paddingVertical: 12,
+    gap: 6,
+    paddingVertical: 14,
   },
   tabLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   empty: {
