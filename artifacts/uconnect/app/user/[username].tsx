@@ -26,6 +26,7 @@ import { useToast } from "@/components/Toast";
 import { supabase } from "@/lib/supabase";
 import { useVaultSummary } from "@/hooks/useVault";
 import { getSocialLinkInfo } from "@/utils/socialLink";
+import { ProfileVaultSummary } from "@/components/profile";
 import { DEFAULT_AURA_RING, normalizeAuraRingValue } from "@/utils/auraRing";
 
 const ND = Platform.OS !== "web";
@@ -472,6 +473,7 @@ export default function UserProfileScreen() {
                     </View>
                   )}
                 </View>
+                <Text style={[styles.usernameText, { color: colors.mutedForeground }]}>@{profile.username}</Text>
                 <View style={styles.metaRow}>
                   {profile.college ? (
                     <View
@@ -492,6 +494,28 @@ export default function UserProfileScreen() {
                         ]}
                       >
                         {profile.college}
+                      </Text>
+                    </View>
+                  ) : null}
+                  {profile.branch ? (
+                    <View
+                      style={[
+                        styles.metaPill,
+                        { backgroundColor: colors.secondary },
+                      ]}
+                    >
+                      <Feather
+                        name="code"
+                        size={11}
+                        color={colors.mutedForeground}
+                      />
+                      <Text
+                        style={[
+                          styles.metaText,
+                          { color: colors.mutedForeground },
+                        ]}
+                      >
+                        {profile.branch}
                       </Text>
                     </View>
                   ) : null}
@@ -560,6 +584,7 @@ export default function UserProfileScreen() {
                     label: "Following",
                     mode: "following" as const,
                   },
+                  { num: `${vaultSummary?.skillStrength ?? 0}%`, label: "Skill Strength" },
                 ].map((s, i, arr) => (
                   <React.Fragment key={s.label}>
                     {s.mode ? (
@@ -612,17 +637,11 @@ export default function UserProfileScreen() {
               </View>
 
 
-              <View style={[styles.vaultMiniCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <View>
-                  <Text style={[styles.vaultMiniKicker, { color: colors.primary }]}>VAULT PROFILE</Text>
-                  <Text style={[styles.vaultMiniTitle, { color: colors.foreground }]}>{vaultSummary?.level ?? "Explorer"}</Text>
-                </View>
-                <View style={styles.vaultMiniStats}>
-                  <View><Text style={[styles.vaultMiniNum, { color: colors.primary }]}>{vaultSummary?.score ?? 0}</Text><Text style={[styles.vaultMiniLabel, { color: colors.mutedForeground }]}>Score</Text></View>
-                  <View><Text style={[styles.vaultMiniNum, { color: colors.primary }]}>{vaultSummary?.skillStrength ?? 0}%</Text><Text style={[styles.vaultMiniLabel, { color: colors.mutedForeground }]}>Radar</Text></View>
-                  <View><Text style={[styles.vaultMiniNum, { color: colors.primary }]}>{vaultSummary?.badges?.length ?? 0}</Text><Text style={[styles.vaultMiniLabel, { color: colors.mutedForeground }]}>Badges</Text></View>
-                </View>
-              </View>
+              <ProfileVaultSummary
+                summary={vaultSummary}
+                colors={colors}
+                mode="compact"
+              />
 
               {profile.interests?.length > 0 && (
                 <ScrollView

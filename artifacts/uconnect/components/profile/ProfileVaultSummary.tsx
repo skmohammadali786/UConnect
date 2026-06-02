@@ -34,7 +34,11 @@ export function ProfileVaultSummary({
   const badgeCount = summary?.badges?.length ?? 0;
   const level = summary?.level ?? "Explorer";
   const skills = summary?.skills ?? [];
-  const strongest = skills.find((skill) => Number(skill.strength ?? 0) > 0) ?? skills[0];
+  const strongest = skills.reduce(
+    (best, skill) =>
+      Number(skill.strength ?? 0) > Number(best?.strength ?? -1) ? skill : best,
+    skills[0],
+  );
   const rising = skills.filter((skill) => Number(skill.trend ?? 0) > 0).length;
   const shadowColor = colors.profileShadow ?? colors.shadow;
 
@@ -67,7 +71,9 @@ export function ProfileVaultSummary({
           <Text style={[styles.title, { color: colors.foreground }]}>{mode === "full" ? "Reputation Engine" : level}</Text>
         </View>
         <View style={[styles.levelPill, { backgroundColor: colors.profileSoftGreen ?? colors.primary + "14", borderColor: colors.primary + "30" }]}>
-          <Text style={[styles.levelText, { color: colors.primary }]}>{mode === "full" ? "Explore Vault" : "Top 15%"}</Text>
+          <Text style={[styles.levelText, { color: colors.primary }]}>
+            {mode === "full" ? "Explore Vault" : "Top 15%"}
+          </Text>
         </View>
       </View>
 
@@ -118,8 +124,8 @@ function Insight({ icon, label, value, colors }: { icon: React.ComponentProps<ty
 }
 
 const styles = StyleSheet.create({
-  card: { marginHorizontal: 16, marginBottom: 14, borderWidth: 1, borderRadius: 22, padding: 14, gap: 12, shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 3 },
-  miniCard: { marginHorizontal: 16, marginBottom: 14, borderWidth: 1, borderRadius: 20, padding: 14, gap: 12, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 3 },
+  card: { marginHorizontal: 16, marginBottom: 14, borderWidth: 1, borderRadius: 24, padding: 14, gap: 12, shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 3 },
+  miniCard: { marginHorizontal: 16, marginBottom: 14, borderWidth: 1, borderRadius: 22, padding: 14, gap: 12, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 3 },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
   kicker: { fontSize: 10, fontFamily: "Inter_700Bold", letterSpacing: 1.8 },
   title: { fontSize: 18, fontFamily: "Inter_700Bold", marginTop: 2 },

@@ -1,7 +1,6 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import type { DimensionValue } from "react-native";
 import {
   Animated, FlatList, Image, Linking, Platform, RefreshControl, ScrollView,
   StyleSheet, Text, TouchableOpacity, View, GestureResponderEvent,
@@ -17,12 +16,11 @@ import { useConfessions } from "@/context/ConfessionsContext";
 import type { Post } from "@/context/PostsContext";
 import type { Confession } from "@/context/ConfessionsContext";
 import { useToast } from "@/components/Toast";
-import { TypewriterText } from "@/components/TypewriterText";
 import { supabase } from "@/lib/supabase";
 import { formatRelativeTime } from "@/utils/time";
 import { useSettings } from "@/context/SettingsContext";
 import { useVaultSummary } from "@/hooks/useVault";
-import { VaultRadarCard } from "@/components/vault/VaultRadarCard";
+import { ProfileVaultSummary } from "@/components/profile";
 import { getSocialLinkInfo } from "@/utils/socialLink";
 
 
@@ -31,11 +29,7 @@ const PROFILE_TAB_MIN_WIDTH = 92;
 const OFFICIAL_UCONNECT_BADGE_COLOR = "#EE4B2B";
 const DEFAULT_VERIFIED_BADGE_COLOR = "#16A34A";
 
-function percentWidth(value: unknown): DimensionValue {
-  const next = Number(value ?? 0);
-  if (!Number.isFinite(next)) return "0%";
-  return `${Math.min(100, Math.max(0, next))}%`;
-}
+
 
 export default function ProfileScreen() {
   const colors = useColors();
@@ -247,17 +241,7 @@ export default function ProfileScreen() {
 
   const ListHeader = (
     <View>
-      <View style={[styles.topBar, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, backgroundColor: colors.headerBg, borderBottomColor: colors.border }]}>
-        <TypewriterText
-          text="Profile"
-          style={[styles.topBarTitle, { color: colors.foreground }]}
-          delay={260}
-          speed={70}
-        />
-        <View style={{ width: 36 }} />
-      </View>
-
-      <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -8 }}>
+      <View style={[styles.profileShell, { paddingTop: Platform.OS === "web" ? 24 : insets.top + 8, backgroundColor: colors.card }]}>
         <View style={[styles.coverBanner, { backgroundColor: colors.primary + "18" }]}>
           {user.banner ? (
             <Image source={{ uri: user.banner }} style={styles.coverImage} resizeMode="cover" />
@@ -374,24 +358,11 @@ export default function ProfileScreen() {
         </View>
 
 
-        <View style={[styles.vaultProfileCard, elevatedCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={styles.vaultProfileHeader}>
-            <View>
-              <Text style={[styles.vaultKicker, { color: colors.primary }]}>THE VAULT</Text>
-              <Text style={[styles.vaultTitle, { color: colors.foreground }]}>Reputation Engine</Text>
-            </View>
-            <View style={[styles.vaultLevelPill, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "35" }]}>
-              <Text style={[styles.vaultLevelText, { color: colors.primary }]}>{vaultSummary?.level ?? "Explorer"}</Text>
-            </View>
-          </View>
-          <View style={styles.vaultStatsRow}>
-            <View style={styles.vaultStat}><Text style={[styles.vaultStatNum, { color: colors.primary }]}>{vaultSummary?.score ?? 0}</Text><Text style={[styles.vaultStatLabel, { color: colors.mutedForeground }]}>Vault Score</Text></View>
-            <View style={styles.vaultStat}><Text style={[styles.vaultStatNum, { color: colors.primary }]}>{vaultSummary?.skillStrength ?? 0}%</Text><Text style={[styles.vaultStatLabel, { color: colors.mutedForeground }]}>Skill Strength</Text></View>
-            <View style={styles.vaultStat}><Text style={[styles.vaultStatNum, { color: colors.primary }]}>{vaultSummary?.badges?.length ?? 0}</Text><Text style={[styles.vaultStatLabel, { color: colors.mutedForeground }]}>Badges</Text></View>
-          </View>
-          <View style={[styles.vaultProgress, { backgroundColor: colors.secondary }]}><View style={[styles.vaultProgressFill, { backgroundColor: colors.primary, width: percentWidth(vaultSummary?.progress) }]} /></View>
-          <VaultRadarCard skills={vaultSummary?.skills ?? []} colors={colors} compact />
-        </View>
+        <ProfileVaultSummary
+          summary={vaultSummary}
+          colors={colors}
+          mode="full"
+        />
 
         {user.interests && user.interests.length > 0 && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.interestsRow}>
@@ -572,8 +543,7 @@ const styles = StyleSheet.create({
   authSub: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
   signInBtn: { paddingHorizontal: 32, paddingVertical: 14, borderRadius: 12, marginTop: 4 },
   signInBtnText: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#FFF" },
-  topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: 1 },
-  topBarTitle: { fontSize: 22, fontFamily: "Inter_700Bold" },
+  profileShell: { paddingTop: 14, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: "hidden" },
   coverBanner: { position: "relative", borderBottomLeftRadius: 24, borderBottomRightRadius: 24, overflow: "hidden", width: "92%", alignSelf: "center", aspectRatio: 16 / 7 },
   coverImage: { width: "100%", height: "100%" },
   coverGradient: { position: "absolute", inset: 0 },
