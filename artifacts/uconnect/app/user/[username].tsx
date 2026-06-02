@@ -269,6 +269,7 @@ export default function UserProfileScreen() {
     })
     .filter(Boolean) as typeof posts;
   const listData = activeTab === "posts" ? userPosts : repostedPosts;
+  const socialLinkInfo = getSocialLinkInfo(profile.socialLink);
 
   return (
     <Animated.View
@@ -605,52 +606,129 @@ export default function UserProfileScreen() {
                           { backgroundColor: colors.border },
                         ]}
                       />
-                    </Animated.View>
-                    <ProfileActionButton icon="chevron-down" variant="icon" colors={colors} />
-                  </>
-                )
-              }
-              onQrPress={() =>
-                router.push({
-                  pathname: "/scan-connect" as any,
-                  params: { username: profile.username, allowScan: isMe ? "1" : "0" },
-                })
-              }
-            />
-
-            <ProfileStatsCard
-              colors={colors}
-              items={[
-                { label: "Posts", value: userPosts.length },
-                { label: "Followers", value: followerCount, onPress: () => openConnections("followers") },
-                { label: "Following", value: profile.following, onPress: () => openConnections("following") },
-                { label: "Skill Strength", value: `${vaultSummary?.skillStrength ?? 0}%` },
-              ]}
-              attachedTile={{ label: "Vault Score", value: vaultSummary?.score ?? 0, icon: "award" }}
-            />
-
-            <ProfileVaultSummary summary={vaultSummary} colors={colors} mode="compact" />
-
-            {profile.interests?.length > 0 ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.interestsRow}>
-                {profile.interests.map((i: string) => (
-                  <View key={i} style={[styles.chip, { backgroundColor: colors.profileSoftGreen, borderColor: colors.primary + "25" }]}>
-                    <Text style={[styles.chipText, { color: colors.primary }]}>{i}</Text>
-                  </View>
+                    )}
+                  </React.Fragment>
                 ))}
-              </ScrollView>
-            ) : null}
+              </View>
 
-            <ProfileTabs
-              colors={colors}
-              activeKey={activeTab}
-              onChange={setActiveTab}
-              items={[
-                { key: "posts", icon: "file-text", label: "Posts", count: userPosts.length },
-                { key: "reposts", icon: "repeat", label: "Reposts", count: repostedPosts.length },
+
+              <View style={[styles.vaultMiniCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View>
+                  <Text style={[styles.vaultMiniKicker, { color: colors.primary }]}>VAULT PROFILE</Text>
+                  <Text style={[styles.vaultMiniTitle, { color: colors.foreground }]}>{vaultSummary?.level ?? "Explorer"}</Text>
+                </View>
+                <View style={styles.vaultMiniStats}>
+                  <View><Text style={[styles.vaultMiniNum, { color: colors.primary }]}>{vaultSummary?.score ?? 0}</Text><Text style={[styles.vaultMiniLabel, { color: colors.mutedForeground }]}>Score</Text></View>
+                  <View><Text style={[styles.vaultMiniNum, { color: colors.primary }]}>{vaultSummary?.skillStrength ?? 0}%</Text><Text style={[styles.vaultMiniLabel, { color: colors.mutedForeground }]}>Radar</Text></View>
+                  <View><Text style={[styles.vaultMiniNum, { color: colors.primary }]}>{vaultSummary?.badges?.length ?? 0}</Text><Text style={[styles.vaultMiniLabel, { color: colors.mutedForeground }]}>Badges</Text></View>
+                </View>
+              </View>
+
+              {profile.interests?.length > 0 && (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.interestsRow}
+                >
+                  {profile.interests.map((i: string) => (
+                    <View
+                      key={i}
+                      style={[
+                        styles.chip,
+                        {
+                          backgroundColor: colors.primary + "12",
+                          borderColor: colors.primary + "25",
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[styles.chipText, { color: colors.primary }]}
+                      >
+                        {i}
+                      </Text>
+                    </View>
+                  ))}
+                </ScrollView>
+              )}
+            </View>
+
+            <View
+              style={[
+                styles.tabRow,
+                {
+                  backgroundColor: colors.card,
+                  borderBottomColor: colors.border,
+                },
               ]}
-            />
-          </ProfileLayout>
+            >
+              <TouchableOpacity
+                onPress={() => setActiveTab("posts")}
+                style={[
+                  styles.tabBtn,
+                  activeTab === "posts" && {
+                    borderBottomColor: colors.primary,
+                    borderBottomWidth: 2.5,
+                  },
+                ]}
+              >
+                <Feather
+                  name="file-text"
+                  size={15}
+                  color={
+                    activeTab === "posts"
+                      ? colors.primary
+                      : colors.mutedForeground
+                  }
+                />
+                <Text
+                  style={[
+                    styles.tabLabel,
+                    {
+                      color:
+                        activeTab === "posts"
+                          ? colors.primary
+                          : colors.mutedForeground,
+                    },
+                  ]}
+                >
+                  Posts ({userPosts.length})
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setActiveTab("reposts")}
+                style={[
+                  styles.tabBtn,
+                  activeTab === "reposts" && {
+                    borderBottomColor: colors.primary,
+                    borderBottomWidth: 2.5,
+                  },
+                ]}
+              >
+                <Feather
+                  name="repeat"
+                  size={15}
+                  color={
+                    activeTab === "reposts"
+                      ? colors.primary
+                      : colors.mutedForeground
+                  }
+                />
+                <Text
+                  style={[
+                    styles.tabLabel,
+                    {
+                      color:
+                        activeTab === "reposts"
+                          ? colors.primary
+                          : colors.mutedForeground,
+                    },
+                  ]}
+                >
+                  Reposts ({repostedPosts.length})
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         }
         ListEmptyComponent={
           <View style={styles.empty}>
