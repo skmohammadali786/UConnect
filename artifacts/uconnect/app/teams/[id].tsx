@@ -30,7 +30,7 @@ interface JoinModalProps {
   colors: Record<string, string>;
 }
 
-function JoinModal({ visible, onClose, onSubmit, colors }: JoinModalProps) {
+const JoinModal = ({ visible, onClose, onSubmit, colors }: JoinModalProps) => {
   const [message, setMessage] = useState("");
   const backdropAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(400)).current;
@@ -308,53 +308,53 @@ export default function TeamDetailScreen() {
         pollVoteMap.set(p.id, { counts: new Array((p.options ?? []).length).fill(0), userVoteIndex: null });
       });
       (pollVotesRes.data ?? []).forEach((vote: unknown) => {
-        const v = vote as { poll_id: string; option_index: number; user_id: string };
-        const poll = pollVoteMap.get(v.poll_id);
+        const voteData = vote as { poll_id: string; option_index: number; user_id: string };
+        const poll = pollVoteMap.get(voteData.poll_id);
         if (!poll) return;
-        if (poll.counts[v.option_index] !== undefined) {
-          poll.counts[v.option_index] += 1;
+        if (poll.counts[voteData.option_index] !== undefined) {
+          poll.counts[voteData.option_index] += 1;
         }
-        if (user && v.user_id === user.id) {
-          poll.userVoteIndex = v.option_index;
+        if (user && voteData.user_id === user.id) {
+          poll.userVoteIndex = voteData.option_index;
         }
       });
 
       const items: TeamFeedItem[] = [];
       (postRes.data ?? []).forEach((row: unknown) => {
-        const r = row as { id: string; content?: string; media_urls?: string[]; created_at: string; author_username?: string; author_avatar?: string | null };
+        const postData = row as { id: string; content?: string; media_urls?: string[]; created_at: string; author_username?: string; author_avatar?: string | null };
         items.push({
           type: "post",
-          id: r.id,
-          content: r.content ?? "",
-          mediaUrls: r.media_urls ?? [],
-          createdAt: r.created_at,
-          authorName: r.author_username ?? "Admin",
-          authorAvatar: r.author_avatar ?? null,
+          id: postData.id,
+          content: postData.content ?? "",
+          mediaUrls: postData.media_urls ?? [],
+          createdAt: postData.created_at,
+          authorName: postData.author_username ?? "Admin",
+          authorAvatar: postData.author_avatar ?? null,
         });
       });
       polls.forEach((row: unknown) => {
-        const p = row as { id: string; question: string; options?: string[]; created_at: string };
-        const voteInfo = pollVoteMap.get(p.id);
+        const pollItem = row as { id: string; question: string; options?: string[]; created_at: string };
+        const voteInfo = pollVoteMap.get(pollItem.id);
         items.push({
           type: "poll",
-          id: p.id,
-          question: p.question,
-          options: p.options ?? [],
+          id: pollItem.id,
+          question: pollItem.question,
+          options: pollItem.options ?? [],
           counts: voteInfo?.counts ?? [],
           userVoteIndex: voteInfo?.userVoteIndex ?? null,
-          createdAt: p.created_at,
+          createdAt: pollItem.created_at,
         });
       });
       type TaskItem = { id: string; task_list_id: string; title: string; is_completed: boolean; completed_by?: string | null };
       const taskItemsByList = new Map<string, TaskItem[]>();
       ((taskItemsRes.data ?? []) as TaskItem[]).forEach((item) => {
         if (!taskItemsByList.has(item.task_list_id)) taskItemsByList.set(item.task_list_id, []);
-        taskItemsByList.get(item.task_list_id)!.push(item);
+        taskItemsByList.get(item.task_list_id)?.push(item);
       });
       taskLists.forEach((row: unknown) => {
-        const t = row as { id: string; title: string; created_at: string };
-        const itemsList = (taskItemsByList.get(t.id) ?? []).map((i) => {
-          const item = i as { id: string; title: string; is_completed: boolean; completed_by?: string | null };
+        const taskList = row as { id: string; title: string; created_at: string };
+        const itemsList = (taskItemsByList.get(taskList.id) ?? []).map((itemData) => {
+          const item = itemData as { id: string; title: string; is_completed: boolean; completed_by?: string | null };
           return {
             id: item.id,
             title: item.title,
@@ -364,22 +364,22 @@ export default function TeamDetailScreen() {
         });
         items.push({
           type: "task",
-          id: t.id,
-          title: t.title,
+          id: taskList.id,
+          title: taskList.title,
           items: itemsList,
-          createdAt: t.created_at,
+          createdAt: taskList.created_at,
         });
       });
       (eventRes.data ?? []).forEach((row: unknown) => {
-        const e = row as { id: string; title: string; description?: string; event_date?: string; location?: string; created_at: string };
+        const eventRecord = row as { id: string; title: string; description?: string; event_date?: string; location?: string; created_at: string };
         items.push({
           type: "event",
-          id: e.id,
-          title: e.title,
-          description: e.description ?? "",
-          eventDate: e.event_date ?? "TBD",
-          location: e.location ?? "TBD",
-          createdAt: e.created_at,
+          id: eventRecord.id,
+          title: eventRecord.title,
+          description: eventRecord.description ?? "",
+          eventDate: eventRecord.event_date ?? "TBD",
+          location: eventRecord.location ?? "TBD",
+          createdAt: eventRecord.created_at,
         });
       });
 

@@ -115,7 +115,7 @@ function countValue(row: Record<string, unknown>, aliases: string[], fallbackVal
 }
 
 
-async function buildSkillFallback(userId?: string): Promise<VaultSummary["skills"]> {
+const buildSkillFallback = async (userId?: string): Promise<VaultSummary["skills"]> => {
   if (!userId) return [];
   const { data: profile } = await supabase
     .from<{ interests: string[] | null; branch: string | null }>("profiles")

@@ -215,7 +215,7 @@ export function ReportModal({ postId, visible, onClose }: ReportModalProps) {
               </View>
               {selected === r.label && (
                 <View
-                  style=[
+                  style={[
                     styles.checkCircle,
                     { backgroundColor: colors.primary },
                   ]}
@@ -230,12 +230,12 @@ export function ReportModal({ postId, visible, onClose }: ReportModalProps) {
         <View style={styles.btnRow}>
           <TouchableOpacity
             onPress={onClose}
-            style={[
+            style=[
               styles.cancelBtn,
               { backgroundColor: colors.secondary, borderColor: colors.border },
-            ]}
+            ]
           >
-            <Text style={[styles.cancelText, { color: colors.foreground }]}>
+            <Text style={[styles.cancelText, { color: colors.foreground }]}>}
               Cancel
             </Text>
           </TouchableOpacity>

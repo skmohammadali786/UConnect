@@ -42,7 +42,7 @@ type TeamCardProps = {
   };
 };
 
-function TeamCard({ item, index, requestedIds, onRequest, onCancel, isMyTeam, pendingCount, colors }: TeamCardProps) {
+const TeamCard = ({ item, index, requestedIds, onRequest, onCancel, isMyTeam, pendingCount, colors }: TeamCardProps) => {
   const anim = useRef(new Animated.Value(0)).current;
   const requested = requestedIds.has(item.id);
   const typeColor = TYPE_COLORS[item.type] || "#6B7280";
@@ -60,7 +60,7 @@ function TeamCard({ item, index, requestedIds, onRequest, onCancel, isMyTeam, pe
         activeOpacity={0.85}
       >
         <View style={styles.cardHeader}>
-          <View style={[styles.typeBadge, { backgroundColor: typeColor + "20" }]}>
+          <View style={[styles.typeBadge, { backgroundColor: typeColor + "20" }]}>            
             )}
             <Text style={[styles.deadline, { color: colors.mutedForeground }]}>{item.deadline}</Text>
           </View>
@@ -71,19 +71,19 @@ function TeamCard({ item, index, requestedIds, onRequest, onCancel, isMyTeam, pe
 
         <View style={styles.skills}>
           {item.skills.slice(0, 3).map((skill: string) => (
-            <View key={skill} style={[styles.skill, { backgroundColor: colors.secondary }]}>
+            <View key={skill} style={[styles.skill, { backgroundColor: colors.secondary }]}> 
               <Text style={[styles.skillText, { color: colors.mutedForeground }]}>{skill}</Text>
             </View>
           ))}
           {item.skills.length > 3 && (
-            <Text style={[styles.moreSkills, { color: colors.mutedForeground }]}>+{item.skills.length - 3}</Text>
+            <Text style={[styles.moreSkills, { color: colors.mutedForeground }]}>(+{item.skills.length - 3})</Text>
           )}
         </View>
 
         <View style={styles.cardFooter}>
           <View style={styles.memberInfo}>
             <Feather name="users" size={13} color={colors.mutedForeground} />
-            <Text style={[styles.memberText, { color: colors.mutedForeground }]}>
+            <Text style={[styles.memberText, { color: colors.mutedForeground }]}> 
               {item.members}/{item.maxMembers} · {spotsLeft > 0 ? `${spotsLeft} spots left` : "Full"}
             </Text>
             <Text style={[styles.poster, { color: colors.mutedForeground }]}>by @{item.poster}</Text>

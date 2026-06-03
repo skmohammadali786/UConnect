@@ -241,7 +241,7 @@ type SpringButtonProps = {
   children: React.ReactNode;
 };
 
-function SpringButton({ onPress, style, children }: SpringButtonProps) {
+export function SpringButton({ onPress, style, children }: SpringButtonProps) {
   const sc = useRef(new Animated.Value(1)).current;
   return (
     <Animated.View style={{ transform: [{ scale: sc }] }}>

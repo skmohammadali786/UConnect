@@ -33,7 +33,7 @@ type RawNoteRow = {
   created_at: string;
 };
 
-function rowToNote(r: RawNoteRow): Note {
+const rowToNote = (r: RawNoteRow): Note => {
   return {
     id: r.id,
     subject: r.subject,
@@ -45,7 +45,7 @@ function rowToNote(r: RawNoteRow): Note {
     description: r.description ?? "",
     createdAt: r.created_at,
   };
-}
+};
 
 const SUBJECTS = ["All", "Mathematics", "Physics", "Chemistry", "Computer Science", "Electrical", "Mechanical", "Civil", "Economics", "MBA", "Biology", "Statistics", "Law", "Other"];
 const SUBJECT_COLORS: Record<string, string> = {
@@ -54,7 +54,7 @@ const SUBJECT_COLORS: Record<string, string> = {
   Economics: "#00A86B",
 };
 
-function NoteCard({
+const NoteCard = ({
   item,
   index,
   savedIds,
@@ -91,15 +91,15 @@ function NoteCard({
 
   return (
     <Animated.View style={{ opacity: anim, transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) }] }}>
-      <TouchableOpacity onPress={() => router.push({ pathname: "/notes/[id]", params: { id: item.id } })} style={[styles.noteCard, { backgroundColor: colors.card, borderColor: saved ? colors.primary + "40" : colors.border }]}>        
+      <TouchableOpacity onPress={() => router.push({ pathname: "/notes/[id]", params: { id: item.id } })} style={[styles.noteCard, { backgroundColor: colors.card, borderColor: saved ? `${colors.primary}40` : colors.border }]}>        
         <View style={styles.noteHeader}>
-          <View style={[styles.fileIcon, { backgroundColor: subjectColor + "18" }]}>            
+          <View style={[styles.fileIcon, { backgroundColor: `${subjectColor}18` }]}>            
             <Feather name="file-text" size={20} color={subjectColor} />
           </View>
           <View style={styles.noteInfo}>
             <Text style={[styles.noteTitle, { color: colors.foreground }]} numberOfLines={2}>{item.title}</Text>
             <View style={styles.metaRow}>
-              <View style={[styles.subjectBadge, { backgroundColor: subjectColor + "18" }]}>                
+              <View style={[styles.subjectBadge, { backgroundColor: `${subjectColor}18` }]}>                
                 <Text style={[styles.subjectText, { color: subjectColor }]}>{item.subject}</Text>
               </View>
               <Text style={[styles.noteMeta, { color: colors.mutedForeground }]}>{item.year}</Text>
@@ -113,7 +113,7 @@ function NoteCard({
               <Feather name="download" size={12} color={colors.mutedForeground} />
               <Text style={[styles.noteStatText, { color: colors.mutedForeground }]}>{item.downloads}</Text>
             </View>
-            <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); onSave(item.id); }} style={[styles.saveBtn, { backgroundColor: saved ? colors.primary + "20" : colors.secondary, borderColor: saved ? colors.primary + "40" : colors.border, borderWidth: 1 }]}>              
+            <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); onSave(item.id); }} style={[styles.saveBtn, { backgroundColor: saved ? `${colors.primary}20` : colors.secondary, borderColor: saved ? `${colors.primary}40` : colors.border, borderWidth: 1 }]}>              
               <Feather name="bookmark" size={14} color={saved ? colors.primary : colors.mutedForeground} />
               <Text style={[styles.saveBtnText, { color: saved ? colors.primary : colors.mutedForeground }]}>{saved ? "Saved" : "Save"}</Text>
             </TouchableOpacity>
@@ -231,6 +231,23 @@ export default function NotesScreen() {
           data={filtered}
           keyExtractor={(item) => item.id}
           ListHeaderComponent={
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: 1 },
+  title: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  subtitle: { fontSize: 11, fontFamily: "Inter_500Medium" },
+  searchWrap: { padding: 12, borderBottomWidth: 1 },
+  searchBar: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, height: 40, gap: 8 },
+  searchInput: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular" },
+  loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
+  subjectChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 16, borderWidth: 1 },
+  subjectText2: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  noteCard: { borderRadius: 12, borderWidth: 1, padding: 14, gap: 10 },
+  noteHeader: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
+  fileIcon: { width: 44, height: 44, borderRadius: 10, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  noteInfo: { flex: 1 },
+});
+
             <FlatList
               data={SUBJECTS}
               keyExtractor={(s) => s}
@@ -238,7 +255,7 @@ export default function NotesScreen() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12, gap: 8 }}
               renderItem={({ item }) => (
-                <TouchableOpacity onPress={() => setActiveSubject(item)} style={[styles.subjectChip, { backgroundColor: activeSubject === item ? colors.primary : colors.card, borderColor: activeSubject === item ? colors.primary : colors.border }]}>
+                <TouchableOpacity onPress={() => setActiveSubject(item)} style={[styles.subjectChip, { backgroundColor: activeSubject === item ? colors.primary : colors.card, borderColor: activeSubject === item ? colors.primary : colors.border }]}>  
                   <Text style={[styles.subjectText2, { color: activeSubject === item ? "#FFF" : colors.foreground }]}>{item}</Text>
                 </TouchableOpacity>
               )}
@@ -256,7 +273,7 @@ export default function NotesScreen() {
               <Feather name="file-text" size={40} color={colors.mutedForeground} style={{ marginBottom: 12 }} />
               <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No notes yet</Text>
               <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>Be the first to share notes with your college!</Text>
-              <TouchableOpacity onPress={() => router.push("/notes/upload")} style={[styles.emptyBtn, { backgroundColor: colors.primary }]}>
+              <TouchableOpacity onPress={() => router.push("/notes/upload")} style={[styles.emptyBtn, { backgroundColor: colors.primary }]}>  
                 <Text style={styles.emptyBtnText}>Share Notes</Text>
               </TouchableOpacity>
             </View>
@@ -266,22 +283,6 @@ export default function NotesScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: 1 },
-  title: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  subtitle: { fontSize: 11, fontFamily: "Inter_500Medium" },
-  searchWrap: { padding: 12, borderBottomWidth: 1 },
-  searchBar: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, height: 40, gap: 8 },
-  searchInput: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular" },
-  loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
-  subjectChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 16, borderWidth: 1 },
-  subjectText2: { fontSize: 13, fontFamily: "Inter_500Medium" },
-  noteCard: { borderRadius: 12, borderWidth: 1, padding: 14, gap: 10 },
-  noteHeader: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
-  fileIcon: { width: 44, height: 44, borderRadius: 10, alignItems: "center", justifyContent: "center", flexShrink: 0 },
-  noteInfo: { flex: 1 },
   noteTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold", lineHeight: 21 },
   metaRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 5 },
   subjectBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },

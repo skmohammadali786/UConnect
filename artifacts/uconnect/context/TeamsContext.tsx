@@ -77,7 +77,7 @@ interface TeamRequestRow {
   status: TeamRequest["status"];
 }
 
-function rowToTeam(row: TeamRow, requests: TeamRequest[] = []): Team {
+const rowToTeam = (row: TeamRow, requests: TeamRequest[] = []): Team => {
   return {
     id: row.id,
     title: row.title,
@@ -92,7 +92,7 @@ function rowToTeam(row: TeamRow, requests: TeamRequest[] = []): Team {
     requests,
     createdAt: row.created_at,
   };
-}
+};
 
 export function TeamsProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();

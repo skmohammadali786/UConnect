@@ -81,7 +81,7 @@ interface AnimatedPostCardProps {
   onDelete: () => void;
 }
 
-function AnimatedPostCard({ post, index, currentUserId, onDelete }: AnimatedPostCardProps) {
+const AnimatedPostCard = ({ post, index, currentUserId, onDelete }: AnimatedPostCardProps) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(56)).current;
   const scaleAnim = useRef(new Animated.Value(0.88)).current;
@@ -113,7 +113,7 @@ function AnimatedPostCard({ post, index, currentUserId, onDelete }: AnimatedPost
       <PostCard post={post} currentUserId={currentUserId} onDelete={onDelete} index={index} />
     </Animated.View>
   );
-}
+};
 
 export default function HomeScreen() {
   const colors = useColors();

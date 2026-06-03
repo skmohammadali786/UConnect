@@ -26,7 +26,7 @@ interface ConfessionCardProps {
   onReveal: (id: string) => void;
 }
 
-function ConfessionCard({ item, index, colors, onVote, globalReveal, revealedIds, onReveal }: ConfessionCardProps): JSX.Element {
+const ConfessionCard = ({ item, index, colors, onVote, globalReveal, revealedIds, onReveal }: ConfessionCardProps): JSX.Element => {
   const anim = useRef(new Animated.Value(0)).current;
   const voteAnim = useRef(new Animated.Value(1)).current;
   const isRevealed = globalReveal || revealedIds.has(item.id);

@@ -20,7 +20,7 @@ function isLocalId(value: unknown) {
   return typeof value === "string" && value.startsWith(LOCAL_ID_PREFIX);
 }
 
-function rowToComment(
+const rowToComment = (
   row: {
     id: number;
     post_id: number;
@@ -37,7 +37,7 @@ function rowToComment(
     created_at: string;
   },
   userVote: "up" | "down" | null = null
-): Comment {
+): Comment => {
   return {
     id: row.id,
     postId: row.post_id,
@@ -60,16 +60,19 @@ function rowToComment(
     createdAt: row.created_at,
     replies: [],
   };
-}
+};
 
-function hasMatchingRemoteComment(local: Comment, remote: Comment[]): boolean {
+const hasMatchingRemoteComment = (
+  local: Comment,
+  remote: Comment[]
+): boolean => {
   return remote.some((c) =>
     c.parentId === local.parentId
     && c.authorId === local.authorId
     && c.isAnonymous === local.isAnonymous
     && c.content === local.content
   );
-}
+};
 
 export default function PostDetailScreen() {
   const colors = useColors();

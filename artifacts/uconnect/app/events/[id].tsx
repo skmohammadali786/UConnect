@@ -57,8 +57,7 @@ const EVENT_TICKET_QR_PREFIX = "uconnect:event-ticket:";
 function buildTicketQrValue(eventId: string, code: string) {
   return `${EVENT_TICKET_QR_PREFIX}${JSON.stringify({ eventId, code })}`;
 }
-
-function parseTicketQrValue(value: string) {
+const parseTicketQrValue = (value: string) => {
   const trimmed = value.trim();
   if (!trimmed) return null;
 
@@ -80,7 +79,7 @@ function parseTicketQrValue(value: string) {
   }
 
   return { eventId: null, code: trimmed };
-}
+};
 
 export default function EventDetailScreen() {
   const colors = useColors();

@@ -39,7 +39,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-function rowToUser(row: {
+const rowToUser = (row: {
   id: number;
   email?: string | null;
   phone?: string | null;
@@ -59,7 +59,7 @@ function rowToUser(row: {
   posts_count?: number;
   is_verified?: boolean;
   joined_at?: string;
-}): User {
+}): User => {
   return {
     id: row.id,
     email: row.email ?? "",
@@ -81,7 +81,7 @@ function rowToUser(row: {
     isVerified: row.is_verified ?? false,
     joinedAt: row.joined_at ?? new Date().toISOString(),
   };
-}
+};
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);

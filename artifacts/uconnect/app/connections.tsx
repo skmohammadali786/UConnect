@@ -84,7 +84,6 @@ export default function ConnectionsScreen() {
         .select(sourceField)
         .eq(filterField, targetUserId);
       if (edgeError) throw edgeError;
-
       const ids = Array.from(
         new Set(
           (edges ?? [])
@@ -108,20 +107,6 @@ export default function ConnectionsScreen() {
         .select("id, username, display_name, college, followers, avatar")
         .in("id", ids);
       if (profileError) throw profileError;
-
-      const byId = new Map(
-        (profiles ?? []).map((p: unknown) => {
-          if (
-            p &&
-            typeof p === 'object' &&
-            'id' in p &&
-            typeof (p as { id: unknown }).id === 'string'
-          ) {
-            return [(p as { id: string }).id, p];
-          }
-          throw new Error('Invalid profile object: ' + JSON.stringify(p));
-        })
-      );
     } catch {
       setList([]);
       showError("Could not load list", `Failed to load ${title.toLowerCase()}. Please try again.`);
@@ -141,9 +126,9 @@ export default function ConnectionsScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, backgroundColor: colors.headerBg, borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}> 
+      <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, backgroundColor: colors.headerBg, borderBottomColor: colors.border }]}> 
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}> 
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
         <View style={{ alignItems: "center" }}>

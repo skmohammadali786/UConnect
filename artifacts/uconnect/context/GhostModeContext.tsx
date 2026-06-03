@@ -52,9 +52,12 @@ interface RawGhostSessionRow {
 }
 
 function mapSession(row: RawGhostSessionRow): GhostSession {
+  const alias = [row.alias_snapshot, row.alias, row.ghost_alias].find(
+    (a) => a != null
+  ) ?? "Neon Phantom";
   return {
     id: row.id,
-    alias: row.alias_snapshot ?? row.alias ?? row.ghost_alias ?? "Neon Phantom",
+    alias,
     startedAt: row.started_at,
     expiresAt: row.expires_at,
     endedAt: row.ended_at ?? null,

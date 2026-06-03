@@ -43,7 +43,7 @@ interface SocialContextType {
 
 const SocialContext = createContext<SocialContextType | undefined>(undefined);
 
-function rowToReport(row: {
+export function rowToReport(row: {
   id: number;
   post_id?: number | null;
   reason: string;

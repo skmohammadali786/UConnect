@@ -39,7 +39,7 @@ interface ConfessionsContextType {
 
 const ConfessionsContext = createContext<ConfessionsContextType | undefined>(undefined);
 
-function getSensitiveValue(row: {
+export function getSensitiveValue(row: {
   has_sensitive_content?: boolean;
   hasSensitiveContent?: boolean;
   is_sensitive_content?: boolean;

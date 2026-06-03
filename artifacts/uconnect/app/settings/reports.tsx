@@ -126,57 +126,57 @@ export default function MyReportsScreen() {
             ]}
           >
             <Feather name="shield" size={14} color={colors.primary} />
-            <Text style={[styles.infoText, { color: colors.primary }]}>
-              You will receive a notification whenever moderation updates one of
-              your reports.
-            </Text>
-          </View>
+            <Text style={[styles.infoText, { color: colors.primary }]}>  
+              You will receive a notification whenever moderation updates one of  
+              your reports.  
+            </Text>  
+          </View>  
 
-          {reports.map((report, i) => {
-            const status =
-              STATUS_CONFIG[report.status] || STATUS_CONFIG.pending;
-            const action = ACTION_COPY[report.action] || ACTION_COPY.pending;
-            const canOpenPost = Boolean(
-              report.postId &&
-              !report.postWasDeleted &&
-              report.action !== "post_deleted",
-            );
-            return (
-              <View
-                key={`${report.id}-${i}`}
-                style={[
-                  styles.card,
-                  { backgroundColor: colors.card, borderColor: colors.border },
-                ]}
-              >
-                <View style={styles.cardHeader}>
-                  <View
-                    style=[
-                      styles.reasonBadge,
-                      { backgroundColor: colors.secondary },
-                    ]
-                  >
-                    <Feather
-                      name="flag"
-                      size={12}
-                      color={colors.mutedForeground}
-                    />
-                    <Text
-                      style=[styles.reasonText, { color: colors.foreground }]
-                      numberOfLines={1}
-                    >
-                      {report.reason}
-                    </Text>
-                  </View>
-                  <View
-                    style=[
-                      styles.statusBadge,
-                      { backgroundColor: status.color + "18" },
-                    ]
-                  >
-                    <Feather
-                      name={status.icon as string}
-                      size={12}
+          {reports.map((report, i) => {  
+            const status =  
+              STATUS_CONFIG[report.status] || STATUS_CONFIG.pending;  
+            const action = ACTION_COPY[report.action] || ACTION_COPY.pending;  
+            const canOpenPost = Boolean(  
+              report.postId &&  
+              !report.postWasDeleted &&  
+              report.action !== "post_deleted",  
+            );  
+            return (  
+              <View  
+                key={`${report.id}-${i}`}  
+                style={[  
+                  styles.card,  
+                  { backgroundColor: colors.card, borderColor: colors.border },  
+                ]}  
+              >  
+                <View style={styles.cardHeader}>  
+                  <View  
+                    style={[  
+                      styles.reasonBadge,  
+                      { backgroundColor: colors.secondary },  
+                    ]}  
+                  >  
+                    <Feather  
+                      name="flag"  
+                      size={12}  
+                      color={colors.mutedForeground}  
+                    />  
+                    <Text  
+                      style={[styles.reasonText, { color: colors.foreground }]}  
+                      numberOfLines={1}  
+                    >  
+                      {report.reason}  
+                    </Text>  
+                  </View>  
+                  <View  
+                    style={[  
+                      styles.statusBadge,  
+                      { backgroundColor: status.color + "18" },  
+                    ]}  
+                  >  
+                    <Feather  
+                      name={status.icon as string}  
+                      size={12}  
                       color={status.color}
                     />
                     <Text style=[styles.statusText, { color: status.color }]>

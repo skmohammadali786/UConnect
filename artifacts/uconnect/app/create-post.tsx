@@ -27,13 +27,14 @@ const MAX_VIDEO_DURATION_MS = MAX_VIDEO_DURATION_SECONDS * 1000;
 const AUTO_DELETE_OPTIONS = [
   { label: "Never", value: "never" },
   { label: "1 hour", value: "1h" },
+const autoDeleteOptions = [
   { label: "6 hours", value: "6h" },
   { label: "24 hours", value: "24h" },
   { label: "3 days", value: "3d" },
   { label: "7 days", value: "7d" },
 ];
 
-function getAutoDeleteMs(value: string): number | null {
+const getAutoDeleteMs = (value: string): number | null => {
   const map: Record<string, number> = {
     "1h": 60 * 60 * 1000,
     "6h": 6 * 60 * 60 * 1000,
@@ -42,15 +43,15 @@ function getAutoDeleteMs(value: string): number | null {
     "7d": 7 * 24 * 60 * 60 * 1000,
   };
   return map[value] ?? null;
-}
+};
 
-function formatDraftAge(iso: string) {
+const formatDraftAge = (iso: string) => {
   const ms = Date.now() - new Date(iso).getTime();
   if (ms < 60_000) return "just now";
   if (ms < 3600_000) return `${Math.floor(ms / 60_000)}m ago`;
   if (ms < 86400_000) return `${Math.floor(ms / 3600_000)}h ago`;
   return `${Math.floor(ms / 86400_000)}d ago`;
-}
+};
 
 export default function CreatePostScreen() {
   const colors = useColors();

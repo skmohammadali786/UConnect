@@ -139,7 +139,7 @@ export default function HelpScreen() {
             </View>
             <Feather name="arrow-right" size={16} color={colors.mutedForeground} />
           </TouchableOpacity>
-        ))
+        }))
       </ScrollView>
     </Animated.View>
   );

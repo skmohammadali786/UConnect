@@ -61,7 +61,7 @@ function rowToInternship(r: InternshipRow): Internship {
   };
 }
 
-const TYPE_COLORS: Record<string, string> = { Remote: "#00A86B", Hybrid: "#3B82F6", Onsite: "#8B5CF6" };
+const TYPE_COLORS: Record<string, string> = { Remote: "#00A86B", Hybrid: "3B82F6", Onsite: "#8B5CF6" };
 
 interface InternshipCardProps {
   item: Internship;
@@ -82,8 +82,13 @@ function InternshipCard({ item, index, applications, onApply, colors }: Internsh
   const application = applications[item.id] as ApplicationState | undefined;
   const applied = !!application;
   const statusLabel = application?.status ?? "pending";
-  const isApproved = statusLabel === "approved" || statusLabel === "hired";
-  const isRejected = statusLabel === "rejected";
+  const STATUS_MAP: Record<string, { isApproved: boolean; isRejected: boolean }> = {
+    approved: { isApproved: true, isRejected: false },
+    hired: { isApproved: true, isRejected: false },
+    rejected: { isApproved: false, isRejected: true },
+    pending: { isApproved: false, isRejected: false },
+  };
+  const { isApproved, isRejected } = STATUS_MAP[statusLabel] ?? STATUS_MAP.pending;
 
   useEffect(() => {
     Animated.timing(anim, { toValue: 1, duration: 300, delay: index * 70, useNativeDriver: true }).start();
@@ -91,9 +96,9 @@ function InternshipCard({ item, index, applications, onApply, colors }: Internsh
 
   return (
     <Animated.View style={{ opacity: anim, transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
-      <TouchableOpacity onPress={() => router.push({ pathname: "/internships/[id]", params: { id: item.id } })} style={[styles.card, { backgroundColor: colors.card, borderColor: applied ? colors.primary + "50" : colors.border }]}>        
+      <TouchableOpacity onPress={() => router.push({ pathname: "/internships/[id]", params: { id: item.id } })} style={[styles.card, { backgroundColor: colors.card, borderColor: applied ? `${colors.primary}50` : colors.border }]}>        
         <View style={styles.cardHeader}>
-          <View style={[styles.companyIcon, { backgroundColor: colors.primary + "15" }]}>            
+          <View style={[styles.companyIcon, { backgroundColor: `${colors.primary}15` }]}>            
             <Feather name="briefcase" size={20} color={colors.primary} />
           </View>
           <View style={styles.cardTitle}>
@@ -103,7 +108,7 @@ function InternshipCard({ item, index, applications, onApply, colors }: Internsh
             </View>
             <Text style={[styles.role, { color: colors.mutedForeground }]}>{item.role}</Text>
           </View>
-          <View style={[styles.typeBadge, { backgroundColor: (TYPE_COLORS[item.type] || "#6B7280") + "20" }]}>
+          <View style={[styles.typeBadge, { backgroundColor: `${TYPE_COLORS[item.type] || "#6B7280"}20` }] }>
             <Text style={[styles.typeText, { color: TYPE_COLORS[item.type] || "#6B7280" }]}>{item.type}</Text>
           </View>
         </View>
@@ -116,7 +121,6 @@ function InternshipCard({ item, index, applications, onApply, colors }: Internsh
             <Feather name="clock" size={12} color={colors.mutedForeground} />
             <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{item.duration}</Text>
           </View>
-        </View>
         <Text style={[styles.stipend, { color: colors.primary }]}>{item.stipend}</Text>
         {item.skills.length > 0 && (
           <View style={styles.skills}>
@@ -138,10 +142,8 @@ function InternshipCard({ item, index, applications, onApply, colors }: Internsh
           </TouchableOpacity>
         </View>
         {applied ? (
-          <View style={[styles.statusBadge, { backgroundColor: isRejected ? "#EF444414" : isApproved ? "#00A86B14" : colors.primary + "14", borderColor: isRejected ? "#EF444440" : isApproved ? "#00A86B40" : colors.primary + "40" }]}>
-            <Feather name={isRejected ? "x-circle" : isApproved ? "check-circle" : "clock"} size={13} color={isRejected ? "#EF4444" : isApproved ? "#00A86B" : colors.primary} />
-            <Text style={[styles.statusText, { color: isRejected ? "#EF4444" : isApproved ? "#00A86B" : colors.primary }]}>
-              {statusLabel.charAt(0).toUpperCase() + statusLabel.slice(1)}
+          <View style={[styles.statusBadge, { backgroundColor: isRejected ? "#EF444414" : isApproved ? "#00A86B14" : colors.primary + "14", borderColor: isRejected ? "#EF444440" : isApproved ? "#00A86B40" : colors.primary + "40" }]}>\n            <Feather name={isRejected ? "x-circle" : isApproved ? "check-circle" : "clock"} size={13} color={isRejected ? "#EF4444" : isApproved ? "#00A86B" : colors.primary} />
+            <Text style={[styles.statusText, { color: isRejected ? "#EF4444" : isApproved ? "#00A86B" : colors.primary }]}>\n              {statusLabel.charAt(0).toUpperCase() + statusLabel.slice(1)}
             </Text>
           </View>
         ) : null}
@@ -229,74 +231,19 @@ export default function InternshipsScreen() {
     const already = !!applications[id];
     const updated = { ...applications };
 
-    if (already) {
-      await supabase.from("internship_applications").delete().eq("user_id", user.id).eq("internship_id", id);
-      delete updated[id];
-    } else {
-      await supabase.rpc("apply_internship", { p_internship_id: id, p_message: "" });
-      const item = internships.find((i) => i.id === id);
-      showSuccess(`Applied to ${item?.company}!`, "Application tracked successfully.");
-      updated[id] = { status: "pending", reviewReason: null };
-    }
-    setApplications(updated);
-  };
+  if (already) {
+    await supabase.from("internship_applications").delete().eq("user_id", user.id).eq("internship_id", id);
+    delete updated[id];
+  } else {
+    await supabase.rpc("apply_internship", { p_internship_id: id, p_message: "" });
+    const item = internships.find((i) => i.id === id);
+    showSuccess(`Applied to ${item?.company}!`, "Application tracked successfully.");
+    updated[id] = { status: "pending", reviewReason: null };
+  }
+  setApplications(updated);
+};
 
-  const filtered = internships.filter((i) => activeType === "All" || i.type === activeType);
-
-  return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Animated.View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, backgroundColor: colors.headerBg, borderBottomColor: colors.border, opacity: headerAnim, transform: [{ translateY: headerSlide }] }]}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Feather name="arrow-left" size={22} color={colors.foreground} />
-        </TouchableOpacity>
-        <View>
-          <TypewriterText text="Internships" style={[styles.title, { color: colors.foreground }]} delay={300} speed={55} />
-          {Object.keys(applications).length > 0 && <Text style={[styles.subtitle, { color: colors.primary }]}>{Object.keys(applications).length} applications</Text>}
-        </View>
-        <TouchableOpacity onPress={() => router.push("/internships/post")} style={[styles.createBtn, { backgroundColor: colors.primary }]}>
-          <Feather name="plus" size={18} color="#FFF" />
-        </TouchableOpacity>
-      </Animated.View>
-
-      {loading ? (
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      ) : (
-        <FlatList
-          data={filtered}
-          keyExtractor={(item) => item.id}
-          ListHeaderComponent={
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12, gap: 8 }}>
-              {["All", "Remote", "Hybrid", "Onsite"].map((t) => (
-                <TouchableOpacity key={t} onPress={() => setActiveType(t)} style={[styles.filterChip, { backgroundColor: activeType === t ? colors.primary : colors.card, borderColor: activeType === t ? colors.primary : colors.border }]}>
-                  <Text style={[styles.filterText, { color: activeType === t ? "#FFF" : colors.foreground }]}>{t}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          }
-          renderItem={({ item, index }) => (
-            <InternshipCard item={item} index={index} applications={applications} onApply={handleApply} colors={colors} />
-          )}
-          ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 80 }}
-          showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />}
-          ListEmptyComponent={
-            <View style={styles.empty}>
-              <Feather name="briefcase" size={40} color={colors.mutedForeground} style={{ marginBottom: 12 }} />
-              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No internships yet</Text>
-              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>Post the first internship opportunity for your college!</Text>
-              <TouchableOpacity onPress={() => router.push("/internships/post")} style={[styles.emptyBtn, { backgroundColor: colors.primary }]}>
-                <Text style={styles.emptyBtnText}>Post Internship</Text>
-              </TouchableOpacity>
-            </View>
-          }
-        />
-      )}
-    </View>
-  );
-}
+const filtered = internships.filter((i) => activeType === "All" || i.type === activeType);
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
@@ -313,6 +260,10 @@ const styles = StyleSheet.create({
   cardTitle: { flex: 1 },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   company: { fontSize: 16, fontFamily: "Inter_700Bold" },
+});
+
+return (
+  <View style={[styles.container, { backgroundColor: colors.background }]}>
   role: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 2 },
   typeBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   typeText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },

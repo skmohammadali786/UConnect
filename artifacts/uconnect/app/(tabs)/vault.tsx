@@ -13,6 +13,7 @@ import { useToast } from "@/components/Toast";
 import { supabase } from "@/lib/supabase";
 import { fetchVaultDetail, type DebateSide, type VaultBadge, type VaultDetail, type VaultDetailKind, type VaultPriority } from "@/services/vault";
 
+
 type ModalType = "alert" | "nomination" | "debate" | "wiki" | "argument" | null;
 
 const LEGEND_CATEGORIES = ["Best Developer", "Best Designer", "Best Mentor", "Best Team Leader", "Most Helpful Student", "Best Content Creator", "Community Builder", "Startup Leader", "Campus Influencer"];
@@ -21,7 +22,7 @@ const ALERT_CATEGORIES = ["Safety Alert", "Medical Emergency", "Blood Required",
 const WIKI_CATEGORIES = ["Academics", "Professors", "Hostels", "Placements", "Internships", "Clubs", "Labs", "Events", "Study Resources"];
 const ND = Platform.OS !== "web";
 
-function Metric({ label, value, icon, colors }: { label: string; value: string | number; icon: React.ComponentProps<typeof Feather>["name"]; colors: ReturnType<typeof useColors> }): JSX.Element {
+const Metric = ({ label, value, icon, colors }: { label: string; value: string | number; icon: React.ComponentProps<typeof Feather>["name"]; colors: ReturnType<typeof useColors> }): JSX.Element => {
   return (
     <View style={[styles.metricCard, { backgroundColor: colors.card, borderColor: colors.border, shadowColor: colors.shadow }]}>  
       <Feather name={icon} size={18} color={colors.primary} />
@@ -29,13 +30,13 @@ function Metric({ label, value, icon, colors }: { label: string; value: string |
       <Text style={[styles.metricLabel, { color: colors.mutedForeground }]}>{label}</Text>
     </View>
   );
-}
+};
 
-function percentWidth(value: unknown): DimensionValue {
+const percentWidth = (value: unknown): DimensionValue => {
   const next = Number(value ?? 0);
   if (!Number.isFinite(next)) return "0%";
   return `${Math.min(100, Math.max(0, next))}%`;
-}
+};
 
 export default function VaultScreen() {
   const colors = useColors();
@@ -180,14 +181,14 @@ export default function VaultScreen() {
   };
 
   return (
-    <Animated.View style={[styles.container, { backgroundColor: colors.background, opacity: screenFade, transform: [{ translateY: screenSlide }] }]}>
+    <Animated.View style={[styles.container, { backgroundColor: colors.background, opacity: screenFade, transform: [{ translateY: screenSlide }] }]}>  
       <ScrollView refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />} contentContainerStyle={{ paddingTop: insets.top + 14, paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
-        <View style={[styles.header, { borderBottomColor: colors.border }]}>
-          <View style={styles.headerTopRow}>
-            <TouchableOpacity accessibilityLabel="Go back" onPress={() => router.back()} style={styles.backButton}>
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>  
+          <View style={styles.headerTopRow}>  
+            <TouchableOpacity accessibilityLabel="Go back" onPress={() => router.back()} style={styles.backButton}>  
               <Feather name="arrow-left" size={22} color={colors.foreground} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push("/settings/ghost-mode")} style={[styles.ghostButton, { backgroundColor: ghost.isGhostActive ? colors.primary : colors.card, borderColor: ghost.isGhostActive ? colors.primary + "55" : colors.border }]}>
+            <TouchableOpacity onPress={() => router.push("/settings/ghost-mode")} style={[styles.ghostButton, { backgroundColor: ghost.isGhostActive ? colors.primary : colors.card, borderColor: ghost.isGhostActive ? `${colors.primary}55` : colors.border }]}>  
               <Feather name="cloud-snow" size={18} color={ghost.isGhostActive ? colors.primaryForeground : colors.primary} />
               <Text style={[styles.ghostButtonText, { color: ghost.isGhostActive ? colors.primaryForeground : colors.foreground }]}>{ghost.activeCount}</Text>
             </TouchableOpacity>
@@ -197,9 +198,9 @@ export default function VaultScreen() {
           <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>Reputation, alerts, debates, legends, and wiki knowledge.</Text>
         </View>
 
-        <View style={[styles.heroCard, { backgroundColor: colors.card, borderColor: colors.border, shadowColor: colors.shadow }]}>
-          <View style={styles.heroTop}>
-            <View>
+        <View style={[styles.heroCard, { backgroundColor: colors.card, borderColor: colors.border, shadowColor: colors.shadow }]}>  
+          <View style={styles.heroTop}>  
+            <View>  
               <Text style={[styles.heroLabel, { color: colors.mutedForeground }]}>Vault Reputation</Text>
               <Text style={[styles.heroScore, { color: colors.foreground }]}>{summary?.score ?? 0}</Text>
             </View>
@@ -209,7 +210,7 @@ export default function VaultScreen() {
           <Text style={[styles.heroMeta, { color: colors.mutedForeground }]}>Rank {summary?.rank ? `#${summary.rank}` : "—"} · Skill Strength {summary?.skillStrength ?? 0}%</Text>
         </View>
 
-        <View style={styles.metricsGrid}>
+        <View style={styles.metricsGrid}>  
           <Metric icon="award" label="Vault Rank" value={summary?.rank ? `#${summary.rank}` : "—"} colors={colors} />
           <Metric icon="zap" label="Skill Strength" value={`${summary?.skillStrength ?? 0}%`} colors={colors} />
           <Metric icon="award" label="Vault Badges" value={summary?.badges.length ?? 0} colors={colors} />
@@ -314,7 +315,7 @@ function VaultDetailModal({ detail, loading, colors, onClose }: { detail: VaultD
   return (
     <Modal visible={loading || Boolean(detail)} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
-        <View style={[styles.detailCard, { backgroundColor: colors.card }]}>
+        <View style={[styles.detailCard, { backgroundColor: colors.card }]}>  
           <View style={styles.detailHeader}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.kicker, { color: colors.primary }]}>VAULT DETAILS</Text>
@@ -336,7 +337,7 @@ function VaultDetailModal({ detail, loading, colors, onClose }: { detail: VaultD
   );
 }
 
-function VaultModal({
+export function VaultModal({
   modal,
   form,
   setForm,
@@ -411,9 +412,9 @@ interface InputProps {
   multiline?: boolean;
 }
 
-function Input({ formKey, placeholder, form, setForm, colors, multiline }: InputProps) {
+const Input = ({ formKey, placeholder, form, setForm, colors, multiline }: InputProps) => {
   return <TextInput value={form[formKey] ?? ""} onChangeText={(text) => setForm({ ...form, [formKey]: text })} placeholder={placeholder} placeholderTextColor={colors.placeholder} multiline={multiline} style={[styles.input, multiline && styles.multiline, { backgroundColor: colors.input, borderColor: colors.border, color: colors.foreground }]} />;
-}
+};
 
 function Choice({ values, active, onPick, colors }: { values: string[]; active: string; onPick: (v: string) => void; colors: { primary: string; secondary: string; primaryForeground: string; mutedForeground: string; }; }) {
   return <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.choiceRow}>{values.map((v: string) => <TouchableOpacity key={v} onPress={() => onPick(v)} style={[styles.choice, { backgroundColor: active === v ? colors.primary : colors.secondary }]}><Text style={[styles.choiceText, { color: active === v ? colors.primaryForeground : colors.mutedForeground }]}>{v}</Text></TouchableOpacity>)}</ScrollView>;

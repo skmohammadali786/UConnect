@@ -361,8 +361,12 @@ export default function SearchScreen() {
   const renderPeopleCard = ({ item, index }: { item: Person; index: number }) => {
     const following = isFollowing(item.id);
     const ringColor = item.avatarRingColor || colors.primary;
-    const isOfficial = item.username?.toLowerCase() === "uconnect";
-    const badgeColor = isOfficial ? OFFICIAL_UCONNECT_BADGE_COLOR : DEFAULT_VERIFIED_BADGE_COLOR;
+    const userType = item.username?.toLowerCase() === "uconnect" ? "official" : "default";
+    const badgeColorMap = {
+      official: OFFICIAL_UCONNECT_BADGE_COLOR,
+      default: DEFAULT_VERIFIED_BADGE_COLOR
+    };
+    const badgeColor = badgeColorMap[userType];
     return (
       <FadeSlideItem index={index}>
         <TouchableOpacity

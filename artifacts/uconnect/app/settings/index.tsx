@@ -34,7 +34,7 @@ interface SettingRowProps {
   badge?: string | number;
 }
 
-function SettingRow({ icon, label, sub, onPress, isSwitch, switchValue, onSwitchChange, destructive, colors, last, badge }: SettingRowProps) {
+export function SettingRow({ icon, label, sub, onPress, isSwitch, switchValue, onSwitchChange, destructive, colors, last, badge }: SettingRowProps) {
   const pressAnim = useRef(new Animated.Value(1)).current;
   const onPressIn = () => {
     if (!isSwitch) Animated.spring(pressAnim, { toValue: 0.97, tension: 300, friction: 12, useNativeDriver: ND }).start();
@@ -42,6 +42,13 @@ function SettingRow({ icon, label, sub, onPress, isSwitch, switchValue, onSwitch
   const onPressOut = () => {
     if (!isSwitch) Animated.spring(pressAnim, { toValue: 1, tension: 300, friction: 12, useNativeDriver: ND }).start();
   };
+  const endComponentMap = {
+    switch: <Switch value={switchValue} onValueChange={onSwitchChange} trackColor={{ false: colors.border, true: colors.primary }} thumbColor="#FFF" ios_backgroundColor={colors.border} />,
+    chevron: <Feather name="chevron-right" size={15} color={colors.mutedForeground} />,
+    none: null
+  };
+  const endComponentKey = isSwitch ? 'switch' : badge ? 'none' : 'chevron';
+  const endComponent = endComponentMap[endComponentKey];
   return (
     <Animated.View style={{ transform: [{ scale: pressAnim }] }}>
       <TouchableOpacity
@@ -57,18 +64,14 @@ function SettingRow({ icon, label, sub, onPress, isSwitch, switchValue, onSwitch
         </View>
         <View style={{ flex: 1 }}>
           <Text style={[styles.rowLabel, { color: destructive ? "#EF4444" : colors.foreground }]}>{label}</Text>
-          {sub ? <Text style={[styles.rowSub, { color: colors.mutedForeground }]}>{sub}</Text> : null}
+          {sub && <Text style={[styles.rowSub, { color: colors.mutedForeground }]}>{sub}</Text>}
         </View>
         {badge && (
           <View style={[styles.badge, { backgroundColor: colors.primary }]}>  
             <Text style={styles.badgeText}>{badge}</Text>
           </View>
         )}
-        {isSwitch ? (
-          <Switch value={switchValue} onValueChange={onSwitchChange} trackColor={{ false: colors.border, true: colors.primary }} thumbColor="#FFF" ios_backgroundColor={colors.border} />
-        ) : !badge ? (
-          <Feather name="chevron-right" size={15} color={colors.mutedForeground} />
-        ) : null}
+        {endComponent}
       </TouchableOpacity>
     </Animated.View>
   );
@@ -90,7 +93,7 @@ interface ThemeSelectorProps {
   };
 }
 
-function ThemeSelector({ colors }: ThemeSelectorProps) {
+export default function ThemeSelector({ colors }: ThemeSelectorProps) {
   const { themeMode, setThemeMode } = useTheme();
   const { showSuccess } = useToast();
   const options: { key: "dark" | "light" | "system"; icon: React.ComponentProps<typeof Feather>["name"]; label: string }[] = [
