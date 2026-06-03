@@ -1,9 +1,9 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Animated, Easing, FlatList, Platform, ScrollView, StyleSheet,
-  Image, Text, TextInput, TouchableOpacity, View,
+  Text, TextInput, TouchableOpacity, View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
@@ -13,7 +13,6 @@ import { useSocial } from "@/context/SocialContext";
 import { useToast } from "@/components/Toast";
 import { PostCard } from "@/components/PostCard";
 import { AuraRingAvatar } from "@/components/AuraRingAvatar";
-import { formatRelativeTime } from "@/utils/time";
 import { TypewriterText } from "@/components/TypewriterText";
 import { supabase } from "@/lib/supabase";
 import { getItem, removeItem, setItem, STORAGE_KEYS } from "@/utils/storage";
@@ -38,7 +37,7 @@ const DISCOVER = [
   { id: "events", icon: "calendar", label: "Events", route: "/events", color: "#F59E0B", desc: "Campus events" },
   { id: "teams", icon: "users", label: "Teams", route: "/teams", color: "#00A86B", desc: "Find your squad" },
   { id: "notes", icon: "book-open", label: "Notes", route: "/notes", color: "#3B82F6", desc: "Study materials" },
-  { id: "vault", icon: "shield", label: "Vault", route: "/(tabs)/vault", color: "#7C3AED", desc: "Campus intelligence" },
+  { id: "vault", icon: "shield", label: "Vault", route: "(/tabs)/vault", color: "#7C3AED", desc: "Campus intelligence" },
   { id: "ghost", icon: "cloud-snow", label: "Ghost Mode", route: "/settings/ghost-mode", color: "#64748B", desc: "Anonymous mode" },
   { id: "chat", icon: "send", label: "Chats", route: "/chat", color: "#06B6D4", desc: "Direct messages" },
 ];
@@ -481,7 +480,7 @@ export default function SearchScreen() {
 
         {hasQuery && (
           <View style={[styles.tabRow, { borderBottomColor: colors.border }]}>
-            {searchTabs.map((t, i) => (
+            {searchTabs.map((t) => (
               <TouchableOpacity
                 key={t.key}
                 onPress={() => switchTab(t.key)}

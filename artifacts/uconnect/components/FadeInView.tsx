@@ -28,7 +28,7 @@ export function FadeInView({ children, delay = 0, duration = 320, from = "bottom
   );
 }
 
-export function ScaleOnPress({ children, style, onPress, ...rest }: any) {
+export function ScaleOnPress({ children, style, ...rest }: any) {
   const scale = useRef(new Animated.Value(1)).current;
 
   const onPressIn = () => Animated.spring(scale, { toValue: 0.96, useNativeDriver: ND, tension: 250, friction: 10 }).start();
