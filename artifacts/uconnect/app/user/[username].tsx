@@ -272,10 +272,10 @@ export default function UserProfileScreen() {
   const listData = activeTab === "posts" ? userPosts : repostedPosts;
   return (
     <Animated.View
-      style={[
+      style=[
         { flex: 1, backgroundColor: colors.background },
         { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
-      ]}
+      ]
     >
       <FlatList
         data={listData}
@@ -334,7 +334,7 @@ export default function UserProfileScreen() {
               }
               onQrPress={() =>
                 router.push({
-                  pathname: "/scan-connect" as any,
+                  pathname: "/scan-connect",
                   params: { username: profile.username, allowScan: isMe ? "1" : "0" },
                 })
               }
@@ -356,7 +356,7 @@ export default function UserProfileScreen() {
             {profile.interests?.length > 0 ? (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.interestsRow}>
                 {profile.interests.map((interest: string) => (
-                  <View key={interest} style={[styles.chip, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "25" }]}>
+                  <View key={interest} style={[styles.chip, { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}25` }]}>  
                     <Text style={[styles.chipText, { color: colors.primary }]}>{interest}</Text>
                   </View>
                 ))}

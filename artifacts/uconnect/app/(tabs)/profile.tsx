@@ -301,20 +301,20 @@ export default function ProfileScreen() {
       {user.interests?.length ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.interestsRow}>
           {user.interests.map((interest: string) => (
-            <View key={interest} style={[styles.interestChip, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "25" }]}>
+            <View key={interest} style={[styles.interestChip, { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}25` }]}>
               <Text style={[styles.interestText, { color: colors.primary }]}>{interest}</Text>
             </View>
           ))}
         </ScrollView>
       ) : null}
 
-      <View style={[styles.joinedRow, { borderTopColor: colors.border }]}>
+      <View style={[styles.joinedRow, { borderTopColor: colors.border }]}>        
         <Feather name="calendar" size={14} color={colors.mutedForeground} />
         <Text style={[styles.joinedText, { color: colors.mutedForeground }]}>Joined {joinedDate}</Text>
       </View>
 
       <ProfileTabs
-        items={tabItems as any}
+        items={tabItems}
         activeKey={activeTab}
         onChange={setActiveTab}
         colors={colors}
@@ -326,7 +326,7 @@ export default function ProfileScreen() {
 
   if (activeTab === "activity") {
     return (
-      <Animated.View style={[{ flex: 1 }, { backgroundColor: colors.background, opacity: fadeAnim }]}>
+      <Animated.View style={[{ flex: 1 }, { backgroundColor: colors.background, opacity: fadeAnim }]}>        
         <ScrollView
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
           contentContainerStyle={{ paddingBottom: 100 }}
