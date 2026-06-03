@@ -34,10 +34,11 @@ type TabId = "posts" | "saved" | "reposts" | "confessions" | "activity";
 const PROFILE_TAB_MIN_WIDTH = 92;
 
 
+
 export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { posts, deletePost } = usePosts();
   const { confessions } = useConfessions();
   const { followingIds } = useSocial();
