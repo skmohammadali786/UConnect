@@ -1,34 +1,33 @@
 name: Expo Update
 
 on:
-  push:
-    branches:
-      - main
+push:
+branches:
+- main
 
 jobs:
-  update:
-    runs-on: ubuntu-latest
+update:
+runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+steps:
+  - name: Checkout repo
+    uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9.15.0
+  - name: Setup pnpm
+    uses: pnpm/action-setup@v4
+    with:
+      version: 9.15.0
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'pnpm'
+  - name: Setup Node
+    uses: actions/setup-node@v4
+    with:
+      node-version: 20
 
-      - name: Install dependencies
-        run: pnpm install
+  - name: Install dependencies
+    run: pnpm install
 
-      - name: Publish update
-        working-directory: artifacts/uconnect
-        run: pnpm dlx eas-cli@latest update --branch preview --auto --non-interactive
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+  - name: Publish Preview Update
+    working-directory: artifacts/uconnect
+    run: pnpm dlx eas-cli@latest update --branch preview --environment preview --auto --non-interactive
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
