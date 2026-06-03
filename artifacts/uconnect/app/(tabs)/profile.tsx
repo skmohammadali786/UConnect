@@ -27,6 +27,7 @@ import {
   ProfileStatsCard,
   ProfileTabs,
   ProfileVaultSummary,
+  type ProfileTabItem,
 } from "@/components/profile";
 
 
@@ -157,7 +158,7 @@ export default function ProfileScreen() {
       };
     })
     .filter(Boolean) as typeof posts;
-  const tabItems: { key: TabId; icon: string; label: string; count: number }[] = [
+  const tabItems: ProfileTabItem<TabId>[] = [
     { key: "posts", icon: "file-text", label: "Posts", count: myPosts.length },
     { key: "confessions", icon: "message-square", label: "Confessions", count: myConfessions.length },
     { key: "saved", icon: "bookmark", label: "Saved", count: savedPosts.length },

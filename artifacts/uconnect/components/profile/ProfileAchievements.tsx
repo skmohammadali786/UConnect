@@ -21,58 +21,6 @@ const FALLBACK_BADGES: Badge[] = [
 
 const PALETTE = ["#16A34A", "#F59E0B", "#8B5CF6", "#0EA5E9", "#22C55E", "#FBBF24"];
 
-const FALLBACK_BADGES = [/* ...fallback badges data... */];
-const PALETTE = [/* ...palette colors... */];
-
-const styles = StyleSheet.create({
-  section: {
-    marginVertical: 20,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  kicker: {
-    fontSize: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  viewAll: {
-    fontSize: 12,
-  },
-  badgeRow: {
-    paddingVertical: 10,
-  },
-  badgeCard: {
-    width: 80,
-    height: 80,
-    marginRight: 10,
-    borderWidth: 1,
-    borderRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeIcon: {
-    width: 40,
-    height: 40,
-    borderWidth: 2,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 5,
-  },
-  badgeLabel: {
-    fontSize: 10,
-    textAlign: 'center',
-  },
-});
-
 export function ProfileAchievements({ badges, colors, onViewAll }: { badges?: Badge[] | null; colors: { primary: string; profileCard?: string; card: string; profileCardBorder?: string; border: string; profileShadow?: string; shadow: string; foreground: string; }; onViewAll?: () => void }) {
   const items = (badges?.length ? badges : FALLBACK_BADGES).slice(0, 6);
 
