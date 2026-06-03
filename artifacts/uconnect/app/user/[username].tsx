@@ -272,11 +272,11 @@ export default function UserProfileScreen() {
   const listData = activeTab === "posts" ? userPosts : repostedPosts;
   return (
     <Animated.View
-      style=[
-        { flex: 1, backgroundColor: colors.background },
-        { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
-      ]
-    >
+  style={[
+    { flex: 1, backgroundColor: colors.background },
+    { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+  ]}
+>
       <FlatList
         data={listData}
         keyExtractor={(item) => item.id}
