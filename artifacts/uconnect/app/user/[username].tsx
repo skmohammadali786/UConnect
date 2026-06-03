@@ -1,12 +1,10 @@
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
   FlatList,
-  Image,
-  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -16,7 +14,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PostCard } from "@/components/PostCard";
-import { AuraRingAvatar } from "@/components/AuraRingAvatar";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { usePosts } from "@/context/PostsContext";
@@ -25,13 +22,17 @@ import { useChat } from "@/context/ChatContext";
 import { useToast } from "@/components/Toast";
 import { supabase } from "@/lib/supabase";
 import { useVaultSummary } from "@/hooks/useVault";
-import { getSocialLinkInfo } from "@/utils/socialLink";
-import { ProfileVaultSummary } from "@/components/profile";
+import {
+  ProfileActionButton,
+  ProfileHero,
+  ProfileHeroIconButton,
+  ProfileStatsCard,
+  ProfileTabs,
+  ProfileVaultSummary,
+} from "@/components/profile";
 import { DEFAULT_AURA_RING, normalizeAuraRingValue } from "@/utils/auraRing";
 
 const ND = Platform.OS !== "web";
-const OFFICIAL_UCONNECT_BADGE_COLOR = "#EE4B2B";
-const DEFAULT_VERIFIED_BADGE_COLOR = "#16A34A";
 
 export default function UserProfileScreen() {
   const colors = useColors();
@@ -256,7 +257,6 @@ export default function UserProfileScreen() {
   if (!profile) return null;
 
   const followerCount = profile.followers ?? 0;
-  const initials = profile.displayName?.charAt(0)?.toUpperCase() || "U";
   const postsById = new Map(posts.map((p) => [p.id, p]));
   const repostedPosts = repostRows
     .map((r) => {
@@ -270,8 +270,6 @@ export default function UserProfileScreen() {
     })
     .filter(Boolean) as typeof posts;
   const listData = activeTab === "posts" ? userPosts : repostedPosts;
-  const socialLinkInfo = getSocialLinkInfo(profile.socialLink);
-
   return (
     <Animated.View
       style={[
@@ -289,464 +287,91 @@ export default function UserProfileScreen() {
         contentContainerStyle={{ paddingBottom: 100 }}
         ListHeaderComponent={
           <View>
-            <View
-              style={[
-                styles.header,
-                {
-                  paddingTop: Platform.OS === "web" ? 67 : insets.top + 8,
-                  backgroundColor: colors.headerBg,
-                  borderBottomColor: colors.border,
-                },
-              ]}
-            >
-              <TouchableOpacity
-                onPress={() => router.back()}
-                style={styles.backBtn}
-              >
-                <Feather
-                  name="arrow-left"
-                  size={22}
-                  color={colors.foreground}
-                />
-              </TouchableOpacity>
-              <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-                @{key}
-              </Text>
-              <View style={{ width: 38 }} />
-            </View>
-
-            <View style={{ backgroundColor: colors.card }}>
-              {profile.banner ? (
-                <Image
-                  source={{ uri: profile.banner }}
-                  style={styles.cover}
-                  resizeMode="cover"
-                />
-              ) : (
-                <View
-                  style={[
-                    styles.cover,
-                    { backgroundColor: colors.primary + "12" },
-                  ]}
-                />
-              )}
-              <View style={styles.coverOverlay} />
-              <View style={styles.coverAccent} />
-
-              <View style={styles.avatarRow}>
-                <AuraRingAvatar
-                  avatarUri={profile.avatar}
-                  initials={initials}
-                  ringValue={profile.avatarRingColor || colors.primary}
-                  size={92}
-                  ringWidth={4}
-                  textColor={colors.primary}
-                  textSize={38}
-                />
-                <View style={styles.actionRow}>
-                  {!isMe && (
-                    <>
-                      <TouchableOpacity
-                        onPress={handleMessage}
-                        style={[
-                          styles.messageBtn,
-                          {
-                            backgroundColor: colors.secondary,
-                            borderColor: colors.border,
-                          },
-                        ]}
-                      >
-                        <Feather
-                          name="message-circle"
-                          size={15}
-                          color={colors.foreground}
-                        />
-                        <Text
-                          style={[
-                            styles.messageBtnText,
-                            { color: colors.foreground },
-                          ]}
-                        >
-                          Message
-                        </Text>
-                      </TouchableOpacity>
-                      <Animated.View
-                        style={{ transform: [{ scale: followAnim }] }}
-                      >
-                        <TouchableOpacity
-                          onPress={handleFollow}
-                          style={[
-                            styles.followBtn,
-                            following
-                              ? {
-                                  backgroundColor: colors.secondary,
-                                  borderColor: colors.border,
-                                }
-                              : {
-                                  backgroundColor: colors.primary,
-                                  borderColor: colors.primary,
-                                },
-                          ]}
-                        >
-                          <Feather
-                            name={following ? "user-check" : "user-plus"}
-                            size={14}
-                            color={following ? colors.foreground : "#FFF"}
-                          />
-                          <Text
-                            style={[
-                              styles.followText,
-                              { color: following ? colors.foreground : "#FFF" },
-                            ]}
-                          >
-                            {following ? "Following" : "Follow"}
-                          </Text>
-                        </TouchableOpacity>
-                      </Animated.View>
-                    </>
-                  )}
-                  {isMe && (
-                    <TouchableOpacity
-                      onPress={() => router.push("/edit-profile")}
-                      style={[
-                        styles.editBtn,
-                        {
-                          backgroundColor: colors.secondary,
-                          borderColor: colors.border,
-                        },
-                      ]}
-                    >
-                      <Feather
-                        name="edit-2"
-                        size={14}
-                        color={colors.foreground}
-                      />
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </View>
-
-              <View style={styles.nameSection}>
-                <View style={styles.nameRow}>
-                  <Text
-                    style={[styles.displayName, { color: colors.foreground }]}
-                  >
-                    {profile.displayName}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() =>
-                      router.push({
-                        pathname: "/scan-connect" as any,
-                        params: {
-                          username: profile.username,
-                          allowScan: isMe ? "1" : "0",
-                        },
-                      })
-                    }
-                    style={[
-                      styles.qrBtn,
-                      {
-                        backgroundColor: colors.primary + "15",
-                        borderColor: colors.primary + "30",
-                      },
-                    ]}
-                  >
-                    <MaterialCommunityIcons
-                      name="qrcode"
-                      size={14}
-                      color={colors.primary}
+            <ProfileHero
+              profile={profile}
+              colors={colors}
+              topInset={Platform.OS === "web" ? 16 : insets.top}
+              leftControl={
+                <ProfileHeroIconButton onPress={() => router.back()} colors={colors}>
+                  <Feather name="arrow-left" size={22} color={colors.foreground} />
+                </ProfileHeroIconButton>
+              }
+              title={<Text style={[styles.heroTitle, { color: "#FFF" }]}>@{key}</Text>}
+              rightControls={
+                <ProfileHeroIconButton colors={colors}>
+                  <Feather name="more-horizontal" size={22} color={colors.foreground} />
+                </ProfileHeroIconButton>
+              }
+              actions={
+                isMe ? (
+                  <ProfileActionButton
+                    icon="edit-2"
+                    variant="outline"
+                    label="Edit Profile"
+                    colors={colors}
+                    onPress={() => router.push("/edit-profile")}
+                  />
+                ) : (
+                  <>
+                    <ProfileActionButton
+                      icon="message-circle"
+                      variant="soft"
+                      label="Message"
+                      colors={colors}
+                      onPress={handleMessage}
                     />
-                  </TouchableOpacity>
-                  {profile.isVerified && (
-                    <View
-                      style={[
-                        styles.verifiedBadge,
-                        {
-                          backgroundColor:
-                            profile.username?.toLowerCase() === "uconnect"
-                              ? OFFICIAL_UCONNECT_BADGE_COLOR
-                              : DEFAULT_VERIFIED_BADGE_COLOR,
-                        },
-                      ]}
-                    >
-                      <Feather name="check" size={10} color="#FFF" />
-                    </View>
-                  )}
-                </View>
-                <Text style={[styles.usernameText, { color: colors.mutedForeground }]}>@{profile.username}</Text>
-                <View style={styles.metaRow}>
-                  {profile.college ? (
-                    <View
-                      style={[
-                        styles.metaPill,
-                        { backgroundColor: colors.secondary },
-                      ]}
-                    >
-                      <Feather
-                        name="book"
-                        size={11}
-                        color={colors.mutedForeground}
+                    <Animated.View style={{ transform: [{ scale: followAnim }] }}>
+                      <ProfileActionButton
+                        icon={following ? "user-check" : "user-plus"}
+                        variant={following ? "outline" : "primary"}
+                        label={following ? "Following" : "Follow"}
+                        colors={colors}
+                        onPress={handleFollow}
                       />
-                      <Text
-                        style={[
-                          styles.metaText,
-                          { color: colors.mutedForeground },
-                        ]}
-                      >
-                        {profile.college}
-                      </Text>
-                    </View>
-                  ) : null}
-                  {profile.branch ? (
-                    <View
-                      style={[
-                        styles.metaPill,
-                        { backgroundColor: colors.secondary },
-                      ]}
-                    >
-                      <Feather
-                        name="code"
-                        size={11}
-                        color={colors.mutedForeground}
-                      />
-                      <Text
-                        style={[
-                          styles.metaText,
-                          { color: colors.mutedForeground },
-                        ]}
-                      >
-                        {profile.branch}
-                      </Text>
-                    </View>
-                  ) : null}
-                  {profile.year ? (
-                    <View
-                      style={[
-                        styles.metaPill,
-                        { backgroundColor: colors.secondary },
-                      ]}
-                    >
-                      <Feather
-                        name="award"
-                        size={11}
-                        color={colors.mutedForeground}
-                      />
-                      <Text
-                        style={[
-                          styles.metaText,
-                          { color: colors.mutedForeground },
-                        ]}
-                      >
-                        {profile.year}
-                      </Text>
-                    </View>
-                  ) : null}
-                </View>
-                {profile.bio ? (
-                  <Text style={[styles.bio, { color: colors.foreground }]}>
-                    {profile.bio}
-                  </Text>
-                ) : null}
-                {socialLinkInfo ? (
-                  <TouchableOpacity
-                    onPress={() => Linking.openURL(socialLinkInfo.url)}
-                    activeOpacity={0.85}
-                    style={[styles.socialLinkBtn, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "30" }]}
-                  >
-                    <MaterialCommunityIcons name={socialLinkInfo.icon as any} size={15} color={colors.primary} />
-                    <Text style={[styles.socialLinkText, { color: colors.primary }]} numberOfLines={1}>
-                      {socialLinkInfo.label}
-                    </Text>
-                    <Feather name="external-link" size={12} color={colors.primary} />
-                  </TouchableOpacity>
-                ) : null}
-              </View>
+                    </Animated.View>
+                  </>
+                )
+              }
+              onQrPress={() =>
+                router.push({
+                  pathname: "/scan-connect" as any,
+                  params: { username: profile.username, allowScan: isMe ? "1" : "0" },
+                })
+              }
+            />
 
-              <View
-                style={[
-                  styles.statsRow,
-                  {
-                    borderColor: colors.border,
-                    marginHorizontal: 16,
-                    marginBottom: 16,
-                  },
-                ]}
-              >
-                {[
-                  { num: userPosts.length, label: "Posts" },
-                  {
-                    num: followerCount,
-                    label: "Followers",
-                    mode: "followers" as const,
-                  },
-                  {
-                    num: profile.following,
-                    label: "Following",
-                    mode: "following" as const,
-                  },
-                  { num: `${vaultSummary?.skillStrength ?? 0}%`, label: "Skill Strength" },
-                ].map((s, i, arr) => (
-                  <React.Fragment key={s.label}>
-                    {s.mode ? (
-                      <TouchableOpacity
-                        style={styles.statItem}
-                        onPress={() => openConnections(s.mode)}
-                        activeOpacity={0.85}
-                      >
-                        <Text
-                          style={[styles.statNum, { color: colors.primary }]}
-                        >
-                          {s.num}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.statLabel,
-                            { color: colors.mutedForeground },
-                          ]}
-                        >
-                          {s.label}
-                        </Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <View style={styles.statItem}>
-                        <Text
-                          style={[styles.statNum, { color: colors.primary }]}
-                        >
-                          {s.num}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.statLabel,
-                            { color: colors.mutedForeground },
-                          ]}
-                        >
-                          {s.label}
-                        </Text>
-                      </View>
-                    )}
-                    {i < arr.length - 1 && (
-                      <View
-                        style={[
-                          styles.statDivider,
-                          { backgroundColor: colors.border },
-                        ]}
-                      />
-                    )}
-                  </React.Fragment>
-                ))}
-              </View>
-
-
-              <ProfileVaultSummary
-                summary={vaultSummary}
-                colors={colors}
-                mode="compact"
-              />
-
-              {profile.interests?.length > 0 && (
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.interestsRow}
-                >
-                  {profile.interests.map((i: string) => (
-                    <View
-                      key={i}
-                      style={[
-                        styles.chip,
-                        {
-                          backgroundColor: colors.primary + "12",
-                          borderColor: colors.primary + "25",
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[styles.chipText, { color: colors.primary }]}
-                      >
-                        {i}
-                      </Text>
-                    </View>
-                  ))}
-                </ScrollView>
-              )}
-            </View>
-
-            <View
-              style={[
-                styles.tabRow,
-                {
-                  backgroundColor: colors.card,
-                  borderBottomColor: colors.border,
-                },
+            <ProfileStatsCard
+              colors={colors}
+              attachedTile={{ label: "Vault Score", value: vaultSummary?.score ?? 0, icon: "award" }}
+              items={[
+                { label: "Posts", value: userPosts.length },
+                { label: "Followers", value: followerCount, onPress: () => openConnections("followers") },
+                { label: "Following", value: profile.following, onPress: () => openConnections("following") },
+                { label: "Skill Strength", value: `${vaultSummary?.skillStrength ?? 0}%` },
               ]}
-            >
-              <TouchableOpacity
-                onPress={() => setActiveTab("posts")}
-                style={[
-                  styles.tabBtn,
-                  activeTab === "posts" && {
-                    borderBottomColor: colors.primary,
-                    borderBottomWidth: 2.5,
-                  },
-                ]}
-              >
-                <Feather
-                  name="file-text"
-                  size={15}
-                  color={
-                    activeTab === "posts"
-                      ? colors.primary
-                      : colors.mutedForeground
-                  }
-                />
-                <Text
-                  style={[
-                    styles.tabLabel,
-                    {
-                      color:
-                        activeTab === "posts"
-                          ? colors.primary
-                          : colors.mutedForeground,
-                    },
-                  ]}
-                >
-                  Posts ({userPosts.length})
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setActiveTab("reposts")}
-                style={[
-                  styles.tabBtn,
-                  activeTab === "reposts" && {
-                    borderBottomColor: colors.primary,
-                    borderBottomWidth: 2.5,
-                  },
-                ]}
-              >
-                <Feather
-                  name="repeat"
-                  size={15}
-                  color={
-                    activeTab === "reposts"
-                      ? colors.primary
-                      : colors.mutedForeground
-                  }
-                />
-                <Text
-                  style={[
-                    styles.tabLabel,
-                    {
-                      color:
-                        activeTab === "reposts"
-                          ? colors.primary
-                          : colors.mutedForeground,
-                    },
-                  ]}
-                >
-                  Reposts ({repostedPosts.length})
-                </Text>
-              </TouchableOpacity>
-            </View>
+            />
+
+            <ProfileVaultSummary summary={vaultSummary} colors={colors} mode="compact" />
+
+            {profile.interests?.length > 0 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.interestsRow}>
+                {profile.interests.map((interest: string) => (
+                  <View key={interest} style={[styles.chip, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "25" }]}>
+                    <Text style={[styles.chipText, { color: colors.primary }]}>{interest}</Text>
+                  </View>
+                ))}
+              </ScrollView>
+            ) : null}
+
+            <ProfileTabs
+              items={[
+                { key: "posts", icon: "file-text", label: "Posts", count: userPosts.length },
+                { key: "reposts", icon: "repeat", label: "Reposts", count: repostedPosts.length },
+              ]}
+              activeKey={activeTab}
+              onChange={setActiveTab}
+              colors={colors}
+            />
           </View>
         }
         ListEmptyComponent={
@@ -772,6 +397,7 @@ export default function UserProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  heroTitle: { fontSize: 16, fontFamily: "Inter_700Bold", textShadowColor: "rgba(0,0,0,0.28)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
   header: {
     flexDirection: "row",
     alignItems: "center",
