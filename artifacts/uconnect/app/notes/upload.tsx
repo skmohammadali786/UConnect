@@ -80,66 +80,47 @@ export default function UploadNotesScreen() {
       return;
     }
     setLoading(true);
-    try {
-      const imageUrls: string[] = [];
-      for (const image of images) {
-        const extension = getImageFileExtension(image);
-        const fileType = image.mimeType ?? `image/${extension === "jpg" ? "jpeg" : extension}`;
-        const { publicUrl } = await uploadMediaUriToR2(image.uri, {
-          fileType,
-          kind: "image",
-        });
-        imageUrls.push(publicUrl);
-      }
-      const payload = {
-        title: title.trim(),
-        subject,
-        year,
-        college: user.college || "All Colleges",
-        uploader_id: user.id,
-        uploader_username: user.username,
-        description: description.trim(),
-        file_url: imageUrls[0] ?? "",
-        file_type: imageUrls.length > 0 ? "images" : "pdf",
-        image_urls: imageUrls,
-        downloads: 0,
-        saves: 0,
-      };
-      let { error } = await supabase.from("notes").insert(payload as any);
-      if (error && String(error.message || "").toLowerCase().includes("image_urls")) {
-        const fallbackPayload: any = { ...payload };
-        delete fallbackPayload.image_urls;
-        ({ error } = await supabase.from("notes").insert(fallbackPayload));
-      }
-
-      if (error) throw error;
-      showSuccess("Notes shared!", "Your notes are now available for your college community.");
-      router.back();
-    } catch (err: any) {
-      showError("Error", err?.message ?? "Failed to upload notes. Please try again.");
-    } finally {
-      setLoading(false);
+  try {
+    const imageUrls: string[] = [];
+    for (const image of images) {
+      const extension = getImageFileExtension(image);
+      const fileType = image.mimeType ?? `image/${extension === "jpg" ? "jpeg" : extension}`;
+      const { publicUrl } = await uploadMediaUriToR2(image.uri, {
+        fileType,
+        kind: "image",
+      });
+      imageUrls.push(publicUrl);
     }
-  };
+    const payload = {
+      title: title.trim(),
+      subject,
+      year,
+      college: user.college || "All Colleges",
+      uploader_id: user.id,
+      uploader_username: user.username,
+      description: description.trim(),
+      file_url: imageUrls[0] ?? "",
+      file_type: imageUrls.length > 0 ? "images" : "pdf",
+      image_urls: imageUrls,
+      downloads: 0,
+      saves: 0,
+    };
+    let { error } = await supabase.from("notes").insert(payload as unknown);
+    if (error && String(error.message || "").toLowerCase().includes("image_urls")) {
+      const fallbackPayload: Record<string, unknown> = { ...payload };
+      delete fallbackPayload['image_urls'];
+      ({ error } = await supabase.from("notes").insert(fallbackPayload));
+    }
 
-  return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 8, backgroundColor: colors.headerBg, borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Feather name="arrow-left" size={22} color={colors.foreground} />
-          </TouchableOpacity>
-          <Text style={[styles.title, { color: colors.foreground }]}>Share Notes</Text>
-          <View style={{ width: 30 }} />
-        </View>
-
-        <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <View style={[styles.infoBanner, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "30" }]}>
-            <Feather name="info" size={15} color={colors.primary} />
-            <Text style={[styles.infoBannerText, { color: colors.primary }]}>
-              Upload real photos of your notes so other students can open and download them.
-            </Text>
-          </View>
+    if (error) throw error;
+    showSuccess("Notes shared!", "Your notes are now available for your college community.");
+    router.back();
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    showError("Error", message ?? "Failed to upload notes. Please try again.");
+  } finally {
+    setLoading(false);
+  }
 
           <AppInput label="Title *" placeholder="e.g. Laplace Transform Chapter Notes" value={title} onChangeText={setTitle} />
 

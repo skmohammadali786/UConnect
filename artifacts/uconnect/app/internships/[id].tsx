@@ -136,7 +136,14 @@ export default function InternshipDetailScreen() {
       .select("id,user_id,status,apply_message,review_reason,created_at")
       .eq("internship_id", internship.id)
       .order("created_at", { ascending: false });
-    const rows = (data ?? []) as any[];
+    const rows = (data ?? []) as Array<{
+      id: string;
+      user_id: string;
+      status: string | null;
+      apply_message: string | null;
+      review_reason: string | null;
+      created_at: string;
+    }>;
     if (rows.length === 0) {
       setHostApplications([]);
       return;
@@ -146,7 +153,14 @@ export default function InternshipDetailScreen() {
       .from("profiles")
       .select("id,username,display_name,college")
       .in("id", userIds);
-    const byId = new Map((profileRows ?? []).map((p: any) => [p.id, p]));
+    const byId = new Map(
+      ((profileRows ?? []) as Array<{
+        id: string;
+        username: string;
+        display_name: string | null;
+        college: string | null;
+      }>).map((p) => [p.id, p])
+    );
     setHostApplications(rows.map((r) => {
       const p = byId.get(r.user_id);
       return {

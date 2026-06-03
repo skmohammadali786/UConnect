@@ -48,8 +48,12 @@ export default function GhostModeScreen() {
         await ghost.deactivateGhostMode();
         showSuccess("Ghost Mode disabled", "Your normal identity is restored.");
       }
-    } catch (e: any) {
-      showError("Ghost Mode unavailable", e?.message ?? "Try again later. A 24-hour cooldown may be active.");
+    } catch (e: unknown) {
+      let message = "Try again later. A 24-hour cooldown may be active.";
+      if (e instanceof Error) {
+        message = e.message;
+      }
+      showError("Ghost Mode unavailable", message);
     } finally {
       setBusy(false);
     }

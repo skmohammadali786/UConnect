@@ -176,7 +176,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     if (!userId) return;
     try {
       const { data: convRows } = await supabase
-        .from("conversations")
+        .from<ConversationRow>("conversations")
         .select(
           "*, user_a_profile:profiles!conversations_user_a_fkey(username, avatar, chat_public_key, is_verified), user_b_profile:profiles!conversations_user_b_fkey(username, avatar, chat_public_key, is_verified)",
         )
@@ -189,7 +189,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       }
 
       const convs: Conversation[] = await Promise.all(
-        convRows.map(async (row: any) => {
+        convRows.map(async (row: ConversationRow) => {
           const isUserA = row.user_a === userId;
           const participantId = isUserA ? row.user_b : row.user_a;
           const participantProfile = isUserA
@@ -203,13 +203,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
               : (participantProfile?.username ?? "unknown");
 
           const { data: msgRows } = await supabase
-            .from("messages")
+            .from<MessageRow>("messages")
             .select("*")
             .eq("conversation_id", row.id)
             .order("created_at", { ascending: true });
 
           const messages: Message[] = await Promise.all(
-            (msgRows ?? []).map(async (m: any) => {
+            (msgRows ?? []).map(async (m: MessageRow) => {
               let content = m.content;
               if (
                 chatKeyPair?.privateKeyJwk &&

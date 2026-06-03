@@ -14,7 +14,27 @@ import { TypewriterText } from "@/components/TypewriterText";
 
 const ND = Platform.OS !== "web";
 
-function SettingRow({ icon, label, sub, onPress, isSwitch, switchValue, onSwitchChange, destructive, colors, last, badge }: any) {
+interface SettingRowProps {
+  icon: string;
+  label: string;
+  sub?: string;
+  onPress: () => void;
+  isSwitch: boolean;
+  switchValue: boolean;
+  onSwitchChange: (value: boolean) => void;
+  destructive: boolean;
+  colors: {
+    separator: string;
+    primary: string;
+    foreground: string;
+    mutedForeground: string;
+    border: string;
+  };
+  last: boolean;
+  badge?: string | number;
+}
+
+function SettingRow({ icon, label, sub, onPress, isSwitch, switchValue, onSwitchChange, destructive, colors, last, badge }: SettingRowProps) {
   const pressAnim = useRef(new Animated.Value(1)).current;
   const onPressIn = () => {
     if (!isSwitch) Animated.spring(pressAnim, { toValue: 0.97, tension: 300, friction: 12, useNativeDriver: ND }).start();
@@ -32,7 +52,7 @@ function SettingRow({ icon, label, sub, onPress, isSwitch, switchValue, onSwitch
         activeOpacity={1}
         style={[styles.row, { borderBottomColor: last ? "transparent" : colors.separator }]}
       >
-        <View style={[styles.iconWrap, { backgroundColor: destructive ? "#EF444418" : colors.primary + "18" }]}>
+        <View style={[styles.iconWrap, { backgroundColor: destructive ? "#EF444418" : colors.primary + "18" }]}>  
           <Feather name={icon} size={16} color={destructive ? "#EF4444" : colors.primary} />
         </View>
         <View style={{ flex: 1 }}>
@@ -40,7 +60,7 @@ function SettingRow({ icon, label, sub, onPress, isSwitch, switchValue, onSwitch
           {sub ? <Text style={[styles.rowSub, { color: colors.mutedForeground }]}>{sub}</Text> : null}
         </View>
         {badge && (
-          <View style={[styles.badge, { backgroundColor: colors.primary }]}>
+          <View style={[styles.badge, { backgroundColor: colors.primary }]}>  
             <Text style={styles.badgeText}>{badge}</Text>
           </View>
         )}
@@ -54,35 +74,47 @@ function SettingRow({ icon, label, sub, onPress, isSwitch, switchValue, onSwitch
   );
 }
 
-function SectionCard({ children, colors }: any) {
+function SectionCard({ children, colors }: { children: React.ReactNode; colors: { card: string; border: string } }) {
   return <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>{children}</View>;
 }
 
-function ThemeSelector({ colors }: any) {
+interface ThemeSelectorProps {
+  colors: {
+    card: string;
+    border: string;
+    primary: string;
+    foreground: string;
+    surface?: string;
+    secondary: string;
+    mutedForeground: string;
+  };
+}
+
+function ThemeSelector({ colors }: ThemeSelectorProps) {
   const { themeMode, setThemeMode } = useTheme();
   const { showSuccess } = useToast();
-  const options: { key: "dark" | "light" | "system"; icon: string; label: string }[] = [
+  const options: { key: "dark" | "light" | "system"; icon: React.ComponentProps<typeof Feather>["name"]; label: string }[] = [
     { key: "dark", icon: "moon", label: "Dark" },
     { key: "light", icon: "sun", label: "Light" },
     { key: "system", icon: "smartphone", label: "System" },
   ];
   return (
-    <View style={[styles.themeCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+    <View style={[styles.themeCard, { backgroundColor: colors.card, borderColor: colors.border }]}>  
       <View style={styles.themeHeader}>
-        <View style={[styles.iconWrap, { backgroundColor: colors.primary + "18" }]}>
-          <Feather name="monitor" size={16} color={colors.primary} />
+        <View style={[styles.iconWrap, { backgroundColor: colors.primary + "18" }]}>  
+          <Feather name="monitor" size={16} color={colors.primary} />  
         </View>
         <Text style={[styles.rowLabel, { color: colors.foreground }]}>Appearance</Text>
       </View>
-      <View style={[styles.themeRow, { backgroundColor: colors.surface || colors.secondary, borderRadius: 10 }]}>
+      <View style={[styles.themeRow, { backgroundColor: colors.surface || colors.secondary, borderRadius: 10 }]}>  
         {options.map((o) => (
-          <TouchableOpacity
-            key={o.key}
-            onPress={() => { setThemeMode(o.key); showSuccess(`${o.label} mode enabled`); }}
-            style={[styles.themeOption, themeMode === o.key && { backgroundColor: colors.primary }]}
-          >
-            <Feather name={o.icon as any} size={15} color={themeMode === o.key ? "#FFF" : colors.mutedForeground} />
-            <Text style={[styles.themeLabel, { color: themeMode === o.key ? "#FFF" : colors.mutedForeground }]}>{o.label}</Text>
+          <TouchableOpacity  
+            key={o.key}  
+            onPress={() => { setThemeMode(o.key); showSuccess(`${o.label} mode enabled`); }}  
+            style={[styles.themeOption, themeMode === o.key && { backgroundColor: colors.primary }]}  
+          >  
+            <Feather name={o.icon} size={15} color={themeMode === o.key ? "#FFF" : colors.mutedForeground} />  
+            <Text style={[styles.themeLabel, { color: themeMode === o.key ? "#FFF" : colors.mutedForeground }]}>{o.label}</Text>  
           </TouchableOpacity>
         ))}
       </View>
@@ -210,9 +242,9 @@ export default function SettingsScreen() {
         <View style={{ height: 20 }} />
         <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>SAFETY & PRIVACY</Text>
         <SectionCard colors={colors}>
-          <SettingRow icon="cloud-snow" label="Ghost Mode" sub={isGhostActive ? `Active as ${session?.alias}` : "Temporary anonymous existence"} badge={isGhostActive ? "ACTIVE" : undefined} onPress={() => router.push("/settings/ghost-mode" as any)} colors={colors} />
-          <SettingRow icon="slash" label="Blocked Users" onPress={() => router.push("/settings/blocked-users" as any)} colors={colors} />
-          <SettingRow icon="flag" label="My Reports" sub="See posts you've reported and their status" onPress={() => router.push("/settings/reports" as any)} colors={colors} last />
+          <SettingRow icon="cloud-snow" label="Ghost Mode" sub={isGhostActive ? `Active as ${session?.alias}` : "Temporary anonymous existence"} badge={isGhostActive ? "ACTIVE" : undefined} onPress={() => router.push("/settings/ghost-mode")} colors={colors} />
+          <SettingRow icon="slash" label="Blocked Users" onPress={() => router.push("/settings/blocked-users")} colors={colors} />
+          <SettingRow icon="flag" label="My Reports" sub="See posts you've reported and their status" onPress={() => router.push("/settings/reports")} colors={colors} last />
         </SectionCard>
 
         <View style={{ height: 20 }} />
@@ -222,8 +254,8 @@ export default function SettingsScreen() {
           <SettingRow icon="star" label="Rate UConnect" onPress={() => router.push("/settings/rate")} colors={colors} />
           <SettingRow icon="help-circle" label="Help & Support" onPress={() => router.push("/settings/help")} colors={colors} />
           <SettingRow icon="info" label="About UConnect" onPress={() => router.push("/settings/about")} colors={colors} />
-          <SettingRow icon="shield" label="Privacy Policy" onPress={() => router.push("/settings/privacy-policy" as any)} colors={colors} />
-          <SettingRow icon="file-text" label="Terms & Conditions" onPress={() => router.push("/settings/terms" as any)} colors={colors} last />
+          <SettingRow icon="shield" label="Privacy Policy" onPress={() => router.push("/settings/privacy-policy")} colors={colors} />
+          <SettingRow icon="file-text" label="Terms & Conditions" onPress={() => router.push("/settings/terms")} colors={colors} last />
         </SectionCard>
 
         <View style={{ height: 20 }} />

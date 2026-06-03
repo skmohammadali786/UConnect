@@ -100,7 +100,7 @@ serve(async (req) => {
       body: JSON.stringify(payload),
     });
 
-    const createData = await safeJson(createRes) as Record<string, any>;
+    const createData = await safeJson(createRes) as Record<string, unknown>;
     if (!createRes.ok) {
       console.error("gumlet create upload failed", createData);
       return json({ error: "Failed to create Gumlet upload URL", details: createData }, 502);
@@ -145,6 +145,16 @@ serve(async (req) => {
   }
 
   if (action === "getPlayback") {
+      type GumletAssetStatus = {
+        playback_url?: string;
+        playbackUrl?: string;
+        output?: { hls?: string; [key: string]: unknown };
+        assets?: { hls?: string; [key: string]: unknown };
+        stream_url?: string;
+        streamUrl?: string;
+        status?: string;
+        [key: string]: unknown;
+      };
     const assetId = typeof body.assetId === "string" ? body.assetId.trim() : "";
     if (!assetId) return json({ error: "assetId is required" }, 400);
 
@@ -153,7 +163,7 @@ serve(async (req) => {
       headers: { Authorization: `Bearer ${gumletApiKey}` },
     });
 
-    const statusData = await safeJson(statusRes) as Record<string, any>;
+    const statusData = await safeJson(statusRes) as GumletAssetStatus;
     if (!statusRes.ok) {
       console.error("gumlet asset fetch failed", statusData);
       return json({ error: "Failed to fetch Gumlet asset", details: statusData }, 502);

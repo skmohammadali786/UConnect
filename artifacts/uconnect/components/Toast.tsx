@@ -115,8 +115,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
     paddingBottom: Platform.OS === "web" ? 90 : 90,
-    pointerEvents: "none",
-  } as any,
+  },
   toast: { width: "100%", maxWidth: 500, alignSelf: "center" },
   inner: {
     flexDirection: "row",

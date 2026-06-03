@@ -12,7 +12,7 @@ type NotificationInsertPayload = {
   entity_id?: string | null;
   secondary_entity_type?: string | null;
   secondary_entity_id?: string | null;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 };
 
 let createNotificationRpcSupported: boolean | null = null;
@@ -52,12 +52,12 @@ export async function safeInsertNotification(payload: NotificationInsertPayload)
     createNotificationRpcSupported = false;
   }
 
-  const tryInsert = async (insertPayload: Record<string, any>) => {
+  const tryInsert = async (insertPayload: Record<string, unknown>) => {
     const { error } = await supabase.from("notifications").insert(insertPayload);
     return error ?? null;
   };
 
-  let error = await tryInsert(payload as Record<string, any>);
+  let error = await tryInsert(payload as Record<string, unknown>);
   if (!error || !hasMissingColumnError(String(error.message ?? ""))) return error;
 
   const fallbackPayloadWithAction = {
@@ -87,7 +87,7 @@ export async function safeInsertNotification(payload: NotificationInsertPayload)
         ...error,
         message:
           "Cross-user notifications are blocked by RLS. Run the SQL patch that adds create_notification() and notification policies.",
-      } as any;
+      } as unknown;
     }
   }
 

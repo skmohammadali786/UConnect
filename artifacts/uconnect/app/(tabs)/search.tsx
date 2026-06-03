@@ -57,7 +57,7 @@ function extractHashtags(content: string): string[] {
   return out;
 }
 
-function FadeSlideItem({ children, index, delay = 0, style }: { children: React.ReactNode; index: number; delay?: number; style?: any }) {
+function FadeSlideItem({ children, index, delay = 0, style }: { children: React.ReactNode; index: number; delay?: number; style?: StyleProp<ViewStyle> }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(16)).current;
 
@@ -163,7 +163,16 @@ export default function SearchScreen() {
           .order("followers", { ascending: false })
           .limit(8);
         if (data && data.length > 0) {
-          setSuggestedPeople(data.map((r: any) => ({
+          setSuggestedPeople(data.map((r: {
+            id: string;
+            username: string;
+            display_name: string;
+            college: string;
+            followers?: number;
+            avatar?: string | null;
+            avatar_ring_color?: string;
+            is_verified?: boolean;
+          }) => ({
             id: r.id, username: r.username, displayName: r.display_name,
             college: r.college, followers: r.followers ?? 0,
             avatar: r.avatar ?? null,
@@ -206,18 +215,32 @@ export default function SearchScreen() {
           request = request.order("followers", { ascending: false }).limit(60);
         }
         const { data } = await request;
-        setPeople((data ?? []).map((r: any) => ({
-          id: r.id,
-          username: r.username,
-          displayName: r.display_name,
-          college: r.college,
-          branch: r.branch,
-          followers: r.followers ?? 0,
-          bio: r.bio ?? "",
-          avatar: r.avatar ?? null,
-          avatarRingColor: normalizeAuraRingValue(r.avatar_ring_color ?? DEFAULT_AURA_RING),
-          isVerified: Boolean(r.is_verified),
-        })));
+        setPeople((data ?? []).map((r: unknown) => {
+          const rec = r as {
+            id: string;
+            username: string;
+            display_name: string;
+            college: string;
+            branch: string;
+            followers?: number;
+            bio?: string;
+            avatar?: string | null;
+            avatar_ring_color?: string;
+            is_verified?: boolean;
+          };
+          return {
+            id: rec.id,
+            username: rec.username,
+            displayName: rec.display_name,
+            college: rec.college,
+            branch: rec.branch,
+            followers: rec.followers ?? 0,
+            bio: rec.bio ?? "",
+            avatar: rec.avatar ?? null,
+            avatarRingColor: normalizeAuraRingValue(rec.avatar_ring_color ?? DEFAULT_AURA_RING),
+            isVerified: Boolean(rec.is_verified),
+          };
+        }));
       } catch { setPeople([]); }
       setPeopleLoading(false);
     }, 300);
@@ -326,7 +349,16 @@ export default function SearchScreen() {
     ? trendingTags.filter((t) => t.tag.toLowerCase().includes(query.toLowerCase()))
     : trendingTags;
 
-  const renderPeopleCard = ({ item, index }: any) => {
+  type Person = {
+    id: string;
+    avatarRingColor?: string;
+    username?: string;
+    displayName: string;
+    isVerified?: boolean;
+    avatar?: string;
+  };
+
+  const renderPeopleCard = ({ item, index }: { item: Person; index: number }) => {
     const following = isFollowing(item.id);
     const ringColor = item.avatarRingColor || colors.primary;
     const isOfficial = item.username?.toLowerCase() === "uconnect";
@@ -334,7 +366,7 @@ export default function SearchScreen() {
     return (
       <FadeSlideItem index={index}>
         <TouchableOpacity
-          onPress={() => router.push({ pathname: "/user/[username]" as any, params: { username: item.username } })}
+          onPress={() => router.push({ pathname: "/user/[username]", params: { username: item.username } })}
           activeOpacity={0.88}
           style={[styles.personCard, { backgroundColor: colors.card, borderColor: colors.border }, elevatedCard]}
         >
@@ -350,7 +382,7 @@ export default function SearchScreen() {
               <View style={styles.personNameRow}>
                 <Text style={[styles.personName, { color: colors.foreground }]}>{item.displayName}</Text>
                 {item.isVerified && (
-                  <View style={[styles.verifiedBadge, { backgroundColor: badgeColor }]}>
+                  <View style={[styles.verifiedBadge, { backgroundColor: badgeColor }]}> 
                     <Feather name="check" size={9} color="#FFF" />
                   </View>
                 )}
@@ -381,26 +413,26 @@ export default function SearchScreen() {
     );
   };
 
-  const renderTagCard = ({ item, index }: any) => (
+  const renderTagCard = ({ item, index }: { item: { tag: string; posts: number; hot?: boolean; }; index: number; }) => (
     <FadeSlideItem index={index}>
       <TouchableOpacity
         onPress={() => openTagPosts(item.tag)}
         style={[styles.tagCard, { backgroundColor: colors.card, borderColor: colors.border }, elevatedCard]}
         activeOpacity={0.88}
       >
-        <View style={[styles.tagIconWrap, { backgroundColor: colors.primary + "15" }]}>
+        <View style={[styles.tagIconWrap, { backgroundColor: colors.primary + "15" }]}>  
           <Text style={[styles.tagHash, { color: colors.primary }]}>#</Text>
         </View>
         <View style={{ flex: 1 }}>
           <View style={styles.tagNameRow}>
             <Text style={[styles.tagName, { color: colors.foreground }]}>#{item.tag}</Text>
             {item.hot && (
-              <View style={[styles.hotPill, { backgroundColor: "#EF444420", borderColor: "#EF444440" }]}>
+              <View style={[styles.hotPill, { backgroundColor: "#EF444420", borderColor: "#EF444440" }]}>  
                 <Text style={styles.hotText}>Hot</Text>
               </View>
             )}
           </View>
-          <Text style={[styles.tagCount, { color: colors.mutedForeground }]}>
+          <Text style={[styles.tagCount, { color: colors.mutedForeground }]}>  
             {item.posts.toLocaleString()} posts
           </Text>
         </View>
@@ -486,7 +518,7 @@ export default function SearchScreen() {
                 onPress={() => switchTab(t.key)}
                 style={[styles.tab, activeTab === t.key && { borderBottomColor: colors.primary, borderBottomWidth: 2.5 }]}
               >
-                <Feather name={t.icon as any} size={14} color={activeTab === t.key ? colors.primary : colors.mutedForeground} />
+                <Feather name={t.icon as React.ComponentProps<typeof Feather>['name']} size={14} color={activeTab === t.key ? colors.primary : colors.mutedForeground} />
                 <Text style={[styles.tabText, { color: activeTab === t.key ? colors.primary : colors.mutedForeground }]}>{t.label}</Text>
               </TouchableOpacity>
             ))}
@@ -616,7 +648,7 @@ export default function SearchScreen() {
                   return (
                     <FadeSlideItem key={person.id} index={i} delay={140}>
                       <TouchableOpacity
-                        onPress={() => router.push({ pathname: "/user/[username]" as any, params: { username: person.username } })}
+                        onPress={() => router.push({ pathname: "/user/[username]", params: { username: person.username } })}
                         style={[styles.personHorizontalCard, { backgroundColor: colors.card, borderColor: colors.border }, elevatedCard]}
                         activeOpacity={0.85}
                       >
@@ -665,12 +697,12 @@ export default function SearchScreen() {
                 {DISCOVER.map((s, i) => (
                   <FadeSlideItem key={s.id} index={i} delay={180} style={{ width: "47.5%" }}>
                     <TouchableOpacity
-                      onPress={() => router.push(s.route as any)}
+                      onPress={() => router.push(s.route as string)}
                       style={[styles.discoverCard, { backgroundColor: colors.card, borderColor: colors.border }, elevatedCard]}
                       activeOpacity={0.82}
                     >
                       <View style={[styles.discoverIcon, { backgroundColor: s.color + "18" }]}>
-                        <Feather name={s.icon as any} size={22} color={s.color} />
+                        <Feather name={s.icon as string} size={22} color={s.color} />
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={[styles.discoverLabel, { color: colors.foreground }]}>{s.label}</Text>

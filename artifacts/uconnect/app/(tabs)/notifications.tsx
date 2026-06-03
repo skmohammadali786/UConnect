@@ -103,23 +103,23 @@ export default function NotificationsScreen() {
   const handlePress = (n: Notification) => {
     markRead(n.id);
     if (n.redirectPath) {
-      router.push(n.redirectPath as any);
+      router.push(n.redirectPath);
       return;
     }
     if (!n.actionId || !n.actionType) return;
     if (n.actionType === "post") {
       router.push({
-        pathname: "/post/[id]" as any,
+        pathname: "/post/[id]",
         params: { id: n.actionId },
       });
     } else if (n.actionType === "chat") {
       router.push({
-        pathname: "/chat/[id]" as any,
+        pathname: "/chat/[id]",
         params: { id: n.actionId },
       });
     } else if (n.actionType === "profile") {
       router.push({
-        pathname: "/user/[username]" as any,
+        pathname: "/user/[username]",
         params: { username: n.actionId },
       });
     } else if (
@@ -128,7 +128,7 @@ export default function NotificationsScreen() {
       n.actionType === "internship_application_status"
     ) {
       router.push({
-        pathname: "/internships/[id]" as any,
+        pathname: "/internships/[id]",
         params: { id: n.actionId },
       });
     } else if (
@@ -137,7 +137,7 @@ export default function NotificationsScreen() {
       n.actionType === "event_attendee_status"
     ) {
       router.push({
-        pathname: "/events/[id]" as any,
+        pathname: "/events/[id]",
         params: { id: n.actionId },
       });
     } else if (
@@ -146,17 +146,17 @@ export default function NotificationsScreen() {
       n.actionType === "team_request_status"
     ) {
       router.push({
-        pathname: "/teams/[id]" as any,
+        pathname: "/teams/[id]",
         params: { id: n.actionId },
       });
     } else if (n.actionType === "confession") {
       router.push({
-        pathname: "/confessions/[id]" as any,
+        pathname: "/confessions/[id]",
         params: { id: n.actionId },
       });
     } else if (n.actionType === "note") {
       router.push({
-        pathname: "/notes/[id]" as any,
+        pathname: "/notes/[id]",
         params: { id: n.actionId },
       });
     } else if (n.actionType === "invite") {
@@ -165,7 +165,7 @@ export default function NotificationsScreen() {
       n.actionType === "report" ||
       n.actionType === "moderation_report"
     ) {
-      router.push("/settings/reports" as any);
+      router.push("/settings/reports");
     }
   };
 

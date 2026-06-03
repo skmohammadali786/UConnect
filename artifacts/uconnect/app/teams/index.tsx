@@ -20,7 +20,29 @@ const TYPE_COLORS: Record<string, string> = {
   Other: "#6B7280",
 };
 
-function TeamCard({ item, index, requestedIds, onRequest, onCancel, isMyTeam, pendingCount, colors }: any) {
+type Team = {
+  id: string;
+  type: string;
+  maxMembers: number;
+  members: number;
+};
+
+type TeamCardProps = {
+  item: Team;
+  index: number;
+  requestedIds: Set<string>;
+  onRequest: (id: string) => void;
+  onCancel: (id: string) => void;
+  isMyTeam: boolean;
+  pendingCount: number;
+  colors: {
+    card: string;
+    primary: string;
+    border: string;
+  };
+};
+
+function TeamCard({ item, index, requestedIds, onRequest, onCancel, isMyTeam, pendingCount, colors }: TeamCardProps) {
   const anim = useRef(new Animated.Value(0)).current;
   const requested = requestedIds.has(item.id);
   const typeColor = TYPE_COLORS[item.type] || "#6B7280";
@@ -39,13 +61,6 @@ function TeamCard({ item, index, requestedIds, onRequest, onCancel, isMyTeam, pe
       >
         <View style={styles.cardHeader}>
           <View style={[styles.typeBadge, { backgroundColor: typeColor + "20" }]}>
-            <Text style={[styles.typeText, { color: typeColor }]}>{item.type}</Text>
-          </View>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            {isMyTeam && pendingCount > 0 && (
-              <View style={[styles.notifBadge, { backgroundColor: "#EF4444" }]}>
-                <Text style={styles.notifText}>{pendingCount}</Text>
-              </View>
             )}
             <Text style={[styles.deadline, { color: colors.mutedForeground }]}>{item.deadline}</Text>
           </View>
@@ -218,7 +233,7 @@ export default function TeamsScreen() {
             {myTeams.map((team) => (
               <TouchableOpacity
                 key={team.id}
-                onPress={() => router.push({ pathname: "/teams/[id]" as any, params: { id: team.id } })}
+                onPress={() => router.push({ pathname: "/teams/[id]", params: { id: team.id } })}
                 style={[styles.myTeamChip, { backgroundColor: colors.card, borderColor: colors.border }]}
               >
                 <Text style={[styles.myTeamName, { color: colors.foreground }]} numberOfLines={1}>{team.title}</Text>
@@ -240,7 +255,7 @@ export default function TeamsScreen() {
             onRequest={handleRequest}
             onCancel={handleCancel}
             isMyTeam={user?.id === item.posterId}
-            pendingCount={item.requests.filter((r: any) => r.status === "pending").length}
+            pendingCount={item.requests.filter((r: { status: string }) => r.status === "pending").length}
             colors={colors}
           />
         )}

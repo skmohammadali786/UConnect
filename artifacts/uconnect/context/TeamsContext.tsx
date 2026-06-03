@@ -51,7 +51,33 @@ interface TeamsContextType {
 
 const TeamsContext = createContext<TeamsContextType | undefined>(undefined);
 
-function rowToTeam(row: any, requests: TeamRequest[] = []): Team {
+// Define types for database rows
+interface TeamRow {
+  id: string;
+  title: string;
+  type: string;
+  description: string | null;
+  skills: string[] | null;
+  members: number | null;
+  max_members: number | null;
+  deadline: string | null;
+  poster_username: string;
+  poster_id: string;
+  created_at: string;
+}
+
+interface TeamRequestRow {
+  team_id: string;
+  user_id: string;
+  username: string;
+  display_name: string;
+  college: string;
+  message: string;
+  requested_at: string;
+  status: TeamRequest["status"];
+}
+
+function rowToTeam(row: TeamRow, requests: TeamRequest[] = []): Team {
   return {
     id: row.id,
     title: row.title,
@@ -76,18 +102,21 @@ export function TeamsProvider({ children }: { children: React.ReactNode }) {
   const refreshTeamsAndMemberships = useCallback(async () => {
     try {
       const { data } = await supabase
-        .from("teams")
+        .from<TeamRow>("teams")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(100);
 
       if (data && data.length > 0) {
-        const teamIds = data.map((t: any) => t.id);
+        const teamIds = data.map((t) => t.id);
         const { data: reqData } = teamIds.length > 0
-          ? await supabase.from("team_requests").select("*").in("team_id", teamIds)
-          : { data: [] as any[] };
+          ? await supabase
+              .from<TeamRequestRow>("team_requests")
+              .select("*")
+              .in("team_id", teamIds)
+          : { data: [] as TeamRequestRow[] };
         const reqMap = new Map<string, TeamRequest[]>();
-        (reqData ?? []).forEach((r: any) => {
+        (reqData ?? []).forEach((r) => {
           const req: TeamRequest = {
             userId: r.user_id,
             username: r.username,
@@ -95,12 +124,12 @@ export function TeamsProvider({ children }: { children: React.ReactNode }) {
             college: r.college,
             message: r.message,
             requestedAt: r.requested_at,
-            status: r.status as TeamRequest["status"],
+            status: r.status,
           };
           if (!reqMap.has(r.team_id)) reqMap.set(r.team_id, []);
           reqMap.get(r.team_id)!.push(req);
         });
-        setTeams(data.map((row: any) => rowToTeam(row, reqMap.get(row.id) ?? [])));
+        setTeams(data.map((row) => rowToTeam(row, reqMap.get(row.id) ?? [])));
       } else {
         setTeams([]);
       }
@@ -114,10 +143,10 @@ export function TeamsProvider({ children }: { children: React.ReactNode }) {
           .from("team_members")
           .select("team_id,user_id,role,joined_at")
           .eq("user_id", user.id);
-        setMemberships((memberRows ?? []).map((row: any) => ({
+        setMemberships((memberRows ?? []).map((row: { team_id: string; user_id: string; role: TeamMembership["role"]; joined_at: Date; }) => ({
           teamId: row.team_id,
           userId: row.user_id,
-          role: row.role as TeamMembership["role"],
+          role: row.role,
           joinedAt: row.joined_at,
         })));
       } catch {

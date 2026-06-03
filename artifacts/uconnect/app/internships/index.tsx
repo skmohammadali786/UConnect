@@ -24,13 +24,27 @@ interface Internship {
   isVerified: boolean;
   description: string;
 }
-
 interface ApplicationState {
   status: string;
   reviewReason: string | null;
 }
 
-function rowToInternship(r: any): Internship {
+interface InternshipRow {
+  id: string;
+  company: string;
+  role: string;
+  location: string;
+  duration: string;
+  stipend: number;
+  type: Internship['type'];
+  skills?: string[];
+  deadline: string;
+  poster_username: string;
+  is_verified: boolean;
+  description?: string;
+}
+
+function rowToInternship(r: InternshipRow): Internship {
   return {
     id: r.id,
     company: r.company,
@@ -38,7 +52,7 @@ function rowToInternship(r: any): Internship {
     location: r.location,
     duration: r.duration,
     stipend: r.stipend,
-    type: r.type as any,
+    type: r.type,
     skills: r.skills ?? [],
     deadline: r.deadline,
     postedBy: r.poster_username,
@@ -49,7 +63,21 @@ function rowToInternship(r: any): Internship {
 
 const TYPE_COLORS: Record<string, string> = { Remote: "#00A86B", Hybrid: "#3B82F6", Onsite: "#8B5CF6" };
 
-function InternshipCard({ item, index, applications, onApply, colors }: any) {
+interface InternshipCardProps {
+  item: Internship;
+  index: number;
+  applications: Record<string, ApplicationState>;
+  onApply: (id: string) => void;
+  colors: {
+    card: string;
+    primary: string;
+    border: string;
+    foreground: string;
+    mutedForeground: string;
+  };
+}
+
+function InternshipCard({ item, index, applications, onApply, colors }: InternshipCardProps) {
   const anim = useRef(new Animated.Value(0)).current;
   const application = applications[item.id] as ApplicationState | undefined;
   const applied = !!application;
@@ -63,9 +91,9 @@ function InternshipCard({ item, index, applications, onApply, colors }: any) {
 
   return (
     <Animated.View style={{ opacity: anim, transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
-      <TouchableOpacity onPress={() => router.push({ pathname: "/internships/[id]" as any, params: { id: item.id } })} style={[styles.card, { backgroundColor: colors.card, borderColor: applied ? colors.primary + "50" : colors.border }]}>
+      <TouchableOpacity onPress={() => router.push({ pathname: "/internships/[id]", params: { id: item.id } })} style={[styles.card, { backgroundColor: colors.card, borderColor: applied ? colors.primary + "50" : colors.border }]}>        
         <View style={styles.cardHeader}>
-          <View style={[styles.companyIcon, { backgroundColor: colors.primary + "15" }]}>
+          <View style={[styles.companyIcon, { backgroundColor: colors.primary + "15" }]}>            
             <Feather name="briefcase" size={20} color={colors.primary} />
           </View>
           <View style={styles.cardTitle}>
@@ -157,16 +185,22 @@ export default function InternshipsScreen() {
     setRefreshing(false);
   }, []);
 
+  type InternshipApplicationRow = {
+    internship_id: string;
+    status: string | null;
+    review_reason: string | null;
+  };
+
   const loadApplications = useCallback(async () => {
     if (!user) return;
     try {
       const { data } = await supabase
-        .from("internship_applications")
+        .from<InternshipApplicationRow>("internship_applications")
         .select("internship_id,status,review_reason")
         .eq("user_id", user.id);
       if (data) {
         const next: Record<string, ApplicationState> = {};
-        for (const row of data as any[]) {
+        for (const row of data) {
           next[row.internship_id] = {
             status: row.status ?? "pending",
             reviewReason: row.review_reason ?? null,
@@ -219,7 +253,7 @@ export default function InternshipsScreen() {
           <TypewriterText text="Internships" style={[styles.title, { color: colors.foreground }]} delay={300} speed={55} />
           {Object.keys(applications).length > 0 && <Text style={[styles.subtitle, { color: colors.primary }]}>{Object.keys(applications).length} applications</Text>}
         </View>
-        <TouchableOpacity onPress={() => router.push("/internships/post" as any)} style={[styles.createBtn, { backgroundColor: colors.primary }]}>
+        <TouchableOpacity onPress={() => router.push("/internships/post")} style={[styles.createBtn, { backgroundColor: colors.primary }]}>
           <Feather name="plus" size={18} color="#FFF" />
         </TouchableOpacity>
       </Animated.View>
@@ -253,7 +287,7 @@ export default function InternshipsScreen() {
               <Feather name="briefcase" size={40} color={colors.mutedForeground} style={{ marginBottom: 12 }} />
               <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No internships yet</Text>
               <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>Post the first internship opportunity for your college!</Text>
-              <TouchableOpacity onPress={() => router.push("/internships/post" as any)} style={[styles.emptyBtn, { backgroundColor: colors.primary }]}>
+              <TouchableOpacity onPress={() => router.push("/internships/post")} style={[styles.emptyBtn, { backgroundColor: colors.primary }]}>
                 <Text style={styles.emptyBtnText}>Post Internship</Text>
               </TouchableOpacity>
             </View>

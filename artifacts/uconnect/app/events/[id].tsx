@@ -199,6 +199,11 @@ export default function EventDetailScreen() {
     loadTicket();
   }, [loadTicket]);
 
+  type RSVPRow = { user_id: string; status: string; request_note: string | null; decision_reason: string | null; };
+  type ProfileRow = { id: string; display_name: string; username: string; college: string; };
+  type EventTicketRow = { id: string; user_id: string; };
+  type EventCheckinRow = { ticket_id: string; checked_in_at: string; };
+
   const loadAttendees = useCallback(async () => {
     if (!id || !isHost) {
       setAttendees([]);
@@ -209,7 +214,7 @@ export default function EventDetailScreen() {
       .select("user_id,status,request_note,decision_reason")
       .eq("event_id", id)
       .order("created_at", { ascending: false });
-    const rows = (data ?? []) as any[];
+    const rows = (data ?? []) as RSVPRow[];
     if (rows.length === 0) {
       setAttendees([]);
       return;
@@ -227,13 +232,12 @@ export default function EventDetailScreen() {
       .from("event_checkins")
       .select("ticket_id,checked_in_at")
       .eq("event_id", id);
-    const byId = new Map((profiles ?? []).map((p: any) => [p.id, p]));
-    const ticketByUser = new Map(
-      (ticketRows ?? []).map((t: any) => [t.user_id, t.id]),
-    );
-    const checkinByTicket = new Map(
-      (checkinRows ?? []).map((c: any) => [c.ticket_id, c.checked_in_at]),
-    );
+    const profilesList = (profiles ?? []) as ProfileRow[];
+    const ticketRowsList = (ticketRows ?? []) as EventTicketRow[];
+    const checkinRowsList = (checkinRows ?? []) as EventCheckinRow[];
+    const byId = new Map(profilesList.map((p) => [p.id, p]));
+    const ticketByUser = new Map(ticketRowsList.map((t) => [t.user_id, t.id]));
+    const checkinByTicket = new Map(checkinRowsList.map((c) => [c.ticket_id, c.checked_in_at]));
     setAttendees(
       rows.map((r) => {
         const p = byId.get(r.user_id);
@@ -660,7 +664,7 @@ export default function EventDetailScreen() {
                 ]}
               >
                 <Feather
-                  name={item.icon as any}
+                  name={item.icon as keyof typeof Feather.glyphMap}
                   size={16}
                   color={colors.primary}
                 />
@@ -671,7 +675,7 @@ export default function EventDetailScreen() {
                 >
                   {item.label}
                 </Text>
-                <Text style={[styles.infoValue, { color: colors.foreground }]}>
+                <Text style={[styles.infoValue, { color: colors.foreground }]}>  
                   {item.value}
                 </Text>
               </View>

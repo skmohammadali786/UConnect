@@ -6,7 +6,7 @@ import { useColors } from "@/hooks/useColors";
 export default function CreateTab() {
   const colors = useColors();
   useEffect(() => {
-    router.replace("/create-post" as any);
+    router.replace("/create-post");
   }, []);
   return <View style={{ flex: 1, backgroundColor: colors.background }} />;
 }

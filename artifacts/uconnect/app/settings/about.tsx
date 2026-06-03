@@ -57,15 +57,15 @@ export default function AboutScreen() {
 
           <Text style={[styles.sectionLabel, { color: colors.foreground }]}>What makes us different</Text>
           {FEATURES.map((f) => (
-            <View key={f.label} style={[styles.featureRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <View style={[styles.featureIcon, { backgroundColor: colors.primary + "15" }]}>
-                <Feather name={f.icon as any} size={18} color={colors.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.featureLabel, { color: colors.foreground }]}>{f.label}</Text>
-                <Text style={[styles.featureDesc, { color: colors.mutedForeground }]}>{f.desc}</Text>
-              </View>
-            </View>
+            <View key={f.label} style={[styles.featureRow, { backgroundColor: colors.card, borderColor: colors.border }]}>  
+              <View style={[styles.featureIcon, { backgroundColor: colors.primary + "15" }]}>  
+                <Feather name={f.icon as React.ComponentProps<typeof Feather>["name"]} size={18} color={colors.primary} />
+              </View>  
+              <View style={{ flex: 1 }}>  
+                <Text style={[styles.featureLabel, { color: colors.foreground }]}>{f.label}</Text>  
+                <Text style={[styles.featureDesc, { color: colors.mutedForeground }]}>{f.desc}</Text>  
+              </View>  
+            </View>  
           ))}
 
           <View style={styles.teamGrid}>
@@ -93,7 +93,7 @@ export default function AboutScreen() {
               <TouchableOpacity
                 key={item.label}
                 style={[styles.legalRow, { borderTopColor: colors.border }]}
-                onPress={() => item.route ? router.push(item.route as any) : undefined}
+                onPress={() => item.route ? router.push(item.route as string) : undefined}
               >
                 <Text style={[styles.legalText, { color: colors.mutedForeground }]}>{item.label}</Text>
                 <Feather name="external-link" size={14} color={colors.mutedForeground} />

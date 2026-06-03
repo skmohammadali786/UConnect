@@ -74,7 +74,14 @@ function FilterIcon({ tab, color }: { tab: FilterKey; color: string }) {
   );
 }
 
-function AnimatedPostCard({ post, index, currentUserId, onDelete }: any) {
+interface AnimatedPostCardProps {
+  post: unknown;
+  index: number;
+  currentUserId: string;
+  onDelete: () => void;
+}
+
+function AnimatedPostCard({ post, index, currentUserId, onDelete }: AnimatedPostCardProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(56)).current;
   const scaleAnim = useRef(new Animated.Value(0.88)).current;
@@ -312,12 +319,12 @@ export default function HomeScreen() {
       >
         <View style={[styles.shortcuts, { borderBottomColor: colors.border }]}>
           {SHORTCUTS.map((s) => (
-            <TouchableOpacity key={s.label} onPress={() => router.push(s.route as any)} style={styles.shortcut} activeOpacity={0.7}>
-              <View style={[styles.shortcutIcon, { backgroundColor: colors.primary + "18" }]}>
-                <Feather name={s.icon as any} size={18} color={colors.primary} />
+            <TouchableOpacity key={s.label} onPress={() => router.push(s.route)} style={styles.shortcut} activeOpacity={0.7}>
+              <View style={[styles.shortcutIcon, { backgroundColor: colors.primary + "18" }]}>  
+                <Feather name={s.icon} size={18} color={colors.primary} />
                 {s.label === "Chats" && totalUnreadMessages > 0 && (
-                  <View style={[styles.chatBadge, { backgroundColor: colors.primary }]}>
-                    <Text style={styles.chatBadgeText}>{totalUnreadMessages > 99 ? "99+" : totalUnreadMessages}</Text>
+                  <View style={[styles.chatBadge, { backgroundColor: colors.primary }]}>  
+                    <Text style={styles.chatBadgeText}>{totalUnreadMessages > 99 ? "99+" : totalUnreadMessages}</Text>  
                   </View>
                 )}
               </View>

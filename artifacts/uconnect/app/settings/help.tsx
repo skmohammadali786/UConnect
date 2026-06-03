@@ -130,8 +130,8 @@ export default function HelpScreen() {
             onPress={item.action}
             style={[styles.contactRow, { backgroundColor: colors.card, borderColor: colors.border }]}
           >
-            <View style={[styles.contactIcon, { backgroundColor: colors.primary + "15" }]}>
-              <Feather name={item.icon as any} size={18} color={colors.primary} />
+            <View style={[styles.contactIcon, { backgroundColor: colors.primary + "15" }]}> 
+              <Feather name={item.icon as string} size={18} color={colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.contactLabel, { color: colors.foreground }]}>{item.label}</Text>
@@ -139,7 +139,7 @@ export default function HelpScreen() {
             </View>
             <Feather name="arrow-right" size={16} color={colors.mutedForeground} />
           </TouchableOpacity>
-        ))}
+        ))
       </ScrollView>
     </Animated.View>
   );

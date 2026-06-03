@@ -43,7 +43,19 @@ interface SocialContextType {
 
 const SocialContext = createContext<SocialContextType | undefined>(undefined);
 
-function rowToReport(row: any): Report {
+function rowToReport(row: {
+  id: number;
+  post_id?: number | null;
+  reason: string;
+  created_at: string;
+  status?: Report["status"] | null;
+  action?: ReportAction | null;
+  resolution_message?: string | null;
+  reviewed_at?: string | null;
+  post_was_deleted?: number | boolean;
+  post_author_username?: string | null;
+  post_content_preview?: string | null;
+}): Report {
   return {
     id: row.id,
     postId: row.post_id ?? null,
@@ -93,7 +105,7 @@ export function SocialProvider({ children }: { children: React.ReactNode }) {
           .eq("follower_id", user.id);
         if (followRes.data) {
           setFollowingIds(
-            new Set(followRes.data.map((r: any) => r.following_id)),
+            new Set<number>(followRes.data.map((r: { following_id: number }) => r.following_id)),
           );
         }
         await refreshReports();

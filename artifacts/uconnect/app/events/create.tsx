@@ -59,8 +59,10 @@ export default function CreateEventScreen() {
       if (error) throw error;
       showSuccess("Created!", "Your event is now live for your college community.");
       router.back();
-    } catch (err: any) {
-      showError("Error", err?.message ?? "Failed to create event. Please try again.");
+    } catch (err: unknown) {
+      let message = "Failed to create event. Please try again.";
+      if (err instanceof Error) message = err.message;
+      showError("Error", message);
     } finally {
       setLoading(false);
     }

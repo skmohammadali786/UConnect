@@ -59,7 +59,15 @@ export default function NewChatScreen() {
         }
         const { data } = await query;
         setProfiles(
-          (data ?? []).map((r: any) => ({
+          (data ?? []).map((r: {
+            id: string;
+            username: string;
+            display_name: string;
+            college: string;
+            avatar?: string | null;
+            chat_public_key?: string | null;
+            is_verified?: boolean;
+          }) => ({
             id: r.id,
             username: r.username,
             displayName: r.display_name,
@@ -158,8 +166,8 @@ export default function NewChatScreen() {
                   },
                 );
                 router.replace({
-                  pathname: "/chat/[id]" as any,
-                  params: {
+                  pathname: "/chat/[id]",
+                  query: {
                     id: convId,
                     participantId: item.id,
                     username: item.username,

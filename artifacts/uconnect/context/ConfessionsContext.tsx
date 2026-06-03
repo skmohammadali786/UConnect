@@ -39,7 +39,14 @@ interface ConfessionsContextType {
 
 const ConfessionsContext = createContext<ConfessionsContextType | undefined>(undefined);
 
-function getSensitiveValue(row: any) {
+function getSensitiveValue(row: {
+  has_sensitive_content?: boolean;
+  hasSensitiveContent?: boolean;
+  is_sensitive_content?: boolean;
+  is_sensitive?: boolean;
+  sensitive_content?: boolean;
+  sensitive?: boolean;
+}): boolean {
   return Boolean(
     row.has_sensitive_content
     ?? row.hasSensitiveContent
@@ -64,14 +71,14 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
           .limit(100);
 
         if (data && data.length > 0) {
-          const ids = data.map((row: any) => row.id);
+          const ids = data.map((row: { id: string }) => row.id);
           const { data: voteRows } = await supabase
             .from("confession_votes")
             .select("confession_id, user_id, vote")
             .in("confession_id", ids);
           const voteCounts = new Map<string, { up: number; down: number }>();
           const userVotes = new Map<string, "up" | "down">();
-          (voteRows ?? []).forEach((v: any) => {
+          (voteRows ?? []).forEach((v: { confession_id: string; vote: 'up' | 'down'; user_id: string }) => {
             const current = voteCounts.get(v.confession_id) ?? { up: 0, down: 0 };
             if (v.vote === "up") current.up += 1;
             if (v.vote === "down") current.down += 1;
@@ -79,7 +86,7 @@ export function ConfessionsProvider({ children }: { children: React.ReactNode })
             if (user && v.user_id === user.id) userVotes.set(v.confession_id, v.vote);
           });
 
-          const mapped: Confession[] = data.map((row: any) => ({
+          const mapped: Confession[] = data.map(row => ({
             id: row.id,
             authorId: row.author_id ?? null,
             content: row.content,

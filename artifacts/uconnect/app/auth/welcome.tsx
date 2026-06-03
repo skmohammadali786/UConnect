@@ -201,8 +201,8 @@ export default function WelcomeScreen() {
               },
             ]}
           >
-            <View style={[styles.featureIcon, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "25" }]}>
-              <Feather name={f.icon as any} size={16} color={colors.primary} />
+            <View style={[styles.featureIcon, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "25" }] }>
+              <Feather name={f.icon as string} size={16} color={colors.primary} />
             </View>
             <Text style={[styles.featureText, { color: colors.foreground }]}>{f.text}</Text>
           </Animated.View>
@@ -235,7 +235,13 @@ export default function WelcomeScreen() {
   );
 }
 
-function SpringButton({ onPress, style, children }: any) {
+type SpringButtonProps = {
+  onPress: () => void;
+  style?: StyleProp<ViewStyle>;
+  children: React.ReactNode;
+};
+
+function SpringButton({ onPress, style, children }: SpringButtonProps) {
   const sc = useRef(new Animated.Value(1)).current;
   return (
     <Animated.View style={{ transform: [{ scale: sc }] }}>

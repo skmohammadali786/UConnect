@@ -58,7 +58,7 @@ export interface Notification {
   entityId?: string;
   secondaryEntityType?: string;
   secondaryEntityId?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 interface NotificationsContextType {

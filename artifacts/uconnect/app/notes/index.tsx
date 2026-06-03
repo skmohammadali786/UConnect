@@ -21,7 +21,19 @@ interface Note {
   createdAt: string;
 }
 
-function rowToNote(r: any): Note {
+type RawNoteRow = {
+  id: number;
+  subject: string;
+  title: string;
+  uploader_username: string;
+  college: string;
+  year: number;
+  downloads?: number | null;
+  description?: string | null;
+  created_at: string;
+};
+
+function rowToNote(r: RawNoteRow): Note {
   return {
     id: r.id,
     subject: r.subject,
@@ -42,7 +54,33 @@ const SUBJECT_COLORS: Record<string, string> = {
   Economics: "#00A86B",
 };
 
-function NoteCard({ item, index, savedIds, onSave, colors }: any) {
+function NoteCard({
+  item,
+  index,
+  savedIds,
+  onSave,
+  colors,
+}: {
+  item: {
+    id: string;
+    title: string;
+    subject: string;
+    year: string;
+    uploader: string;
+    downloads: number;
+  };
+  index: number;
+  savedIds: Set<string>;
+  onSave: (id: string) => void;
+  colors: {
+    card: string;
+    primary: string;
+    border: string;
+    foreground: string;
+    mutedForeground: string;
+    secondary: string;
+  };
+}) {
   const anim = useRef(new Animated.Value(0)).current;
   const saved = savedIds.has(item.id);
   const subjectColor = SUBJECT_COLORS[item.subject] || "#6B7280";
@@ -53,15 +91,15 @@ function NoteCard({ item, index, savedIds, onSave, colors }: any) {
 
   return (
     <Animated.View style={{ opacity: anim, transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) }] }}>
-      <TouchableOpacity onPress={() => router.push({ pathname: "/notes/[id]" as any, params: { id: item.id } })} style={[styles.noteCard, { backgroundColor: colors.card, borderColor: saved ? colors.primary + "40" : colors.border }]}>
+      <TouchableOpacity onPress={() => router.push({ pathname: "/notes/[id]", params: { id: item.id } })} style={[styles.noteCard, { backgroundColor: colors.card, borderColor: saved ? colors.primary + "40" : colors.border }]}>        
         <View style={styles.noteHeader}>
-          <View style={[styles.fileIcon, { backgroundColor: subjectColor + "18" }]}>
+          <View style={[styles.fileIcon, { backgroundColor: subjectColor + "18" }]}>            
             <Feather name="file-text" size={20} color={subjectColor} />
           </View>
           <View style={styles.noteInfo}>
             <Text style={[styles.noteTitle, { color: colors.foreground }]} numberOfLines={2}>{item.title}</Text>
             <View style={styles.metaRow}>
-              <View style={[styles.subjectBadge, { backgroundColor: subjectColor + "18" }]}>
+              <View style={[styles.subjectBadge, { backgroundColor: subjectColor + "18" }]}>                
                 <Text style={[styles.subjectText, { color: subjectColor }]}>{item.subject}</Text>
               </View>
               <Text style={[styles.noteMeta, { color: colors.mutedForeground }]}>{item.year}</Text>
@@ -75,7 +113,7 @@ function NoteCard({ item, index, savedIds, onSave, colors }: any) {
               <Feather name="download" size={12} color={colors.mutedForeground} />
               <Text style={[styles.noteStatText, { color: colors.mutedForeground }]}>{item.downloads}</Text>
             </View>
-            <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); onSave(item.id); }} style={[styles.saveBtn, { backgroundColor: saved ? colors.primary + "20" : colors.secondary, borderColor: saved ? colors.primary + "40" : colors.border, borderWidth: 1 }]}>
+            <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); onSave(item.id); }} style={[styles.saveBtn, { backgroundColor: saved ? colors.primary + "20" : colors.secondary, borderColor: saved ? colors.primary + "40" : colors.border, borderWidth: 1 }]}>              
               <Feather name="bookmark" size={14} color={saved ? colors.primary : colors.mutedForeground} />
               <Text style={[styles.saveBtnText, { color: saved ? colors.primary : colors.mutedForeground }]}>{saved ? "Saved" : "Save"}</Text>
             </TouchableOpacity>
@@ -127,7 +165,7 @@ export default function NotesScreen() {
         .from("note_saves")
         .select("note_id")
         .eq("user_id", user.id);
-      if (data) setSavedIds(new Set(data.map((r: any) => r.note_id)));
+      if (data) setSavedIds(new Set(data.map((r: { note_id: string }) => r.note_id)));
     } catch {}
   }, [user?.id]);
 
@@ -172,7 +210,7 @@ export default function NotesScreen() {
           <TypewriterText text="Notes" style={[styles.title, { color: colors.foreground }]} delay={300} speed={70} />
           {savedIds.size > 0 && <Text style={[styles.subtitle, { color: colors.primary }]}>{savedIds.size} saved</Text>}
         </View>
-        <TouchableOpacity onPress={() => router.push("/notes/upload" as any)}>
+        <TouchableOpacity onPress={() => router.push("/notes/upload")}>
           <Feather name="upload" size={20} color={colors.primary} />
         </TouchableOpacity>
       </Animated.View>
@@ -218,7 +256,7 @@ export default function NotesScreen() {
               <Feather name="file-text" size={40} color={colors.mutedForeground} style={{ marginBottom: 12 }} />
               <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No notes yet</Text>
               <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>Be the first to share notes with your college!</Text>
-              <TouchableOpacity onPress={() => router.push("/notes/upload" as any)} style={[styles.emptyBtn, { backgroundColor: colors.primary }]}>
+              <TouchableOpacity onPress={() => router.push("/notes/upload")} style={[styles.emptyBtn, { backgroundColor: colors.primary }]}>
                 <Text style={styles.emptyBtnText}>Share Notes</Text>
               </TouchableOpacity>
             </View>

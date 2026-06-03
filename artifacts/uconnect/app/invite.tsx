@@ -74,7 +74,7 @@ export default function InviteScreen() {
         .eq("referrer_user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(5);
-      setRecentReferrals((refs ?? []) as any);
+      setRecentReferrals((refs ?? []) as unknown[]);
     })();
   }, [user?.id, fallbackCode]);
 
@@ -150,8 +150,8 @@ export default function InviteScreen() {
         <View style={{ gap: 14 }}>
           {STEPS.map((s, i) => (
             <View key={i} style={styles.step}>
-              <View style={[styles.stepIcon, { backgroundColor: colors.primary + "15" }]}>
-                <Feather name={s.icon as any} size={18} color={colors.primary} />
+              <View style={[styles.stepIcon, { backgroundColor: colors.primary + "15" }]}>  
+                <Feather name={s.icon} size={18} color={colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.stepTitle, { color: colors.foreground }]}>{s.title}</Text>

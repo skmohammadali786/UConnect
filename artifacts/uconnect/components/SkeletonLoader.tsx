@@ -29,7 +29,7 @@ export function Skeleton({ width = "100%", height = 16, borderRadius = 6, style 
   return (
     <Animated.View
       style={[
-        { width: width as any, height, borderRadius, backgroundColor: colors.shimmer, opacity },
+        { width, height, borderRadius, backgroundColor: colors.shimmer, opacity },
         style,
       ]}
     />

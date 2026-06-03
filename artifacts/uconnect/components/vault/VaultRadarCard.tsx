@@ -56,7 +56,7 @@ export function VaultRadarCard({
   mode,
 }: {
   skills?: RadarSkill[] | null;
-  colors: any;
+  colors: Record<string, string>;
   compact?: boolean;
   mode?: "mini" | "compact" | "full";
 }) {

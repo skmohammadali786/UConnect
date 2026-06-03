@@ -9,13 +9,25 @@ type StatItem = {
   onPress?: () => void;
 };
 
+type Colors = {
+  profileShadow?: string;
+  shadow: string;
+  profileCard?: string;
+  card: string;
+  profileCardBorder?: string;
+  border: string;
+  primary: string;
+  mutedForeground: string;
+  profileDivider?: string;
+};
+
 export function ProfileStatsCard({
   items,
   colors,
   attachedTile,
 }: {
   items: StatItem[];
-  colors: any;
+  colors: Colors;
   attachedTile?: { label: string; value: string | number; icon?: React.ComponentProps<typeof Feather>["name"] };
 }) {
   const shadowColor = colors.profileShadow ?? colors.shadow;
@@ -36,7 +48,7 @@ export function ProfileStatsCard({
           const Content = item.onPress ? TouchableOpacity : View;
           return (
             <React.Fragment key={item.label}>
-              <Content onPress={item.onPress} activeOpacity={0.85} style={styles.item as any}>
+              <Content onPress={item.onPress} activeOpacity={0.85} style={styles.item}>
                 {item.icon ? <Feather name={item.icon} size={13} color={colors.primary} /> : null}
                 <Text style={[styles.value, { color: colors.primary }]}>{item.value}</Text>
                 <Text style={[styles.label, { color: colors.mutedForeground }]}>{item.label}</Text>

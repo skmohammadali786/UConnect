@@ -68,7 +68,7 @@ export default function ChatListScreen() {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <TouchableOpacity
-            onPress={() => router.push({ pathname: "/chat/[id]" as any, params: { id: item.id } })}
+            onPress={() => router.push({ pathname: "/chat/[id]", params: { id: item.id } })}
             onLongPress={() => handleRequestDelete(item.id, item.isAnonymous && !item.isRevealed ? "Anonymous" : item.participantUsername)}
             style={[styles.convItem, { borderBottomColor: colors.separator }]}
           >

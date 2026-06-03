@@ -93,15 +93,15 @@ export default function TermsScreen() {
         </View>
 
         {SECTIONS.map((section, i) => (
-          <View key={i} style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={styles.sectionHeader}>
-              <View style={[styles.iconWrap, { backgroundColor: colors.primary + "15" }]}>
-                <Feather name={section.icon as any} size={16} color={colors.primary} />
-              </View>
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{section.title}</Text>
-            </View>
-            <Text style={[styles.sectionBody, { color: colors.mutedForeground }]}>{section.content}</Text>
-          </View>
+          <View key={i} style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>  
+            <View style={styles.sectionHeader}>  
+              <View style={[styles.iconWrap, { backgroundColor: colors.primary + "15" }]}>  
+                <Feather name={section.icon as React.ComponentProps<typeof Feather>["name"]} size={16} color={colors.primary} />  
+              </View>  
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>{section.title}</Text>  
+            </View>  
+            <Text style={[styles.sectionBody, { color: colors.mutedForeground }]}>{section.content}</Text>  
+          </View>  
         ))}
 
         <Text style={[styles.footer, { color: colors.mutedForeground }]}>

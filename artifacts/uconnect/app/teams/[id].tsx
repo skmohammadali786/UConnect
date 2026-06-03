@@ -23,7 +23,14 @@ const TYPE_COLORS: Record<string, string> = {
 
 const ND = Platform.OS !== "web";
 
-function JoinModal({ visible, onClose, onSubmit, colors }: any) {
+interface JoinModalProps {
+  visible: boolean;
+  onClose: () => void;
+  onSubmit: (message: string) => void;
+  colors: Record<string, string>;
+}
+
+function JoinModal({ visible, onClose, onSubmit, colors }: JoinModalProps) {
   const [message, setMessage] = useState("");
   const backdropAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(400)).current;
@@ -45,7 +52,7 @@ function JoinModal({ visible, onClose, onSubmit, colors }: any) {
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
-      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.55)", opacity: backdropAnim }]}>
+      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.55)", opacity: backdropAnim }]}> 
         <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
       </Animated.View>
       <KeyboardAvoidingView
@@ -264,7 +271,7 @@ export default function TeamDetailScreen() {
   };
 
   const viewProfile = (username: string) => {
-    router.push({ pathname: "/user/[username]" as any, params: { username } });
+    router.push({ pathname: "/user/[username]", query: { username } });
   };
 
   const loadFeed = useCallback(async () => {
@@ -282,88 +289,97 @@ export default function TeamDetailScreen() {
         supabase.from("team_events").select("*").eq("team_id", team.id).order("created_at", { ascending: false }).limit(30),
       ]);
 
-      const taskLists = (taskListRes.data ?? []) as any[];
+      const taskLists = (taskListRes.data ?? []) as unknown[];
       const taskListIds = taskLists.map((t) => t.id);
       setTaskListSubscriptionIds(taskListIds);
       const taskItemsRes = taskListIds.length > 0
         ? await supabase.from("team_task_items").select("*").in("task_list_id", taskListIds)
-        : { data: [] as any[] };
+        : { data: [] as unknown[] };
 
-      const polls = (pollRes.data ?? []) as any[];
+      const polls = (pollRes.data ?? []) as unknown[];
       const pollIds = polls.map((p) => p.id);
       setPollSubscriptionIds(pollIds);
       const pollVotesRes = pollIds.length > 0
         ? await supabase.from("team_poll_votes").select("poll_id,option_index,user_id").in("poll_id", pollIds)
-        : { data: [] as any[] };
+        : { data: [] as unknown[] };
 
       const pollVoteMap = new Map<string, { counts: number[]; userVoteIndex: number | null }>();
       polls.forEach((p) => {
         pollVoteMap.set(p.id, { counts: new Array((p.options ?? []).length).fill(0), userVoteIndex: null });
       });
-      (pollVotesRes.data ?? []).forEach((vote: any) => {
-        const poll = pollVoteMap.get(vote.poll_id);
+      (pollVotesRes.data ?? []).forEach((vote: unknown) => {
+        const v = vote as { poll_id: string; option_index: number; user_id: string };
+        const poll = pollVoteMap.get(v.poll_id);
         if (!poll) return;
-        if (poll.counts[vote.option_index] !== undefined) {
-          poll.counts[vote.option_index] += 1;
+        if (poll.counts[v.option_index] !== undefined) {
+          poll.counts[v.option_index] += 1;
         }
-        if (user && vote.user_id === user.id) {
-          poll.userVoteIndex = vote.option_index;
+        if (user && v.user_id === user.id) {
+          poll.userVoteIndex = v.option_index;
         }
       });
 
       const items: TeamFeedItem[] = [];
-      (postRes.data ?? []).forEach((row: any) => {
+      (postRes.data ?? []).forEach((row: unknown) => {
+        const r = row as { id: string; content?: string; media_urls?: string[]; created_at: string; author_username?: string; author_avatar?: string | null };
         items.push({
           type: "post",
-          id: row.id,
-          content: row.content ?? "",
-          mediaUrls: row.media_urls ?? [],
-          createdAt: row.created_at,
-          authorName: row.author_username ?? "Admin",
-          authorAvatar: row.author_avatar ?? null,
+          id: r.id,
+          content: r.content ?? "",
+          mediaUrls: r.media_urls ?? [],
+          createdAt: r.created_at,
+          authorName: r.author_username ?? "Admin",
+          authorAvatar: r.author_avatar ?? null,
         });
       });
-      polls.forEach((row: any) => {
-        const voteInfo = pollVoteMap.get(row.id);
+      polls.forEach((row: unknown) => {
+        const p = row as { id: string; question: string; options?: string[]; created_at: string };
+        const voteInfo = pollVoteMap.get(p.id);
         items.push({
           type: "poll",
-          id: row.id,
-          question: row.question,
-          options: row.options ?? [],
+          id: p.id,
+          question: p.question,
+          options: p.options ?? [],
           counts: voteInfo?.counts ?? [],
           userVoteIndex: voteInfo?.userVoteIndex ?? null,
-          createdAt: row.created_at,
+          createdAt: p.created_at,
         });
       });
-      const taskItemsByList = new Map<string, any[]>();
-      (taskItemsRes.data ?? []).forEach((row: any) => {
-        if (!taskItemsByList.has(row.task_list_id)) taskItemsByList.set(row.task_list_id, []);
-        taskItemsByList.get(row.task_list_id)!.push(row);
+      type TaskItem = { id: string; task_list_id: string; title: string; is_completed: boolean; completed_by?: string | null };
+      const taskItemsByList = new Map<string, TaskItem[]>();
+      ((taskItemsRes.data ?? []) as TaskItem[]).forEach((item) => {
+        if (!taskItemsByList.has(item.task_list_id)) taskItemsByList.set(item.task_list_id, []);
+        taskItemsByList.get(item.task_list_id)!.push(item);
       });
-      taskLists.forEach((row: any) => {
-        const itemsList = (taskItemsByList.get(row.id) ?? []).map((i) => ({
-          id: i.id,
-          title: i.title,
-          isCompleted: Boolean(i.is_completed),
-          completedBy: i.completed_by ?? null,
-        }));
+      taskLists.forEach((row: unknown) => {
+        const t = row as { id: string; title: string; created_at: string };
+        const itemsList = (taskItemsByList.get(t.id) ?? []).map((i) => {
+          const item = i as { id: string; title: string; is_completed: boolean; completed_by?: string | null };
+          return {
+            id: item.id,
+            title: item.title,
+            isCompleted: Boolean(item.is_completed),
+            completedBy: item.completed_by ?? null,
+          };
+        });
         items.push({
           type: "task",
-          id: row.id,
-          title: row.title,
+          id: t.id,
+          title: t.title,
           items: itemsList,
-          createdAt: row.created_at,
+          createdAt: t.created_at,
         });
       });
-      (eventRes.data ?? []).forEach((row: any) => {
+      (eventRes.data ?? []).forEach((row: unknown) => {
+        const e = row as { id: string; title: string; description?: string; event_date?: string; location?: string; created_at: string };
         items.push({
           type: "event",
-          id: row.id,
-          title: row.title,
-          description: row.description ?? "",
-          eventDate: row.event_date ?? "TBD",
-          location: row.location ?? "TBD",
-          createdAt: row.created_at,
+          id: e.id,
+          title: e.title,
+          description: e.description ?? "",
+          eventDate: e.event_date ?? "TBD",
+          location: e.location ?? "TBD",
+          createdAt: e.created_at,
         });
       });
 
@@ -409,7 +425,7 @@ export default function TeamDetailScreen() {
         .select("user_id")
         .eq("team_id", team.id)
         .neq("user_id", user.id);
-      const recipientIds = Array.from(new Set((memberRows ?? []).map((row: any) => row.user_id).filter(Boolean)));
+      const recipientIds = Array.from(new Set((memberRows ?? []).map((row: { user_id: string }) => row.user_id).filter(Boolean)));
       await Promise.all(recipientIds.map((recipientId) => safeInsertNotification({
         user_id: recipientId,
         type: "team",
@@ -836,7 +852,7 @@ export default function TeamDetailScreen() {
           ]).map((t) => (
               <TouchableOpacity
                 key={t.key}
-                onPress={() => setActiveTab(t.key as any)}
+                onPress={() => setActiveTab(t.key as unknown)}
                 style={[styles.tab, activeTab === t.key && { borderBottomColor: colors.primary, borderBottomWidth: 2.5 }]}
               >
                 <Text style={[styles.tabText, { color: activeTab === t.key ? colors.primary : colors.mutedForeground }]}>{t.label}</Text>

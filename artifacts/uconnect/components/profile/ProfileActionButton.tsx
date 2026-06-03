@@ -18,7 +18,16 @@ export function ProfileActionButton({
   label?: string;
   icon: FeatherName;
   variant?: Variant;
-  colors: any;
+  colors: {
+    primary: string;
+    foreground: string;
+    profileCard?: string;
+    card: string;
+    profileSoftGreen?: string;
+    secondary: string;
+    profileShadow?: string;
+    shadow: string;
+  };
   onPress?: () => void;
   style?: ViewStyle;
   disabled?: boolean;

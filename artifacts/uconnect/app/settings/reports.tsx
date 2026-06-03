@@ -151,10 +151,10 @@ export default function MyReportsScreen() {
               >
                 <View style={styles.cardHeader}>
                   <View
-                    style={[
+                    style=[
                       styles.reasonBadge,
                       { backgroundColor: colors.secondary },
-                    ]}
+                    ]
                   >
                     <Feather
                       name="flag"
@@ -162,24 +162,24 @@ export default function MyReportsScreen() {
                       color={colors.mutedForeground}
                     />
                     <Text
-                      style={[styles.reasonText, { color: colors.foreground }]}
+                      style=[styles.reasonText, { color: colors.foreground }]
                       numberOfLines={1}
                     >
                       {report.reason}
                     </Text>
                   </View>
                   <View
-                    style={[
+                    style=[
                       styles.statusBadge,
                       { backgroundColor: status.color + "18" },
-                    ]}
+                    ]
                   >
                     <Feather
-                      name={status.icon as any}
+                      name={status.icon as string}
                       size={12}
                       color={status.color}
                     />
-                    <Text style={[styles.statusText, { color: status.color }]}>
+                    <Text style=[styles.statusText, { color: status.color }]>
                       {status.label}
                     </Text>
                   </View>
@@ -187,19 +187,19 @@ export default function MyReportsScreen() {
 
                 {report.postContentPreview ? (
                   <View
-                    style={[
+                    style=[
                       styles.previewBox,
                       {
                         backgroundColor: colors.secondary,
                         borderColor: colors.border,
                       },
-                    ]}
+                    ]
                   >
                     <Text
-                      style={[
+                      style=[
                         styles.previewLabel,
                         { color: colors.mutedForeground },
-                      ]}
+                      ]
                     >
                       Reported post
                     </Text>
@@ -297,7 +297,7 @@ export default function MyReportsScreen() {
                     <TouchableOpacity
                       onPress={() =>
                         router.push({
-                          pathname: "/post/[id]" as any,
+                          pathname: "/post/[id]",
                           params: { id: report.postId },
                         })
                       }

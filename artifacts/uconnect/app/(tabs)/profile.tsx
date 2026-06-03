@@ -30,6 +30,28 @@ import {
 } from "@/components/profile";
 
 
+interface Internship {
+  id: string;
+  company: string;
+  role: string;
+  stipend: number;
+  location: string;
+}
+
+interface EventItem {
+  id: string;
+  title: string;
+  date: string;
+  location: string;
+}
+
+interface NoteItem {
+  id: string;
+  title: string;
+  subject: string;
+  uploader_username: string;
+}
+
 type TabId = "posts" | "saved" | "reposts" | "confessions" | "activity";
 const PROFILE_TAB_MIN_WIDTH = 92;
 
@@ -49,9 +71,9 @@ export default function ProfileScreen() {
   const [revealedConfessionIds, setRevealedConfessionIds] = useState<Set<string>>(new Set());
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  const [appliedInternships, setAppliedInternships] = useState<any[]>([]);
-  const [rsvpEvents, setRsvpEvents] = useState<any[]>([]);
-  const [savedNotes, setSavedNotes] = useState<any[]>([]);
+  const [appliedInternships, setAppliedInternships] = useState<Internship[]>([]);
+  const [rsvpEvents, setRsvpEvents] = useState<EventItem[]>([]);
+  const [savedNotes, setSavedNotes] = useState<NoteItem[]>([]);
   const [repostRows, setRepostRows] = useState<{ post_id: string; created_at: string }[]>([]);
 
   useFocusEffect(
@@ -72,9 +94,9 @@ export default function ProfileScreen() {
         supabase.from("event_rsvps").select("event_id, events(id, title, date, location)").eq("user_id", user.id),
         supabase.from("note_saves").select("note_id, notes(id, title, subject, uploader_username)").eq("user_id", user.id),
       ]);
-      setAppliedInternships((apps.data ?? []).map((r: any) => r.internships).filter(Boolean));
-      setRsvpEvents((rsvps.data ?? []).map((r: any) => r.events).filter(Boolean));
-      setSavedNotes((noteSaves.data ?? []).map((r: any) => r.notes).filter(Boolean));
+      setAppliedInternships((apps.data ?? []).map((r: { internships: Internship }) => r.internships).filter(Boolean));
+      setRsvpEvents((rsvps.data ?? []).map((r: { events: EventItem }) => r.events).filter(Boolean));
+      setSavedNotes((noteSaves.data ?? []).map((r: { notes: NoteItem }) => r.notes).filter(Boolean));
     } catch {}
   }, [user?.id]);
 
@@ -262,7 +284,7 @@ export default function ProfileScreen() {
         rightControls={
           <>
             <ProfileHeroIconButton
-              onPress={() => router.push({ pathname: "/scan-connect" as any, params: { username: user.username, allowScan: "1" } })}
+              onPress={() => router.push({ pathname: "/scan-connect", params: { username: user.username, allowScan: "1" } })}
               colors={colors}
             >
               <Feather name="grid" size={18} color={colors.foreground} />

@@ -77,7 +77,7 @@ export default function ConfessionDetailScreen() {
         .order("created_at", { ascending: true });
 
       if (data) {
-        const commentIds = (data ?? []).map((row: any) => row.id);
+        const commentIds = (data ?? []).map((row: { id: string }) => row.id);
         let voteMap = new Map<string, "up" | "down">();
         if (user && commentIds.length > 0) {
           const { data: voteRows } = await supabase
@@ -85,9 +85,27 @@ export default function ConfessionDetailScreen() {
             .select("comment_id, vote")
             .eq("user_id", user.id)
             .in("comment_id", commentIds);
-          (voteRows ?? []).forEach((v: any) => voteMap.set(v.comment_id, v.vote));
+          (voteRows ?? []).forEach((v: unknown) => {
+            if (
+              typeof v === 'object' &&
+              v !== null &&
+              'comment_id' in v &&
+              'vote' in v
+            ) {
+              const { comment_id, vote } = v as { comment_id: string; vote: number };
+              voteMap.set(comment_id, vote);
+            }
+          });
         }
-        const remoteComments = data.map((row: any) => ({
+        const remoteComments = data.map((row: {
+          id: string;
+          is_anonymous: boolean;
+          author_id: string;
+          content: string;
+          upvotes: number | null;
+          downvotes: number | null;
+          created_at: string;
+        }) => ({
           id: row.id,
           authorId: row.is_anonymous ? "anon" : row.author_id,
           ownerId: row.is_anonymous ? row.author_id : undefined,

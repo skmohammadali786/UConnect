@@ -34,7 +34,7 @@ export function ProfileHero({
   self = false,
 }: {
   profile: ProfileInfo;
-  colors: any;
+  colors: Record<string, string>;
   topInset: number;
   title?: React.ReactNode;
   leftControl?: React.ReactNode;
@@ -48,16 +48,16 @@ export function ProfileHero({
   const socialLinkInfo = getSocialLinkInfo(profile.socialLink ?? "");
 
   return (
-    <View style={[styles.shell, { backgroundColor: colors.profileCard ?? colors.card }]}>
-      <View style={[styles.hero, { paddingTop: topInset, backgroundColor: colors.primarySoft ?? colors.primary + "18" }]}>
-        {profile.banner ? <Image source={{ uri: profile.banner }} style={styles.heroImage} resizeMode="cover" /> : <LinearGradient colors={[colors.primary + "45", colors.primary + "10", colors.card]} style={StyleSheet.absoluteFill} />}
-        <LinearGradient colors={["rgba(3,13,8,0.44)", "rgba(3,13,8,0.08)", "rgba(3,13,8,0.34)"]} style={StyleSheet.absoluteFill} />
-        <View style={[styles.heroControls, { top: topInset + 8 }]}>
-          <View style={styles.controlSide}>{leftControl}</View>
-          {title ? <View style={styles.titleWrap}>{title}</View> : <View />}
-          <View style={[styles.controlSide, styles.controlRight]}>{rightControls}</View>
-        </View>
-      </View>
+    <View style={[styles.shell, { backgroundColor: colors.profileCard ?? colors.card }]}> 
+      <View style={[styles.hero, { paddingTop: topInset, backgroundColor: colors.primarySoft ?? colors.primary + "18" }]}> 
+        {profile.banner ? <Image source={{ uri: profile.banner }} style={styles.heroImage} resizeMode="cover" /> : <LinearGradient colors={[colors.primary + "45", colors.primary + "10", colors.card]} style={StyleSheet.absoluteFill} />} 
+        <LinearGradient colors={["rgba(3,13,8,0.44)", "rgba(3,13,8,0.08)", "rgba(3,13,8,0.34)"]} style={StyleSheet.absoluteFill} /> 
+        <View style={[styles.heroControls, { top: topInset + 8 }]}> 
+          <View style={styles.controlSide}>{leftControl}</View> 
+          {title ? <View style={styles.titleWrap}>{title}</View> : <View />} 
+          <View style={[styles.controlSide, styles.controlRight]}>{rightControls}</View> 
+        </View> 
+      </View> 
 
       <View style={styles.avatarActionRow}>
         <TouchableOpacity onPress={onAvatarPress} activeOpacity={onAvatarPress ? 0.85 : 1} style={styles.avatarWrap}>
@@ -81,26 +81,26 @@ export function ProfileHero({
         <View style={styles.nameRow}>
           <Text style={[styles.displayName, { color: colors.foreground }]} numberOfLines={1}>{profile.displayName}</Text>
           {onQrPress ? (
-            <TouchableOpacity onPress={onQrPress} style={[styles.qrBtn, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "30" }]}>
+            <TouchableOpacity onPress={onQrPress} style={[styles.qrBtn, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "30" }]}> 
               <MaterialCommunityIcons name="qrcode" size={14} color={colors.primary} />
             </TouchableOpacity>
           ) : null}
           {profile.isVerified ? (
-            <View style={[styles.verifiedBadge, { backgroundColor: profile.username?.toLowerCase() === "uconnect" ? OFFICIAL_UCONNECT_BADGE_COLOR : DEFAULT_VERIFIED_BADGE_COLOR }]}>
+            <View style={[styles.verifiedBadge, { backgroundColor: profile.username?.toLowerCase() === "uconnect" ? OFFICIAL_UCONNECT_BADGE_COLOR : DEFAULT_VERIFIED_BADGE_COLOR }]}> 
               <Feather name="check" size={10} color="#FFF" />
             </View>
           ) : null}
         </View>
         <Text style={[styles.username, { color: colors.mutedForeground }]}>@{profile.username}</Text>
-        <View style={styles.metaRow}>
+        <View style={styles.metaRow}> 
           {profile.college ? <MetaPill icon="book" label={profile.college} colors={colors} /> : null}
           {profile.branch ? <MetaPill icon="code" label={profile.branch} colors={colors} /> : null}
           {profile.year ? <MetaPill icon="award" label={profile.year} colors={colors} /> : null}
         </View>
         {profile.bio ? <Text style={[styles.bio, { color: colors.foreground }]}>{profile.bio}</Text> : null}
         {socialLinkInfo ? (
-          <TouchableOpacity onPress={() => Linking.openURL(socialLinkInfo.url)} activeOpacity={0.85} style={[styles.socialLinkBtn, { backgroundColor: colors.profileSoftGreen ?? colors.primary + "12", borderColor: colors.primary + "30" }]}>
-            <MaterialCommunityIcons name={socialLinkInfo.icon as any} size={15} color={colors.primary} />
+          <TouchableOpacity onPress={() => Linking.openURL(socialLinkInfo.url)} activeOpacity={0.85} style={[styles.socialLinkBtn, { backgroundColor: colors.profileSoftGreen ?? colors.primary + "12", borderColor: colors.primary + "30" }]}> 
+            <MaterialCommunityIcons name={socialLinkInfo.icon as React.ComponentProps<typeof MaterialCommunityIcons>["name"]} size={15} color={colors.primary} />
             <Text style={[styles.socialLinkText, { color: colors.primary }]} numberOfLines={1}>{socialLinkInfo.label}</Text>
             <Feather name="external-link" size={12} color={colors.primary} />
           </TouchableOpacity>
@@ -110,18 +110,18 @@ export function ProfileHero({
   );
 }
 
-function MetaPill({ icon, label, colors }: { icon: React.ComponentProps<typeof Feather>["name"]; label: string; colors: any }) {
+function MetaPill({ icon, label, colors }: { icon: React.ComponentProps<typeof Feather>["name"]; label: string; colors: { profileSoftGreen?: string; secondary: string; mutedForeground: string } }) {
   return (
-    <View style={[styles.metaPill, { backgroundColor: colors.profileSoftGreen ?? colors.secondary }]}>
+    <View style={[styles.metaPill, { backgroundColor: colors.profileSoftGreen ?? colors.secondary }]}> 
       <Feather name={icon} size={11} color={colors.mutedForeground} />
       <Text style={[styles.metaText, { color: colors.mutedForeground }]} numberOfLines={1}>{label}</Text>
     </View>
   );
 }
 
-export function ProfileHeroIconButton({ children, onPress, colors }: { children: React.ReactNode; onPress?: () => void; colors: any }) {
+export function ProfileHeroIconButton({ children, onPress, colors }: { children: React.ReactNode; onPress?: () => void; colors: { profileGlass?: string } }) {
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={[styles.heroIcon, { backgroundColor: colors.profileGlass ?? "rgba(255,255,255,0.86)", borderColor: "rgba(255,255,255,0.45)" }]}>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={[styles.heroIcon, { backgroundColor: colors.profileGlass ?? "rgba(255,255,255,0.86)", borderColor: "rgba(255,255,255,0.45)" }]}> 
       {children}
     </TouchableOpacity>
   );

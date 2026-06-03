@@ -39,7 +39,19 @@ const blockedActions = new Set([
   "edit_vault_score",
 ]);
 
-function mapSession(row: any): GhostSession {
+interface RawGhostSessionRow {
+  id: string;
+  alias_snapshot?: string | null;
+  alias?: string | null;
+  ghost_alias?: string | null;
+  started_at: Date;
+  expires_at: Date;
+  ended_at?: Date | null;
+  posts_created?: number | null;
+  comments_created?: number | null;
+}
+
+function mapSession(row: RawGhostSessionRow): GhostSession {
   return {
     id: row.id,
     alias: row.alias_snapshot ?? row.alias ?? row.ghost_alias ?? "Neon Phantom",

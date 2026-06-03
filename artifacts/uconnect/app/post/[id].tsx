@@ -20,14 +20,36 @@ function isLocalId(value: unknown) {
   return typeof value === "string" && value.startsWith(LOCAL_ID_PREFIX);
 }
 
-function rowToComment(row: any, userVote: "up" | "down" | null = null): Comment {
+function rowToComment(
+  row: {
+    id: number;
+    post_id: number;
+    parent_id: number | null;
+    author_id: number;
+    is_ghost: boolean;
+    ghost_alias_snapshot?: string | null;
+    author_username?: string | null;
+    is_anonymous: boolean;
+    author_avatar?: string | null;
+    content: string;
+    upvotes?: number;
+    downvotes?: number;
+    created_at: string;
+  },
+  userVote: "up" | "down" | null = null
+): Comment {
   return {
     id: row.id,
     postId: row.post_id,
     parentId: row.parent_id ?? null,
     authorId: row.author_id,
-    authorUsername: row.is_ghost ? (row.ghost_alias_snapshot ?? row.author_username ?? "Neon Phantom") : row.is_anonymous ? "anonymous" : (row.author_username ?? "user"),
-    authorAvatar: row.is_ghost || row.is_anonymous ? null : (row.author_avatar ?? null),
+    authorUsername: row.is_ghost
+      ? (row.ghost_alias_snapshot ?? row.author_username ?? "Neon Phantom")
+      : row.is_anonymous
+      ? "anonymous"
+      : (row.author_username ?? "user"),
+    authorAvatar:
+      row.is_ghost || row.is_anonymous ? null : (row.author_avatar ?? null),
     isAnonymous: row.is_anonymous,
     isGhost: Boolean(row.is_ghost),
     ghostAlias: row.ghost_alias_snapshot ?? null,
@@ -72,8 +94,6 @@ export default function PostDetailScreen() {
   const contextPost = posts.find((p) => p.id === id);
   const post = contextPost ?? remotePost;
   const canCommentAnonymously = Boolean(user?.isVerified);
-
-
   useEffect(() => {
     let cancelled = false;
     const loadSharedPost = async () => {
@@ -97,9 +117,9 @@ export default function PostDetailScreen() {
         const [{ data: profile }, voteRes, bookmarkRes] = await Promise.all([
           !row.is_anonymous && !row.is_ghost
             ? supabase.from("profiles").select("username,avatar,avatar_ring_color,is_verified").eq("id", row.author_id).maybeSingle()
-            : Promise.resolve({ data: null } as any),
-          user ? supabase.from("post_votes").select("vote").eq("post_id", row.id).eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null } as any),
-          user ? supabase.from("bookmarks").select("post_id").eq("post_id", row.id).eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null } as any),
+            : Promise.resolve({ data: null } as unknown),
+          user ? supabase.from("post_votes").select("vote").eq("post_id", row.id).eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null } as unknown),
+          user ? supabase.from("bookmarks").select("post_id").eq("post_id", row.id).eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null } as unknown),
         ]);
         if (cancelled) return;
         setRemotePost({
@@ -156,11 +176,16 @@ export default function PostDetailScreen() {
     }
     try {
       const { data: commentRows } = await supabase.rpc("get_secure_comments", { p_post_id: post.id });
-      const data = (commentRows ?? []).filter((row: any) => !row.parent_id);
-      const replyRows = (commentRows ?? []).filter((row: any) => row.parent_id);
+      const data = (commentRows ?? []).filter((row: { parent_id?: string | null }) => !row.parent_id);
+      const replyRows = (commentRows ?? []).filter((row): row is { parent_id: string } =>
+        typeof row === 'object' &&
+        row !== null &&
+        'parent_id' in row &&
+        Boolean((row as { parent_id?: unknown }).parent_id)
+      );
 
       const allRows = [...data, ...replyRows];
-      const commentIds = allRows.map((r: any) => r.id);
+      const commentIds = allRows.map((r: { id: string }) => r.id);
       let userVoteMap = new Map<string, "up" | "down">();
       if (user && commentIds.length > 0) {
         const { data: voteRows } = await supabase
@@ -168,10 +193,16 @@ export default function PostDetailScreen() {
           .select("comment_id, vote")
           .eq("user_id", user.id)
           .in("comment_id", commentIds);
-        (voteRows ?? []).forEach((v: any) => userVoteMap.set(v.comment_id, v.vote));
+        (voteRows ?? []).forEach((v: { comment_id: string; vote: number }) => userVoteMap.set(v.comment_id, v.vote));
       }
 
-      const topLevel: Comment[] = (data ?? []).map((row: any) => rowToComment(row, userVoteMap.get(row.id) ?? null));
+      const topLevel: Comment[] = (data ?? []).map((row: unknown) => {
+        if (typeof row !== 'object' || row === null || !('id' in row)) {
+          throw new Error('Invalid row data');
+        }
+        const castedRow = row as { id: string };
+        return rowToComment(castedRow, userVoteMap.get(castedRow.id) ?? null);
+      });
 
       const replyMap = new Map<string, Comment[]>();
       (replyRows ?? []).forEach((r: any) => {

@@ -85,23 +85,31 @@ function buildScoreBadges(score: number, level: VaultLevel): VaultBadge[] {
 }
 
 function normalizeBadges(dataBadges: unknown, score: number, level: VaultLevel): VaultBadge[] {
-  const persisted = (Array.isArray(dataBadges) ? dataBadges : []).map((badge, index) => ({
-    id: textValue((badge as any)?.id, `badge-${index}`),
-    label: textValue((badge as any)?.label ?? (badge as any)?.badge_label, "Vault Badge"),
-    category: textValue((badge as any)?.category, "Vault"),
-    awarded_at: textValue((badge as any)?.awarded_at, ""),
-    description: typeof (badge as any)?.description === "string" ? (badge as any).description : undefined,
-    earned: (badge as any)?.earned === false ? false : true,
+  const persisted = (Array.isArray(dataBadges) ? dataBadges : []).map((badge: Record<string, unknown>, index: number) => ({
+    id: textValue(badge.id as string | undefined, `badge-${index}`),
+    label: textValue((badge.label ?? badge.badge_label) as string | undefined, "Vault Badge"),
+    category: textValue(badge.category as string | undefined, "Vault"),
+    awarded_at: textValue(badge.awarded_at as string | undefined, ""),
+    description: typeof badge.description === "string" ? badge.description : undefined,
+    earned: badge.earned === false ? false : true,
   }));
   const generated = buildScoreBadges(score, level);
   const seen = new Set(persisted.map((badge) => `${badge.category.toLowerCase()}::${badge.label.toLowerCase()}`));
   return [...persisted, ...generated.filter((badge) => !seen.has(`${badge.category.toLowerCase()}::${badge.label.toLowerCase()}`))];
 }
 
-function countValue(row: any, aliases: string[], fallbackValue = 0) {
+function countValue(row: Record<string, unknown>, aliases: string[], fallbackValue = 0): number {
   for (const alias of aliases) {
     const value = row?.[alias];
-    if (value !== null && value !== undefined) return finiteNumber(value, fallbackValue);
+    if (value !== null && value !== undefined) {
+      if (typeof value === 'number') {
+        return finiteNumber(value, fallbackValue);
+      }
+      if (typeof value === 'string') {
+        const num = parseFloat(value);
+        return finiteNumber(isNaN(num) ? fallbackValue : num, fallbackValue);
+      }
+    }
   }
   return fallbackValue;
 }
@@ -110,13 +118,17 @@ function countValue(row: any, aliases: string[], fallbackValue = 0) {
 async function buildSkillFallback(userId?: string): Promise<VaultSummary["skills"]> {
   if (!userId) return [];
   const { data: profile } = await supabase
-    .from("profiles")
+    .from<{ interests: string[] | null; branch: string | null }>("profiles")
     .select("interests, branch")
     .eq("id", userId)
     .maybeSingle();
-  const interests = Array.isArray((profile as any)?.interests) ? (profile as any).interests : [];
-  const branch = typeof (profile as any)?.branch === "string" && (profile as any).branch.trim() ? [(profile as any).branch] : [];
-  const names = Array.from(new Set([...interests, ...branch].map((value) => String(value).trim()).filter(Boolean))).slice(0, 7);
+  const interests = Array.isArray(profile?.interests) ? profile.interests : [];
+  const branch = typeof profile?.branch === "string" && profile.branch.trim() ? [profile.branch] : [];
+  const names = Array.from(
+    new Set([...interests, ...branch]
+      .map((value) => value.trim())
+      .filter(Boolean)
+  ).slice(0, 7);
   return names.map((skill_name, index) => ({
     skill_name,
     strength: Math.max(35, 72 - index * 6),
@@ -148,10 +160,10 @@ function normalizeVaultSummary(data: Partial<VaultSummary> | null | undefined): 
     progress,
     rank: merged.rank === null || merged.rank === undefined ? null : finiteNumber(merged.rank, 0),
     skillStrength: Math.min(100, Math.max(0, finiteNumber(merged.skillStrength))),
-    legends: (Array.isArray(merged.legends) ? merged.legends : []).map((legend, index) => ({
-      id: textValue((legend as any)?.id, `legend-${index}`),
-      category: textValue((legend as any)?.category, "Campus Legend"),
-      nominee_username: textValue((legend as any)?.nominee_username, "Unknown student"),
+    legends: (Array.isArray(merged.legends) ? (merged.legends as Record<string, unknown>[]) : []).map((legend: Record<string, unknown>, index: number) => ({
+      id: textValue(typeof legend.id === 'string' ? legend.id : undefined, `legend-${index}`),
+      category: textValue(typeof legend.category === 'string' ? legend.category : undefined, "Campus Legend"),
+      nominee_username: textValue(typeof legend.nominee_username === 'string' ? legend.nominee_username : undefined, "Unknown student"),
       votes_count: countValue(legend, ["votes_count", "vote_count", "upvotes", "votes"]),
     })),
     debates: (Array.isArray(merged.debates) ? merged.debates : []).map((debate, index) => ({

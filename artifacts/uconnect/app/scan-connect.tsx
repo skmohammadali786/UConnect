@@ -30,7 +30,7 @@ export default function ScanConnectScreen() {
   const [sharingQr, setSharingQr] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(14)).current;
-  const qrRef = useRef<any>(null);
+  const qrRef = useRef<QRCode | null>(null);
 
   const myUsername = (user?.username || "").trim().toLowerCase();
   const targetUsername = (usernameParam || "").trim().toLowerCase();
@@ -88,7 +88,7 @@ export default function ScanConnectScreen() {
       setTimeout(() => setScanLocked(false), SCAN_ERROR_COOLDOWN_MS);
       return;
     }
-    router.push({ pathname: "/user/[username]" as any, params: { username: scannedUsername } });
+    router.push(`/user/${scannedUsername}`);
     setTimeout(() => setScanLocked(false), SCAN_SUCCESS_COOLDOWN_MS);
   };
 

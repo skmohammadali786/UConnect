@@ -9,6 +9,16 @@ export type ProfileTabItem<T extends string> = {
   count?: number;
 };
 
+interface ProfileTabColors {
+  profileCard?: string;
+  card?: string;
+  profileCardBorder?: string;
+  border?: string;
+  primary: string;
+  mutedForeground: string;
+  secondary: string;
+}
+
 export function ProfileTabs<T extends string>({
   items,
   activeKey,
@@ -18,7 +28,7 @@ export function ProfileTabs<T extends string>({
   items: ProfileTabItem<T>[];
   activeKey: T;
   onChange: (key: T) => void;
-  colors: any;
+  colors: ProfileTabColors;
 }) {
   return (
     <ScrollView
@@ -34,7 +44,7 @@ export function ProfileTabs<T extends string>({
             <Feather name={item.icon} size={16} color={active ? colors.primary : colors.mutedForeground} />
             <Text style={[styles.label, { color: active ? colors.primary : colors.mutedForeground }]}>{item.label}</Text>
             {typeof item.count === "number" && item.count > 0 ? (
-              <View style={[styles.count, { backgroundColor: active ? colors.primary : colors.secondary }]}>
+              <View style={[styles.count, { backgroundColor: active ? colors.primary : colors.secondary }]}> 
                 <Text style={[styles.countText, { color: active ? "#FFF" : colors.mutedForeground }]}>{item.count}</Text>
               </View>
             ) : null}

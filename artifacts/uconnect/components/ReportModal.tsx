@@ -98,10 +98,14 @@ export function ReportModal({ postId, visible, onClose }: ReportModalProps) {
         "Report submitted",
         "Moderators were notified and you'll see updates in My Reports.",
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
+      let message = "Please try again in a moment.";
+      if (error instanceof Error && error.message) {
+        message = error.message;
+      }
       showError(
         "Report failed",
-        error?.message || "Please try again in a moment.",
+        message,
       );
     } finally {
       setSubmitting(false);
@@ -188,7 +192,7 @@ export function ReportModal({ postId, visible, onClose }: ReportModalProps) {
                 ]}
               >
                 <Feather
-                  name={r.icon as any}
+                  name={r.icon as React.ComponentProps<typeof Feather>["name"]}
                   size={16}
                   color={
                     selected === r.label
@@ -211,7 +215,7 @@ export function ReportModal({ postId, visible, onClose }: ReportModalProps) {
               </View>
               {selected === r.label && (
                 <View
-                  style={[
+                  style=[
                     styles.checkCircle,
                     { backgroundColor: colors.primary },
                   ]}

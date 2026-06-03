@@ -258,8 +258,12 @@ export default function EditProfileScreen() {
       setCollegeIdImage(null);
       setPhotoIdImage(null);
       showSuccess("Request submitted", "Your verification request is under review.");
-    } catch (err: any) {
-      showError("Request failed", err?.message ?? "Could not submit verification request.");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        showError("Request failed", err.message);
+      } else {
+        showError("Request failed", "Could not submit verification request.");
+      }
     } finally {
       setRequestingVerification(false);
     }
@@ -303,8 +307,12 @@ export default function EditProfileScreen() {
       setAvatarRingColor(normalizedRingColor);
       showSuccess("Profile updated!", "Your changes have been saved.");
       router.back();
-    } catch (err: any) {
-      showError("Update failed", err?.message ?? "Could not update your profile.");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        showError("Update failed", err.message);
+      } else {
+        showError("Update failed", "Could not update your profile.");
+      }
     } finally {
       setSaving(false);
     }

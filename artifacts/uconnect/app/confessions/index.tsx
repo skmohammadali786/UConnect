@@ -11,7 +11,22 @@ import { TypewriterText } from "@/components/TypewriterText";
 
 const ND = Platform.OS !== "web";
 
-function ConfessionCard({ item, index, colors, onVote, globalReveal, revealedIds, onReveal }: any) {
+type Confession = {
+  id: string;
+  // add other fields as needed
+};
+
+interface ConfessionCardProps {
+  item: Confession;
+  index: number;
+  colors: ReturnType<typeof useColors>;
+  onVote: (id: string, vote: 'up' | 'down') => void;
+  globalReveal: boolean;
+  revealedIds: Set<string>;
+  onReveal: (id: string) => void;
+}
+
+function ConfessionCard({ item, index, colors, onVote, globalReveal, revealedIds, onReveal }: ConfessionCardProps): JSX.Element {
   const anim = useRef(new Animated.Value(0)).current;
   const voteAnim = useRef(new Animated.Value(1)).current;
   const isRevealed = globalReveal || revealedIds.has(item.id);
@@ -79,7 +94,7 @@ function ConfessionCard({ item, index, colors, onVote, globalReveal, revealedIds
               <Text style={[styles.actionCount, { color: item.userVote === "down" ? "#EF4444" : colors.mutedForeground }]}>{item.downvotes}</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => router.push({ pathname: "/confessions/[id]" as any, params: { id: item.id } })}
+              onPress={() => router.push({ pathname: "/confessions/[id]", params: { id: item.id } })}
               style={styles.actionBtn}
             >
               <Feather name="message-circle" size={15} color={colors.mutedForeground} />

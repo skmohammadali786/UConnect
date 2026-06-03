@@ -39,7 +39,27 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-function rowToUser(row: any): User {
+function rowToUser(row: {
+  id: number;
+  email?: string | null;
+  phone?: string | null;
+  username?: string;
+  display_name?: string;
+  college?: string;
+  branch?: string;
+  year?: number;
+  bio?: string;
+  social_link?: string;
+  avatar?: string | null;
+  avatar_ring_color?: string;
+  banner?: string | null;
+  interests?: string[];
+  followers?: number;
+  following?: number;
+  posts_count?: number;
+  is_verified?: boolean;
+  joined_at?: string;
+}): User {
   return {
     id: row.id,
     email: row.email ?? "",

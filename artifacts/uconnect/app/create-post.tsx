@@ -209,8 +209,9 @@ export default function CreatePostScreen() {
       });
       showSuccess("Post published!", isGhostActive && session ? `Posted as ${session.alias}` : isAnonymous ? "Posted anonymously" : `Posted as @${user.username}`);
       router.back();
-    } catch (err: any) {
-      showError("Upload failed", err?.message ?? "Could not publish your post. Please try again.");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Could not publish your post. Please try again.";
+      showError("Upload failed", message);
     } finally {
       setLoading(false);
     }

@@ -135,19 +135,19 @@ export default function RootLayout() {
 
     const postId = extractPostIdFromLink(url);
     if (postId) {
-      router.push({ pathname: "/post/[id]" as any, params: { id: postId } });
+      router.push({ pathname: "/post/[id]", query: { id: postId } });
       return;
     }
 
     const eventId = extractEventIdFromLink(url);
     if (eventId) {
-      router.push({ pathname: "/events/[id]" as any, params: { id: eventId } });
+      router.push({ pathname: "/events/[id]", query: { id: eventId } });
       return;
     }
 
     const referralCode = extractReferralCodeFromLink(url);
     if (referralCode) {
-      router.replace({ pathname: "/auth/login", params: { flow: "signup", referralCode } });
+      router.replace({ pathname: "/auth/login", query: { flow: "signup", referralCode } });
       return;
     }
 
@@ -162,7 +162,7 @@ export default function RootLayout() {
       if (access_token && refresh_token) {
         await supabase.auth.setSession({ access_token, refresh_token });
         if (isRecovery) {
-          router.replace("/auth/reset-password" as any);
+          router.replace("/auth/reset-password");
         }
         return;
       }
@@ -176,7 +176,7 @@ export default function RootLayout() {
       if (code) {
         await supabase.auth.exchangeCodeForSession(code);
         if (isRecovery) {
-          router.replace("/auth/reset-password" as any);
+          router.replace("/auth/reset-password");
         }
       }
     }

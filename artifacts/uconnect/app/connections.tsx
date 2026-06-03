@@ -88,7 +88,12 @@ export default function ConnectionsScreen() {
       const ids = Array.from(
         new Set(
           (edges ?? [])
-            .map((edge: any) => edge?.[sourceField])
+            .map((edge: unknown) => {
+              if (typeof edge === 'object' && edge !== null && sourceField in edge) {
+                return (edge as Record<string, unknown>)[sourceField];
+              }
+              return undefined;
+            })
             .filter((id: unknown): id is string => typeof id === "string")
         )
       );
@@ -104,19 +109,19 @@ export default function ConnectionsScreen() {
         .in("id", ids);
       if (profileError) throw profileError;
 
-      const byId = new Map((profiles ?? []).map((p: any) => [p.id, p]));
-      const ordered = ids
-        .map((id) => byId.get(id))
-        .filter(Boolean)
-        .map((p: any) => ({
-          id: p.id,
-          username: p.username ?? "",
-          displayName: p.display_name ?? p.username ?? "",
-          college: p.college ?? "",
-          followers: p.followers ?? 0,
-          avatar: p.avatar ?? null,
-        })) as ConnectionItem[];
-      setList(ordered);
+      const byId = new Map(
+        (profiles ?? []).map((p: unknown) => {
+          if (
+            p &&
+            typeof p === 'object' &&
+            'id' in p &&
+            typeof (p as { id: unknown }).id === 'string'
+          ) {
+            return [(p as { id: string }).id, p];
+          }
+          throw new Error('Invalid profile object: ' + JSON.stringify(p));
+        })
+      );
     } catch {
       setList([]);
       showError("Could not load list", `Failed to load ${title.toLowerCase()}. Please try again.`);
@@ -166,7 +171,7 @@ export default function ConnectionsScreen() {
             return (
               <FadeSlideItem index={index}>
                 <TouchableOpacity
-                  onPress={() => router.push({ pathname: "/user/[username]" as any, params: { username: item.username } })}
+                  onPress={() => router.push({ pathname: "/user/[username]", params: { username: item.username } })}
                   activeOpacity={0.88}
                   style={[styles.personCard, { backgroundColor: colors.card, borderColor: colors.border }]}
                 >

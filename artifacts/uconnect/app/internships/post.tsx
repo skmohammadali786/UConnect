@@ -65,8 +65,11 @@ export default function PostInternshipScreen() {
       if (error) throw error;
       showSuccess("Posted!", "Your internship listing is now live.");
       router.back();
-    } catch (err: any) {
-      showError("Error", err?.message ?? "Failed to post internship. Please try again.");
+    } catch (err: unknown) {
+      const message = err instanceof Error
+        ? err.message
+        : "Failed to post internship. Please try again.";
+      showError("Error", message);
     } finally {
       setLoading(false);
     }

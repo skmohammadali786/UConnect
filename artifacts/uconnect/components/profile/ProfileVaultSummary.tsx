@@ -26,7 +26,7 @@ export function ProfileVaultSummary({
   mode = "compact",
 }: {
   summary?: VaultSummary | null;
-  colors: any;
+  colors: Record<string, string>;
   mode?: "compact" | "full" | "mini";
 }) {
   const score = summary?.score ?? 0;
@@ -44,13 +44,13 @@ export function ProfileVaultSummary({
 
   if (mode === "mini") {
     return (
-      <View style={[styles.miniCard, { backgroundColor: colors.profileCard ?? colors.card, borderColor: colors.profileCardBorder ?? colors.border, shadowColor }]}>
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={[styles.kicker, { color: colors.primary }]}>VAULT PROFILE</Text>
-            <Text style={[styles.title, { color: colors.foreground }]}>{level}</Text>
-          </View>
-          <View style={[styles.levelPill, { backgroundColor: colors.profileSoftGreen ?? colors.primary + "14", borderColor: colors.primary + "30" }]}>
+      <View style={[styles.miniCard, { backgroundColor: colors.profileCard ?? colors.card, borderColor: colors.profileCardBorder ?? colors.border, shadowColor }]}>\
+        <View style={styles.headerRow}>\
+          <View>\
+            <Text style={[styles.kicker, { color: colors.primary }]}>VAULT PROFILE</Text>\
+            <Text style={[styles.title, { color: colors.foreground }]}>{level}</Text>\
+          </View>\
+          <View style={[styles.levelPill, { backgroundColor: colors.profileSoftGreen ?? colors.primary + "14", borderColor: colors.primary + "30" }]}>\
             <Text style={[styles.levelText, { color: colors.primary }]}>Top 15%</Text>
           </View>
         </View>
@@ -99,7 +99,7 @@ export function ProfileVaultSummary({
   );
 }
 
-function VaultStat({ value, label, colors, icon }: { value: string | number; label: string; colors: any; icon?: React.ComponentProps<typeof Feather>["name"] }) {
+function VaultStat({ value, label, colors, icon }: { value: string | number; label: string; colors: { primary: string; mutedForeground: string }; icon?: React.ComponentProps<typeof Feather>["name"] }) {
   return (
     <View style={styles.stat}>
       <View style={styles.statValueRow}>
@@ -111,9 +111,9 @@ function VaultStat({ value, label, colors, icon }: { value: string | number; lab
   );
 }
 
-function Insight({ icon, label, value, colors }: { icon: React.ComponentProps<typeof Feather>["name"]; label: string; value: string; colors: any }) {
+function Insight({ icon, label, value, colors }: { icon: React.ComponentProps<typeof Feather>["name"]; label: string; value: string; colors: { profileSoftGreen?: string; secondary: string; profileCardBorder?: string; border: string; primary: string; mutedForeground: string; foreground: string; }; }) {
   return (
-    <View style={[styles.insight, { backgroundColor: colors.profileSoftGreen ?? colors.secondary, borderColor: colors.profileCardBorder ?? colors.border }]}>
+    <View style={[styles.insight, { backgroundColor: colors.profileSoftGreen ?? colors.secondary, borderColor: colors.profileCardBorder ?? colors.border }]}>  
       <Feather name={icon} size={15} color={colors.primary} />
       <View style={{ flex: 1 }}>
         <Text style={[styles.insightLabel, { color: colors.mutedForeground }]}>{label}</Text>

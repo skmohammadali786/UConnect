@@ -1,6 +1,6 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
 import type { DimensionValue } from "react-native";
 import { ActivityIndicator, Animated, Easing, Modal, Platform, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -21,9 +21,9 @@ const ALERT_CATEGORIES = ["Safety Alert", "Medical Emergency", "Blood Required",
 const WIKI_CATEGORIES = ["Academics", "Professors", "Hostels", "Placements", "Internships", "Clubs", "Labs", "Events", "Study Resources"];
 const ND = Platform.OS !== "web";
 
-function Metric({ label, value, icon, colors }: { label: string; value: string | number; icon: any; colors: ReturnType<typeof useColors> }) {
+function Metric({ label, value, icon, colors }: { label: string; value: string | number; icon: React.ComponentProps<typeof Feather>["name"]; colors: ReturnType<typeof useColors> }): JSX.Element {
   return (
-    <View style={[styles.metricCard, { backgroundColor: colors.card, borderColor: colors.border, shadowColor: colors.shadow }]}>
+    <View style={[styles.metricCard, { backgroundColor: colors.card, borderColor: colors.border, shadowColor: colors.shadow }]}>  
       <Feather name={icon} size={18} color={colors.primary} />
       <Text style={[styles.metricValue, { color: colors.foreground }]}>{value}</Text>
       <Text style={[styles.metricLabel, { color: colors.mutedForeground }]}>{label}</Text>
@@ -131,8 +131,12 @@ export default function VaultScreen() {
       }
       await refetch();
       closeModal();
-    } catch (e: any) {
-      showError("Vault action failed", e?.message ?? "Please check the form and try again.");
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        showError("Vault action failed", e.message);
+      } else {
+        showError("Vault action failed", "Please check the form and try again.");
+      }
     } finally {
       setBusy(false);
     }
@@ -156,8 +160,9 @@ export default function VaultScreen() {
       setVoteOverrides((current) => ({ ...current, [key]: Math.max(current[key] ?? 0, newCount) }));
       void refetch();
       showSuccess(result?.changed === false ? "Already counted" : "Vote counted");
-    } catch (e: any) {
-      showError("Vote failed", e?.message ?? "Try again later.");
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : "Try again later.";
+      showError("Vote failed", errorMessage);
     }
   };
 
@@ -166,8 +171,9 @@ export default function VaultScreen() {
     setDetail(null);
     try {
       setDetail(await fetchVaultDetail(kind, id));
-    } catch (e: any) {
-      showError("Could not open details", e?.message ?? "Try again later.");
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : "Try again later.";
+      showError("Could not open details", errorMessage);
     } finally {
       setDetailLoading(false);
     }
@@ -181,7 +187,7 @@ export default function VaultScreen() {
             <TouchableOpacity accessibilityLabel="Go back" onPress={() => router.back()} style={styles.backButton}>
               <Feather name="arrow-left" size={22} color={colors.foreground} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push("/settings/ghost-mode" as any)} style={[styles.ghostButton, { backgroundColor: ghost.isGhostActive ? colors.primary : colors.card, borderColor: ghost.isGhostActive ? colors.primary + "55" : colors.border }]}>
+            <TouchableOpacity onPress={() => router.push("/settings/ghost-mode")} style={[styles.ghostButton, { backgroundColor: ghost.isGhostActive ? colors.primary : colors.card, borderColor: ghost.isGhostActive ? colors.primary + "55" : colors.border }]}>
               <Feather name="cloud-snow" size={18} color={ghost.isGhostActive ? colors.primaryForeground : colors.primary} />
               <Text style={[styles.ghostButtonText, { color: ghost.isGhostActive ? colors.primaryForeground : colors.foreground }]}>{ghost.activeCount}</Text>
             </TouchableOpacity>
@@ -273,19 +279,19 @@ function BadgeShowcase({ badges, colors }: { badges: VaultBadge[]; colors: Retur
   );
 }
 
-function ActionButton({ icon, label, onPress, colors, disabled }: { icon: any; label: string; onPress: () => void; colors: ReturnType<typeof useColors>; disabled?: boolean }) {
+function ActionButton({ icon, label, onPress, colors, disabled }: { icon: ComponentProps<typeof Feather>["name"]; label: string; onPress: () => void; colors: ReturnType<typeof useColors>; disabled?: boolean }) {
   return <TouchableOpacity disabled={disabled} onPress={onPress} style={[styles.actionButton, { backgroundColor: disabled ? colors.muted : colors.primarySoft, borderColor: colors.border, opacity: disabled ? 0.55 : 1 }]}><Feather name={icon} size={17} color={disabled ? colors.mutedForeground : colors.primary} /><Text style={[styles.actionText, { color: disabled ? colors.mutedForeground : colors.primary }]}>{label}</Text></TouchableOpacity>;
 }
 
 type SectionItem = { key: string; title: string; meta: string; count?: number; countLabel?: string; onOpen?: () => void; action?: string; onPress?: () => void; disabled?: boolean; actions?: Array<{ label: string; onPress: () => void }> };
 
-function Section({ title, icon, items, colors }: { title: string; icon: any; colors: ReturnType<typeof useColors>; items: SectionItem[] }) {
+function Section({ title, icon, items, colors }: { title: string; icon: string; colors: ReturnType<typeof useColors>; items: SectionItem[] }) {
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}><Feather name={icon} size={16} color={colors.primary} /><Text style={[styles.sectionTitle, { color: colors.foreground }]}>{title}</Text></View>
-      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>  
         {items.length ? items.map((item) => (
-          <TouchableOpacity activeOpacity={0.82} disabled={!item.onOpen} onPress={item.onOpen} key={item.key} style={[styles.listRow, { borderBottomColor: colors.separator }]}>
+          <TouchableOpacity activeOpacity={0.82} disabled={!item.onOpen} onPress={item.onOpen} key={item.key} style={[styles.listRow, { borderBottomColor: colors.separator }]}>  
             <View style={[styles.listDot, { backgroundColor: colors.primary }]} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.listTitle, { color: colors.foreground }]}>{item.title}</Text>
@@ -330,7 +336,57 @@ function VaultDetailModal({ detail, loading, colors, onClose }: { detail: VaultD
   );
 }
 
-function VaultModal({ modal, form, setForm, colors, busy, onClose, onSubmit, selectedDebate }: any) {
+function VaultModal({
+  modal,
+  form,
+  setForm,
+  colors,
+  busy,
+  onClose,
+  onSubmit,
+  selectedDebate,
+}: {
+  modal: 'alert' | 'nomination' | 'debate' | 'wiki' | 'argument' | null;
+  form: {
+    title?: string;
+    body?: string;
+    category?: string;
+    priority?: string;
+    location?: string;
+    username?: string;
+    reason?: string;
+    description?: string;
+    content?: string;
+    alias?: string;
+  };
+  setForm: React.Dispatch<React.SetStateAction<{
+    title?: string;
+    body?: string;
+    category?: string;
+    priority?: string;
+    location?: string;
+    username?: string;
+    reason?: string;
+    description?: string;
+    content?: string;
+    alias?: string;
+  }>>;
+  colors: {
+    card: string;
+    foreground: string;
+    mutedForeground: string;
+    secondary: string;
+    primary: string;
+    primaryForeground: string;
+  };
+  busy: boolean;
+  onClose: () => void;
+  onSubmit: () => void;
+  selectedDebate?: {
+    side: string;
+    title: string;
+  };
+}) {
   const title = modal === "alert" ? "Create Campus Alert" : modal === "nomination" ? "Nominate a Legend" : modal === "debate" ? "Open Debate" : modal === "wiki" ? "Publish Wiki Article" : selectedDebate ? `Join ${selectedDebate.side.toUpperCase()}` : "Vault Action";
   return <Modal visible={Boolean(modal)} transparent animationType="fade" onRequestClose={onClose}><View style={styles.modalOverlay}><View style={[styles.modalCard, { backgroundColor: colors.card }]}><Text style={[styles.modalTitle, { color: colors.foreground }]}>{title}</Text>{modal === "argument" && selectedDebate ? <Text style={[styles.modalSub, { color: colors.mutedForeground }]}>{selectedDebate.title}</Text> : null}
     {modal === "alert" ? <><Input formKey="title" placeholder="Alert title" form={form} setForm={setForm} colors={colors} /><Input formKey="body" placeholder="What happened?" multiline form={form} setForm={setForm} colors={colors} /><Choice values={ALERT_CATEGORIES} active={form.category || ALERT_CATEGORIES[0]} onPick={(v: string) => setForm({ ...form, category: v })} colors={colors} /><Choice values={ALERT_PRIORITIES} active={form.priority || "normal"} onPick={(v: string) => setForm({ ...form, priority: v })} colors={colors} /><Input formKey="location" placeholder="Location (optional)" form={form} setForm={setForm} colors={colors} /></> : null}
@@ -341,11 +397,25 @@ function VaultModal({ modal, form, setForm, colors, busy, onClose, onSubmit, sel
     <View style={styles.modalActions}><TouchableOpacity onPress={onClose} style={[styles.cancelBtn, { backgroundColor: colors.secondary }]}><Text style={[styles.cancelText, { color: colors.foreground }]}>Cancel</Text></TouchableOpacity><TouchableOpacity disabled={busy} onPress={onSubmit} style={[styles.submitBtn, { backgroundColor: colors.primary }]}>{busy ? <ActivityIndicator color={colors.primaryForeground} /> : <Text style={[styles.submitText, { color: colors.primaryForeground }]}>Submit</Text>}</TouchableOpacity></View></View></View></Modal>;
 }
 
-function Input({ formKey, placeholder, form, setForm, colors, multiline }: any) {
+interface InputProps {
+  formKey: string;
+  placeholder: string;
+  form: Record<string, string>;
+  setForm: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  colors: {
+    placeholder: string;
+    input: string;
+    border: string;
+    foreground: string;
+  };
+  multiline?: boolean;
+}
+
+function Input({ formKey, placeholder, form, setForm, colors, multiline }: InputProps) {
   return <TextInput value={form[formKey] ?? ""} onChangeText={(text) => setForm({ ...form, [formKey]: text })} placeholder={placeholder} placeholderTextColor={colors.placeholder} multiline={multiline} style={[styles.input, multiline && styles.multiline, { backgroundColor: colors.input, borderColor: colors.border, color: colors.foreground }]} />;
 }
 
-function Choice({ values, active, onPick, colors }: any) {
+function Choice({ values, active, onPick, colors }: { values: string[]; active: string; onPick: (v: string) => void; colors: { primary: string; secondary: string; primaryForeground: string; mutedForeground: string; }; }) {
   return <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.choiceRow}>{values.map((v: string) => <TouchableOpacity key={v} onPress={() => onPick(v)} style={[styles.choice, { backgroundColor: active === v ? colors.primary : colors.secondary }]}><Text style={[styles.choiceText, { color: active === v ? colors.primaryForeground : colors.mutedForeground }]}>{v}</Text></TouchableOpacity>)}</ScrollView>;
 }
 

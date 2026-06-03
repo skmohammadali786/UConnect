@@ -64,11 +64,11 @@ export default function ChatScreen() {
     startConversation(resolvedParticipantId, username ?? "user", false, {
       username: username ?? "user",
     })
-      .then((convId) => {
+      .then((convId: string) => {
         if (convId !== id) {
           router.replace({
-            pathname: "/chat/[id]" as any,
-            params: {
+            pathname: "/chat/[id]",
+            query: {
               id: convId,
               participantId: resolvedParticipantId,
               username,
@@ -162,7 +162,7 @@ export default function ChatScreen() {
   const handleOpenProfile = () => {
     if (!canViewProfile) return;
     router.push({
-      pathname: "/user/[username]" as any,
+      pathname: "/user/[username]",
       params: { username: conv.participantUsername },
     });
   };
