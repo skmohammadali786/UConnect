@@ -28,6 +28,7 @@ import { AuraRingAvatar } from "@/components/AuraRingAvatar";
 import { formatRelativeTime } from "@/utils/time";
 import { buildPostShareLink } from "@/utils/postLinks";
 
+const ND = Platform.OS !== "web";
 const URI_PROTOCOL_REGEX = /^[a-z][a-z0-9+.-]*:/i;
 
 
@@ -64,6 +65,7 @@ interface PostCardProps {
   post: Post;
   currentUserId: string;
   onDelete?: (postId: string) => void;
+  index?: number;
 }
 
 function renderHashtags(content: string, primaryColor: string, foregroundColor: string) {
@@ -84,7 +86,7 @@ function renderHashtags(content: string, primaryColor: string, foregroundColor: 
   });
 }
 
-export function PostCard({ post, currentUserId, onDelete }: PostCardProps) {
+export function PostCard({ post, currentUserId, onDelete, index = 0 }: PostCardProps) {
   const colors = useColors();
   const { votePost, bookmarkPost, toggleRepost, hasReposted } = usePosts();
   const { hasReported } = useSocial();

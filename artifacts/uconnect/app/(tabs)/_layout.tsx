@@ -2,12 +2,14 @@ import { BlurView } from "expo-blur";
 import { Tabs, router } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { Animated, StyleSheet, TouchableOpacity, View, useColorScheme, useWindowDimensions } from "react-native";
+import { Animated, Platform, StyleSheet, TouchableOpacity, View, useColorScheme, useWindowDimensions } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import { useTheme } from "@/context/ThemeContext";
 import { useNotifications } from "@/context/NotificationsContext";
 import { TABLET_BREAKPOINT, getResponsiveContentMaxWidth } from "@/utils/responsiveLayout";
 import { setTabBarVisible, subscribeTabBarVisibility } from "@/utils/tabBarVisibility";
+
+const ND = Platform.OS !== "web";
 
 function CreateTabButton() {
   const colors = useColors();

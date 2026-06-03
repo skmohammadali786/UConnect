@@ -22,6 +22,7 @@ export default function RateScreen() {
   const horizontalPadding = width >= 768 ? 28 : 20;
   const contentWidth = Math.min(560, Math.max(320, width - horizontalPadding * 2));
   const [rating, setRating] = useState(0);
+  const [hovered, setHovered] = useState(0);
   const [feedback, setFeedback] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const scaleAnims = [1, 2, 3, 4, 5].map(() => React.useRef(new Animated.Value(1)).current);

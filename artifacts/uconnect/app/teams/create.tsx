@@ -39,7 +39,7 @@ export default function CreateTeamScreen() {
     setLoading(true);
     try {
       const skillsList = skills.split(",").map((s) => s.trim()).filter(Boolean);
-      await createTeam({
+      const newTeam = await createTeam({
         title: title.trim(),
         description: description.trim(),
         type,
