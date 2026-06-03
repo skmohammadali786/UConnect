@@ -280,7 +280,7 @@ export default function ProfileScreen() {
           </>
         }
         onAvatarPress={() => router.push("/edit-profile")}
-        onQrPress={() => router.push({ pathname: "/scan-connect" as any, params: { username: user.username, allowScan: "1" } })}
+        onQrPress={() => router.push({ pathname: "/scan-connect", params: { username: user.username, allowScan: "1" } })}
       />
 
       <ProfileStatsCard
