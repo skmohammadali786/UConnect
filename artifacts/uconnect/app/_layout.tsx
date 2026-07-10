@@ -32,6 +32,7 @@ import { QueryClient, QueryClientProvider, focusManager } from "@tanstack/react-
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { SocialProvider } from "@/context/SocialContext";
 import { TeamsProvider } from "@/context/TeamsContext";
+import { CommerceProvider } from "@/context/CommerceContext";
 import { QUERY_CACHE_TIMES, QUERY_STALE_TIMES } from "@/constants/queryConfig";
 
 SplashScreen.preventAutoHideAsync();
@@ -202,7 +203,8 @@ export default function RootLayout() {
                   <ChatProvider>
                     <NotificationsProvider>
                       <GhostModeProvider>
-                        <PostsProvider>
+                        <CommerceProvider>
+                          <PostsProvider>
                           <ConfessionsProvider>
                             <ToastProvider>
                               <GestureHandlerRootView style={{ flex: 1 }}>
@@ -213,6 +215,7 @@ export default function RootLayout() {
                             </ToastProvider>
                           </ConfessionsProvider>
                         </PostsProvider>
+                        </CommerceProvider>
                       </GhostModeProvider>
                     </NotificationsProvider>
                   </ChatProvider>

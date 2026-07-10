@@ -6,6 +6,7 @@ import { Animated, Platform, StyleSheet, TouchableOpacity, View, useColorScheme,
 import { useColors } from "@/hooks/useColors";
 import { useTheme } from "@/context/ThemeContext";
 import { useNotifications } from "@/context/NotificationsContext";
+import { useCommerce } from "@/context/CommerceContext";
 import { TABLET_BREAKPOINT, getResponsiveContentMaxWidth } from "@/utils/responsiveLayout";
 import { setTabBarVisible, subscribeTabBarVisibility } from "@/utils/tabBarVisibility";
 
@@ -68,6 +69,7 @@ export default function TabLayout() {
   const tabBarBottomPadding = isWeb ? (width >= TABLET_BREAKPOINT ? 13 : 8) : 14;
   const isDarkTheme = themeMode === "dark" || (themeMode === "system" && (scheme ?? "dark") === "dark");
   const { unreadCount } = useNotifications();
+  const { cartCount } = useCommerce();
   const [isTabBarVisible, setIsTabBarVisible] = React.useState(true);
   const tabBarSlide = React.useRef(new Animated.Value(0)).current;
   const tabBarOpacity = React.useRef(new Animated.Value(1)).current;
@@ -167,6 +169,20 @@ export default function TabLayout() {
         name="vault"
         options={{
           href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="commerce"
+        options={{
+          title: "Shop",
+          tabBarIcon: ({ color }) => <Feather name="shopping-bag" size={22} color={color} />,
+          tabBarBadge: cartCount > 0 ? (cartCount > 99 ? "99+" : cartCount) : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: colors.primary,
+            color: "#fff",
+            fontFamily: "Inter_600SemiBold",
+            fontSize: 10,
+          },
         }}
       />
       <Tabs.Screen

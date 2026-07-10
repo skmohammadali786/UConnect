@@ -15,7 +15,7 @@ export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { flow, ref, referralCode, email: incomingEmail } = useLocalSearchParams<{ flow: string; ref?: string; referralCode?: string; email?: string }>();
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, signInWithCloudflare } = useAuth();
   const isSignIn = flow === "signin";
   const incomingReferralCode = (referralCode || ref || "").trim().toUpperCase();
 
@@ -112,6 +112,15 @@ export default function LoginScreen() {
     }
 
     setVerifyModalVisible(true);
+  };
+
+  const handleCloudflareAuth = async () => {
+    setError("");
+    setLoading(true);
+    const { error: authError, isNewUser } = await signInWithCloudflare();
+    setLoading(false);
+    if (authError) { setError(authError); shake(); return; }
+    router.replace(isNewUser ? { pathname: "/auth/college-select", params: { email: email.trim(), referralCode: incomingReferralCode } } : "/(tabs)");
   };
 
   const handleForgotPassword = async () => {
@@ -279,6 +288,11 @@ export default function LoginScreen() {
               fullWidth
               size="lg"
             />
+
+            <Pressable onPress={handleCloudflareAuth} style={[styles.cloudflareBtn, { borderColor: colors.border, backgroundColor: colors.card }]}> 
+              <Feather name="cloud" size={17} color={colors.primary} />
+              <Text style={[styles.cloudflareText, { color: colors.foreground }]}>Continue with Cloudflare</Text>
+            </Pressable>
           </Animated.View>
 
           <View style={styles.switchRow}>
@@ -359,4 +373,6 @@ const styles = StyleSheet.create({
   resetNoticeText: { flex: 1, fontSize: 12, lineHeight: 18, fontFamily: "Inter_500Medium" },
   infoBox: { flexDirection: "row", alignItems: "flex-start", gap: 10, padding: 14, borderRadius: 12, borderWidth: 1 },
   infoText: { flex: 1, fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 18 },
+  cloudflareBtn: { height: 50, borderRadius: 14, borderWidth: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9 },
+  cloudflareText: { fontSize: 14, fontFamily: "Inter_700Bold" },
 });
