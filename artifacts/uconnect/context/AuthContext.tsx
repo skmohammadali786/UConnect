@@ -31,6 +31,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null; isNewUser: boolean }>;
   signUp: (email: string, password: string, phone?: string) => Promise<{ error: string | null }>;
+  signInWithCloudflare: () => Promise<{ error: string | null; isNewUser: boolean }>;
   logout: () => Promise<void>;
   deleteAccount: () => Promise<void>;
   updateUser: (updates: Partial<User>) => Promise<void>;
@@ -129,6 +130,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: null };
   };
 
+
+  const signInWithCloudflare = async (): Promise<{ error: string | null; isNewUser: boolean }> => {
+    const identityUrl = process.env.EXPO_PUBLIC_CLOUDFLARE_ACCESS_IDENTITY_URL;
+    if (!identityUrl) {
+      return { error: "Cloudflare authentication is not configured. Set EXPO_PUBLIC_CLOUDFLARE_ACCESS_IDENTITY_URL to your Access /cdn-cgi/access/get-identity endpoint.", isNewUser: false };
+    }
+    try {
+      const response = await fetch(identityUrl, { credentials: "include" as RequestCredentials });
+      if (!response.ok) throw new Error("Cloudflare Access session was not found. Open the site through your protected Cloudflare Access domain and try again.");
+      const identity = await response.json();
+      const email = String(identity.email || "").trim().toLowerCase();
+      const id = String(identity.sub || identity.user_uuid || email);
+      if (!email || !id) throw new Error("Cloudflare did not return a verified email for this session.");
+      const existing = await loadProfile(id);
+      if (existing) return { error: null, isNewUser: false };
+      const newUser: User = {
+        id, email, phone: "", username: email.split("@")[0].replace(/[^a-z0-9_]/gi, "").slice(0, 24), displayName: identity.name || email.split("@")[0], college: "", branch: "", year: "", bio: "", socialLink: "", avatar: null, avatarRingColor: DEFAULT_AURA_RING, banner: null, interests: [], followers: 0, following: 0, postsCount: 0, isVerified: true, joinedAt: new Date().toISOString(),
+      };
+      await setUserData(newUser);
+      return { error: null, isNewUser: true };
+    } catch (error) {
+      return { error: error instanceof Error ? error.message : "Cloudflare sign in failed.", isNewUser: false };
+    }
+  };
+
   const logout = async () => {
     try {
       await supabase.auth.signOut({ scope: "local" });
@@ -209,6 +235,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: !!user,
         signIn,
         signUp,
+        signInWithCloudflare,
         logout,
         deleteAccount,
         updateUser,
